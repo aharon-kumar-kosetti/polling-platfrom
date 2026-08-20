@@ -1,0 +1,202 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Join Screen - QUIZCORE</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=EB+Garamond:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "surface-bright": "#fbf9f9",
+                        "surface-container-highest": "#e4e2e2",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed-dim": "#c8c7bf",
+                        "surface-container": "#efeded",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-container": "#85847d",
+                        "surface-container-high": "#e9e8e7",
+                        "surface": "#fbf9f9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b8d315",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-dim": "#dbdad9",
+                        "on-background": "#1b1c1c",
+                        "tertiary-fixed": "#e4e2db",
+                        "on-tertiary-fixed": "#1b1c17",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "inverse-surface": "#303031",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary": "#576500",
+                        "outline-variant": "#c4c7c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f5f3f3",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-container": "#1b1c17",
+                        "primary": "#000000",
+                        "surface-variant": "#e4e2e2",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#d4f039",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#414c00",
+                        "on-secondary-container": "#5c6b00",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#474741",
+                        "secondary-fixed": "#d4f039",
+                        "primary-container": "#1c1b1b",
+                        "background": "#fbf9f9",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#191e00",
+                        "on-primary-container": "#858383"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "64px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["plusJakartaSans", "sans-serif"],
+                        "display-sm": ["ebGaramond", "serif"],
+                        "display-lg": ["ebGaramond", "serif"],
+                        "label-md": ["plusJakartaSans", "sans-serif"],
+                        "headline-lg-mobile": ["ebGaramond", "serif"],
+                        "body-lg": ["plusJakartaSans", "sans-serif"],
+                        "headline-lg": ["ebGaramond", "serif"],
+                        "label-sm": ["plusJakartaSans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "display-sm": ["48px", { "lineHeight": "1.1", "fontWeight": "600" }],
+                        "display-lg": ["72px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.0", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "1.0", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-display { font-family: 'EB Garamond', serif; }
+        
+        /* Subtle organic blob background */
+        .blob-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            background: #fbf9f9;
+            overflow: hidden;
+        }
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #e4e2e2; }
+        .blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #e4e2e2; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col relative overflow-x-hidden">
+<!-- Decorative Background -->
+<div aria-hidden="true" class="blob-bg">
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+</div>
+<!-- Main Content Area - Transactional intent (Joining), TopAppBar suppressed based on rules -->
+<main class="flex-grow flex items-center justify-center p-container-padding py-section-gap relative z-10 w-full">
+<!-- Center Card (Editorial Card Style) -->
+<div class="w-full max-w-[480px] bg-surface-container-lowest rounded-[24px] border border-primary/10 p-8 md:p-10 flex flex-col items-center gap-8 relative overflow-hidden" style="box-shadow: 0px 20px 40px rgba(21, 21, 21, 0.04);">
+<!-- Header -->
+<div class="text-center w-full relative z-10 flex flex-col items-center gap-4">
+<h1 class="font-display-sm text-display-sm text-primary">QUIZCORE</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Enter session details to join.</p>
+</div>
+<!-- QR Area & Team Code -->
+<div class="flex flex-col items-center gap-6 w-full relative z-10">
+<!-- Team Code Badge (Rotated Zine Style) -->
+<div class="bg-secondary-container text-on-secondary-container font-label-md text-label-md px-4 py-2 rounded-full border border-primary/10 shadow-sm flex items-center gap-2 transform -rotate-3 hover:rotate-0 transition-transform cursor-default">
+<span aria-hidden="true" class="material-symbols-outlined text-[16px]">tag</span>
+                    LIME-99
+                </div>
+<!-- QR Placeholder Area -->
+<div class="w-48 h-48 bg-surface-container rounded-xl border border-primary/10 flex items-center justify-center shadow-inner relative overflow-hidden group">
+<span class="material-symbols-outlined text-outline text-[48px] group-hover:scale-110 transition-transform">qr_code_2</span>
+<!-- Simulated scan line for interaction feel -->
+<div class="absolute top-0 left-0 w-full h-[2px] bg-secondary opacity-50 animate-[scan_2s_ease-in-out_infinite]"></div>
+</div>
+</div>
+<!-- Input Form -->
+<form class="w-full flex flex-col gap-6 relative z-10" onsubmit="event.preventDefault();">
+<!-- Username Input Group -->
+<div class="relative w-full">
+<label class="sr-only" for="username">Username</label>
+<input class="w-full bg-surface-container-lowest border border-outline/30 rounded-full px-6 py-4 font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all pr-14 placeholder:text-outline shadow-sm" id="username" placeholder="Choose a username..." type="text">
+<!-- Shuffle Button inside input -->
+<button aria-label="Shuffle Username" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-outline hover:text-primary hover:bg-surface-container transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">shuffle</span>
+</button>
+</div>
+<!-- Join Button (Secondary Style as requested: lime) -->
+<button class="w-full bg-secondary-container text-on-secondary-container font-label-md text-label-md py-4 rounded-full border border-primary/10 hover:bg-secondary hover:text-on-secondary transition-colors flex items-center justify-center gap-2 shadow-sm hover:shadow-md active:scale-[0.98]" type="submit">
+<span>Join Session</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</form>
+<!-- Decorative minimal branding mark -->
+<div class="absolute -bottom-6 -right-6 opacity-[0.03] pointer-events-none transform rotate-12">
+<span class="material-symbols-outlined" style="font-size: 160px; font-variation-settings: 'FILL' 1;">generating_tokens</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar - Responsive navigation for Mobile (Visible md:hidden) -->
+<!-- Active State: 'Join' based on intent -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+<div class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe">
+<!-- Join (Active) -->
+<a class="flex flex-col items-center justify-center bg-secondary text-on-secondary rounded-full w-12 h-12 mb-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">qr_code_scanner</span>
+<span class="font-label-sm text-label-sm mt-1 sr-only">Join</span>
+</a>
+<!-- History (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:opacity-100 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-sm text-label-sm mt-1">History</span>
+</a>
+<!-- Profile (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:opacity-100 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</a>
+</div>
+</nav>
+<style>
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+    </style>
+</body></html>

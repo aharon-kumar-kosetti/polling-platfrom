@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Session Not Found - QuizCore</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface": "#f9f9f9",
+                      "on-primary-fixed-variant": "#474747",
+                      "surface-container-highest": "#e2e2e2",
+                      "on-secondary-fixed-variant": "#414c00",
+                      "error-container": "#ffdad6",
+                      "on-secondary-fixed": "#191e00",
+                      "secondary-fixed-dim": "#b8d313",
+                      "on-tertiary-fixed": "#1b1c1c",
+                      "surface-dim": "#dadada",
+                      "surface-container-low": "#f3f3f3",
+                      "surface-container-high": "#e8e8e8",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-container": "#1b1c1c",
+                      "tertiary-fixed": "#e4e2e2",
+                      "secondary-container": "#d4f039",
+                      "surface-bright": "#f9f9f9",
+                      "on-primary-fixed": "#1b1b1b",
+                      "on-tertiary-fixed-variant": "#464747",
+                      "outline-variant": "#cfc4c5",
+                      "primary-fixed": "#e2e2e2",
+                      "tertiary": "#000000",
+                      "inverse-primary": "#c6c6c6",
+                      "on-error": "#ffffff",
+                      "on-surface": "#1b1b1b",
+                      "on-primary-container": "#848484",
+                      "secondary-fixed": "#d4f039",
+                      "outline": "#747878",
+                      "secondary": "#576500",
+                      "primary": "#000000",
+                      "tertiary-fixed-dim": "#c7c6c6",
+                      "on-secondary-container": "#5c6b00",
+                      "on-secondary": "#ffffff",
+                      "on-surface-variant": "#4c4546",
+                      "background": "#f9f9f9",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#f1f1f1",
+                      "on-background": "#1b1b1b",
+                      "primary-container": "#1b1b1b",
+                      "surface-variant": "#e2e2e2",
+                      "surface-tint": "#5e5e5e",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-container": "#848484",
+                      "inverse-surface": "#303030",
+                      "error": "#ba1a1a",
+                      "primary-fixed-dim": "#c6c6c6",
+                      "on-primary": "#ffffff",
+                      "surface-container": "#eeeeee"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-padding": "24px",
+                      "unit": "8px",
+                      "gutter": "16px",
+                      "section-gap": "64px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "\"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif\""
+                      ],
+                      "label-sm": [
+                              "\"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif\""
+                      ],
+                      "headline-lg": [
+                              "Poppins"
+                      ],
+                      "headline-lg-mobile": [
+                              "Poppins"
+                      ],
+                      "body-lg": [
+                              "\"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif\""
+                      ],
+                      "label-md": [
+                              "\"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif\""
+                      ],
+                      "display-lg": [
+                              "Poppins"
+                      ],
+                      "display-sm": [
+                              "Poppins"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "72px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-sm": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .organic-shape {
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            animation: morph 8s ease-in-out infinite;
+        }
+        @keyframes morph {
+            0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+            50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+            100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex items-center justify-center font-body-md overflow-hidden relative">
+<!-- Ambient Background Elements -->
+<div class="absolute inset-0 z-0 pointer-events-none opacity-20">
+<div class="absolute top-[10%] left-[15%] w-96 h-96 bg-secondary-container organic-shape blur-3xl opacity-30 mix-blend-multiply"></div>
+<div class="absolute bottom-[20%] right-[10%] w-[500px] h-[500px] bg-primary-fixed organic-shape blur-3xl opacity-20 mix-blend-multiply" style="animation-delay: -4s;"></div>
+</div>
+<!-- Main Content Canvas -->
+<main class="relative z-10 w-full max-w-4xl mx-auto px-container-padding flex flex-col items-center justify-center text-center">
+<!-- Brand Indicator -->
+<div class="absolute top-8 left-1/2 -translate-x-1/2">
+<h1 class="font-display-sm text-display-sm text-primary tracking-tight">QUIZCORE</h1>
+</div>
+<!-- Editorial Card (The Dead End) -->
+<div class="bg-surface-container-lowest rounded-xl border border-on-surface/10 p-section-gap w-full max-w-2xl shadow-[0_20px_40px_rgba(0,0,0,0.04)] flex flex-col items-center gap-8 relative mt-16">
+<!-- Floating Decorative Element -->
+<div class="absolute -top-6 -right-6 bg-secondary text-primary font-label-sm text-label-sm px-4 py-2 rounded-full -rotate-3 border border-primary/10">
+                ERROR 404
+            </div>
+<!-- Illustration Container -->
+<div class="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
+<!-- Abstract 'Dead End' visual representation using CSS shapes and a soft image -->
+<div class="absolute inset-0 bg-surface-variant rounded-full opacity-50 blur-xl"></div>
+<img alt="Session Not Found Illustration" class="relative z-10 w-full h-full object-contain drop-shadow-xl" data-alt="A soft, abstract 3D illustration representing a 'dead end' or 'missing connection' in a playful, premium editorial style. High-key lighting, bright light mode aesthetic. Using soft shapes in muted greys and vibrant neon lime accents on a pristine white background. The mood is calm, modern, and slightly whimsical, avoiding typical heavy tech error visuals." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHI_ghJkYmpXIGA2K32NDTL1BIaDX2yirDCz3vDGXSOaLGzQp60_-9yeOPKDX0mQ0sijO7OAs9jbaQ58jRR9SdvSTSx6RDyofVRrtyWO2gqicOWaassKASFFlvDp9ueCXjCo0X6Fgkeoijng9nSCLC7hcY2H5S0R8nYDLnJHw8lHA2z3rYOkfQ4BsI916Ow5A7CJ4koA5VuiX8_zQe7sO3GKhA16-Hl11F65AFcLJ7J-kV14klKsCl"/>
+<!-- Subtle motion elements -->
+<div class="absolute -bottom-4 right-8 w-12 h-12 rounded-full border-2 border-secondary border-dashed animate-spin" style="animation-duration: 10s;"></div>
+</div>
+<!-- Typography & Messaging -->
+<div class="flex flex-col gap-4 max-w-md">
+<h2 class="font-display-sm text-display-sm md:font-display-lg md:text-display-lg text-primary tracking-tight leading-none">
+                    Lost in the Void.
+                </h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">
+                    It looks like this session has already ended or never existed. Don't worry, the main stage is just a click away.
+                </p>
+</div>
+<!-- Actions -->
+<div class="flex flex-col sm:flex-row gap-4 mt-4">
+<a class="group flex items-center justify-center gap-2 bg-primary text-on-primary font-label-md text-label-md px-8 py-4 rounded-full transition-transform active:scale-95 hover:shadow-lg" href="/">
+<span class="material-symbols-outlined text-[20px]" data-icon="home">home</span>
+                    Return to Home
+                </a>
+<button class="group flex items-center justify-center gap-2 bg-transparent text-primary font-label-md text-label-md px-8 py-4 rounded-full border border-primary/20 hover:border-primary transition-all active:scale-95" onclick="window.history.back()">
+<span class="material-symbols-outlined text-[20px]" data-icon="arrow_back">arrow_back</span>
+                    Go Back
+                </button>
+</div>
+<!-- Subtle Separator -->
+<div class="w-16 h-1 bg-surface-variant rounded-full mt-4"></div>
+</div>
+</main>
+<script>
+        // Simple subtle parallax effect for the background blobs
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            const blobs = document.querySelectorAll('.organic-shape');
+            blobs.forEach((blob, index) => {
+                const speed = index === 0 ? 20 : -30;
+                const xOffset = (x - 0.5) * speed;
+                const yOffset = (y - 0.5) * speed;
+                blob.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+            });
+        });
+    </script>
+</body></html>

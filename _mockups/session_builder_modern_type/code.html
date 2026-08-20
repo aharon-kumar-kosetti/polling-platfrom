@@ -1,0 +1,362 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Organiser Dashboard - Session Creation</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "surface-bright": "#fbf9f9",
+                        "surface-container-highest": "#e4e2e2",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed-dim": "#c8c7bf",
+                        "surface-container": "#efeded",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-container": "#85847d",
+                        "surface-container-high": "#e9e8e7",
+                        "surface": "#fbf9f9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b8d315",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-dim": "#dbdad9",
+                        "on-background": "#1b1c1c",
+                        "tertiary-fixed": "#e4e2db",
+                        "on-tertiary-fixed": "#1b1c17",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "inverse-surface": "#303031",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary": "#576500",
+                        "outline-variant": "#c4c7c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f5f3f3",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-container": "#1b1c17",
+                        "primary": "#000000",
+                        "surface-variant": "#e4e2e2",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#d4f039",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#414c00",
+                        "on-secondary-container": "#5c6b00",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#474741",
+                        "secondary-fixed": "#d4f039",
+                        "primary-container": "#1c1b1b",
+                        "background": "#fbf9f9",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#191e00",
+                        "on-primary-container": "#858383"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "editorial": "24px"
+                    },
+                    "spacing": {
+                        "section-gap": "64px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                        "display-sm": ["Poppins", "sans-serif"],
+                        "display-lg": ["Poppins", "sans-serif"],
+                        "label-md": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                        "headline-lg-mobile": ["Poppins", "sans-serif"],
+                        "body-lg": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                        "headline-lg": ["Poppins", "sans-serif"],
+                        "label-sm": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "display-sm": ["48px", { "lineHeight": "1.1", "fontWeight": "600" }],
+                        "display-lg": ["72px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.0", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "1.0", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for cleaner editorial look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e4e2e2;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c4c7c7;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface antialiased flex h-screen overflow-hidden selection:bg-secondary-container selection:text-on-secondary-container font-body-md text-body-md">
+<!-- Nav Shell Context: Desktop Builder View. SideNav mandatory. Active: Dashboard. -->
+<nav class="h-screen w-64 fixed left-0 top-0 bg-surface-container-low shadow-sm flex flex-col py-unit gap-unit z-40 border-r border-outline-variant/20">
+<!-- Brand Header -->
+<div class="px-6 py-6 mb-4">
+<h1 class="font-display-sm text-[32px] leading-none text-primary">QUIZCORE</h1>
+</div>
+<!-- Primary Action -->
+<div class="px-4 mb-6">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary rounded-full px-4 py-3 font-label-md text-label-md hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Session
+            </button>
+</div>
+<!-- Navigation Links -->
+<ul class="flex flex-col gap-1 px-2 flex-1">
+<!-- Active Tab -->
+<li>
+<a class="flex items-center gap-3 bg-secondary-container text-on-secondary-container rounded-full px-4 py-3 mx-2 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+                    Dashboard
+                </a>
+</li>
+<!-- Inactive Tabs -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-3 mx-2 transition-all font-label-md text-label-md hover:bg-surface-container-highest" href="#">
+<span class="material-symbols-outlined text-[20px]">sensors</span>
+                    Live Sessions
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-3 mx-2 transition-all font-label-md text-label-md hover:bg-surface-container-highest" href="#">
+<span class="material-symbols-outlined text-[20px]">library_books</span>
+                    Library
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-3 mx-2 transition-all font-label-md text-label-md hover:bg-surface-container-highest" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+                    Analytics
+                </a>
+</li>
+</ul>
+<!-- Footer Profile -->
+<div class="mt-auto px-4 pb-4">
+<div class="border-t border-outline-variant/30 pt-4 flex flex-col gap-2">
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-2 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+                    Settings
+                </a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-2 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+                    Support
+                </a>
+<div class="flex items-center gap-3 px-4 py-2 mt-2">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed font-label-sm text-label-sm">OP</div>
+<div>
+<div class="font-label-md text-label-md text-primary">Organizer Workspace</div>
+<div class="text-[11px] text-on-surface-variant">Premium Account</div>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Workspace Area -->
+<main class="ml-64 flex flex-col w-full h-full bg-surface-bright relative z-0">
+<!-- Top Action Bar -->
+<header class="h-20 px-8 flex items-center justify-between border-b border-outline-variant/20 bg-surface-container-lowest shrink-0">
+<div class="flex items-center gap-4 w-1/3">
+<button class="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex flex-col">
+<span class="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Session Builder</span>
+<input class="bg-transparent border-none p-0 focus:ring-0 font-body-lg text-body-lg text-primary font-medium w-full placeholder-outline-variant" placeholder="Enter session title..." type="text" value="Q3 Product Kickoff Quiz">
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-6 py-2 rounded-full border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                    Preview
+                </button>
+<!-- Lime Pill Primary Button -->
+<button class="px-8 py-2 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md hover:bg-secondary-fixed-dim transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">publish</span>
+                    Publish
+                </button>
+</div>
+</header>
+<!-- Builder Layout Content -->
+<div class="flex h-[calc(100vh-5rem)] overflow-hidden">
+<!-- Left Panel: Question List -->
+<aside class="w-80 bg-surface-container-lowest border-r border-outline-variant/20 flex flex-col shrink-0">
+<div class="p-4 border-b border-outline-variant/20 flex justify-between items-center">
+<span class="font-label-md text-label-md text-primary">Content Plan (8)</span>
+<button class="w-8 h-8 rounded-full bg-surface-variant text-primary flex items-center justify-center hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+<!-- Question Card: Active -->
+<div class="group relative bg-surface-container-lowest border border-primary rounded-xl p-4 flex gap-3 cursor-grab hover:bg-surface-variant/50 transition-colors shadow-[0px_4px_12px_rgba(21,21,21,0.04)]">
+<div class="w-1 h-8 bg-primary absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full"></div>
+<div class="flex flex-col items-center justify-center text-outline-variant group-hover:text-outline cursor-grab">
+<span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+<span class="text-[10px] font-label-sm mt-1">1</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">check_circle</span>
+<span class="text-[11px] font-label-md text-on-surface-variant uppercase">Multiple Choice</span>
+</div>
+<p class="font-body-md text-[14px] text-primary truncate">What is our primary user growth channel?</p>
+</div>
+</div>
+<!-- Question Card: Inactive -->
+<div class="group bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-4 flex gap-3 cursor-grab hover:bg-surface-variant/50 transition-colors opacity-70 hover:opacity-100">
+<div class="flex flex-col items-center justify-center text-outline-variant group-hover:text-outline cursor-grab">
+<span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+<span class="text-[10px] font-label-sm mt-1">2</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">format_align_left</span>
+<span class="text-[11px] font-label-md text-on-surface-variant uppercase">Open Text</span>
+</div>
+<p class="font-body-md text-[14px] text-primary truncate">Describe the new feature in 3 words.</p>
+</div>
+</div>
+<!-- Question Card: Inactive -->
+<div class="group bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-4 flex gap-3 cursor-grab hover:bg-surface-variant/50 transition-colors opacity-70 hover:opacity-100">
+<div class="flex flex-col items-center justify-center text-outline-variant group-hover:text-outline cursor-grab">
+<span class="material-symbols-outlined text-[20px]">drag_indicator</span>
+<span class="text-[10px] font-label-sm mt-1">3</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">check_circle</span>
+<span class="text-[11px] font-label-md text-on-surface-variant uppercase">Multiple Choice</span>
+</div>
+<p class="font-body-md text-[14px] text-primary truncate">Which metric improved the most?</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Right Panel: Active Editor -->
+<section class="flex-1 overflow-y-auto p-12 lg:p-24 flex flex-col items-center relative">
+<!-- Background decorative element (Asymmetric, subtle) -->
+<div class="absolute top-[-10%] right-[-5%] w-96 h-96 bg-secondary-container/20 rounded-full blur-3xl -z-10 mix-blend-multiply"></div>
+<div class="w-full max-w-[800px] flex flex-col gap-12">
+<!-- Editor Header Controls -->
+<div class="flex justify-between items-center w-full">
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-full p-1 flex shadow-sm">
+<button class="px-4 py-2 rounded-full bg-surface-variant text-primary font-label-md text-label-md text-[13px]">Multiple Choice</button>
+<button class="px-4 py-2 rounded-full text-on-surface-variant hover:text-primary font-label-md text-label-md text-[13px] transition-colors">True/False</button>
+<button class="px-4 py-2 rounded-full text-on-surface-variant hover:text-primary font-label-md text-label-md text-[13px] transition-colors">Type Answer</button>
+</div>
+<!-- Settings / Timer Toggle -->
+<div class="flex items-center gap-4">
+<span class="font-label-md text-label-md text-on-surface-variant text-[13px]">Time Limit</span>
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-full p-1 flex shadow-sm">
+<button class="px-3 py-1.5 rounded-full text-on-surface-variant hover:text-primary font-label-sm text-label-sm transition-colors">15s</button>
+<button class="px-3 py-1.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm shadow-sm">30s</button>
+<button class="px-3 py-1.5 rounded-full text-on-surface-variant hover:text-primary font-label-sm text-label-sm transition-colors">60s</button>
+</div>
+</div>
+</div>
+<!-- Question Input Area -->
+<div class="flex flex-col items-center gap-6 mt-8">
+<textarea class="w-full text-center bg-transparent border-none font-display-sm text-[40px] leading-tight text-primary placeholder-outline-variant resize-none focus:ring-0 overflow-hidden" placeholder="Start typing your question..." rows="2">What is our primary user growth channel?</textarea>
+<!-- Optional Media Upload Area -->
+<button class="group w-full max-w-md h-32 rounded-editorial border-2 border-dashed border-outline-variant/50 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-surface-variant/30 transition-all">
+<span class="material-symbols-outlined text-[32px] text-outline-variant group-hover:text-primary transition-colors">image_search</span>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary">Add an image or video</span>
+</button>
+</div>
+<!-- Multiple Choice Bento Grid -->
+<div class="grid grid-cols-2 gap-4 mt-8 w-full">
+<!-- Option A (Correct) -->
+<div class="relative bg-surface-container-lowest border-2 border-secondary rounded-editorial p-6 h-40 flex flex-col justify-center group shadow-[0px_8px_24px_rgba(21,21,21,0.04)]">
+<div class="absolute top-4 left-4 w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-on-secondary shadow-sm">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<input class="w-full bg-transparent border-none text-center font-body-lg text-body-lg text-primary focus:ring-0 p-0" placeholder="Option A" type="text" value="Organic Search">
+<!-- Inside Option Controls -->
+<div class="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-surface-variant text-on-surface flex items-center justify-center hover:bg-surface-container-highest">
+<span class="material-symbols-outlined text-[18px]">image</span>
+</button>
+</div>
+</div>
+<!-- Option B -->
+<div class="relative bg-surface-container-lowest border border-outline-variant/50 rounded-editorial p-6 h-40 flex flex-col justify-center group hover:border-outline transition-colors">
+<div class="absolute top-4 left-4 w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center group-hover:border-outline cursor-pointer transition-colors">
+<!-- Empty circle for unselected -->
+</div>
+<input class="w-full bg-transparent border-none text-center font-body-lg text-body-lg text-primary focus:ring-0 p-0" placeholder="Option B" type="text" value="Paid Social">
+<div class="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-surface-variant text-on-surface flex items-center justify-center hover:bg-surface-container-highest">
+<span class="material-symbols-outlined text-[18px]">image</span>
+</button>
+</div>
+</div>
+<!-- Option C -->
+<div class="relative bg-surface-container-lowest border border-outline-variant/50 rounded-editorial p-6 h-40 flex flex-col justify-center group hover:border-outline transition-colors">
+<div class="absolute top-4 left-4 w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center group-hover:border-outline cursor-pointer transition-colors"></div>
+<input class="w-full bg-transparent border-none text-center font-body-lg text-body-lg text-primary focus:ring-0 p-0" placeholder="Option C" type="text" value="Referral Program">
+<div class="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-surface-variant text-on-surface flex items-center justify-center hover:bg-surface-container-highest">
+<span class="material-symbols-outlined text-[18px]">image</span>
+</button>
+</div>
+</div>
+<!-- Option D -->
+<div class="relative bg-surface-container-lowest border border-outline-variant/50 rounded-editorial p-6 h-40 flex flex-col justify-center group hover:border-outline transition-colors border-dashed bg-surface-bright/50">
+<div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-outline-variant cursor-text hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[24px]">add</span>
+<span class="font-label-md text-label-md">Add Option</span>
+</div>
+<input class="w-full h-full absolute inset-0 opacity-0 cursor-text" placeholder="Add Option" type="text">
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<script>
+        // Simple auto-resize for textarea to maintain fluid editorial feel
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+            // Init height
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+    </script>
+</body></html>

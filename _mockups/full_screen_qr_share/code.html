@@ -1,0 +1,169 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QUIZCORE - Publish Session</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=EB+Garamond:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "surface-bright": "#fbf9f9",
+                        "surface-container-highest": "#e4e2e2",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed-dim": "#c8c7bf",
+                        "surface-container": "#efeded",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-container": "#85847d",
+                        "surface-container-high": "#e9e8e7",
+                        "surface": "#fbf9f9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b8d315",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-dim": "#dbdad9",
+                        "on-background": "#1b1c1c",
+                        "tertiary-fixed": "#e4e2db",
+                        "on-tertiary-fixed": "#1b1c17",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "inverse-surface": "#303031",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary": "#576500",
+                        "outline-variant": "#c4c7c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f5f3f3",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-container": "#1b1c17",
+                        "primary": "#000000",
+                        "surface-variant": "#e4e2e2",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#d4f039",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#414c00",
+                        "on-secondary-container": "#5c6b00",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#474741",
+                        "secondary-fixed": "#d4f039",
+                        "primary-container": "#1c1b1b",
+                        "background": "#fbf9f9",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#191e00",
+                        "on-primary-container": "#858383"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px",
+                        '2xl': "1rem",
+                        '3xl': "1.5rem"
+                    },
+                    spacing: {
+                        "section-gap": "64px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "unit": "8px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "display-sm": ["EB Garamond", "serif"],
+                        "display-lg": ["EB Garamond", "serif"],
+                        "label-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg-mobile": ["EB Garamond", "serif"],
+                        "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg": ["EB Garamond", "serif"],
+                        "label-sm": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "display-sm": ["48px", { lineHeight: "1.1", fontWeight: "600" }],
+                        "display-lg": ["72px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "label-md": ["14px", { lineHeight: "1.0", letterSpacing: "0.02em", fontWeight: "600" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "1.2", fontWeight: "500" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-lg": ["32px", { lineHeight: "1.2", fontWeight: "500" }],
+                        "label-sm": ["12px", { lineHeight: "1.0", fontWeight: "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #e4e2e2;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-hidden antialiased flex h-screen w-full">
+<!-- 
+      SHARED COMPONENT: SideNavBar 
+      Context: Desktop Dashboard view serving as the background for the modal.
+      Active State Logic: "Live Sessions" is active because we are sharing an active session.
+    -->
+<!-- Main Content Canvas (Background behind modal) -->
+<!-- 
+      MODAL OVERLAY 
+      Publish/Share Panel
+    -->
+<div aria-modal="true" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" role="dialog">
+<!-- Backdrop -->
+<!-- Modal Content Container -->
+<div class="relative w-full h-full bg-[#F2F0E8] flex flex-col overflow-hidden">
+<!-- Decorative Zine/Playful Elements within Modal -->
+<div class="absolute -top-12 -right-12 w-48 h-48 bg-secondary-container rounded-full blur-[60px] opacity-30 pointer-events-none"></div>
+<div class="absolute -bottom-16 -left-16 w-56 h-56 bg-surface-container-high rounded-full blur-[80px] opacity-50 pointer-events-none"></div>
+<!-- Header -->
+<div class="flex justify-between items-center p-8 pb-4 relative z-10 py-12">
+<h3 class="font-display-sm text-[36px] text-primary leading-tight">Share Session</h3>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Body -->
+<div class="flex flex-col items-center relative z-10">
+
+<!-- QR Code Area -->
+<div class="flex-1 w-full bg-surface-container-lowest flex items-center justify-center relative group transition-colors duration-300">
+<!-- Placeholder for actual QR -->
+<img class="w-full h-full object-contain mix-blend-darken opacity-90" data-alt="A clean, high-contrast vector QR code, perfectly square, black geometric patterns on a pristine white background, minimalist digital aesthetic, sharp edges." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVrIBRFbEy2GSgqbryHOopNDGHM5_t91lRPS7z8w56FoPkdtveMRZeYtMHOi0Xc-6tffazqOk-Isy7XpxXmK4asf-jS8XpKRDUmt_Dtu3HebxBwlDdkdqO0vj40-8d_eOhZVLwZllxptktaufhPG3JVlhDEClt6zXxA6iipDb0s_SeiNilrGufiZCrwVrMrDXDwjviBc2uzb9dM-qBc6wqWUiD8D1lHQ-zFsoOjD44v6PdPkUkozs7">
+<!-- Small corner accents for 'editorial' frame feel -->
+
+
+
+
+</div>
+<!-- Join Code Pill -->
+<!-- Primary Action -->
+
+</div>
+<!-- Footer / Real-time Status -->
+<div class="bg-surface-container-low border-t border-on-surface/5 px-12 py-6 relative z-10"><div class="w-full max-w-6xl mx-auto flex items-center justify-between gap-8"><div class="flex items-center gap-6"><div class="bg-surface-container-lowest rounded-full px-6 py-2 border border-on-surface/5 flex flex-col"><span class="font-label-sm text-on-surface-variant uppercase tracking-wider text-[10px]">Access Code</span><span class="font-body-md font-bold text-primary tracking-widest text-lg">LIME-99</span></div><div class="flex items-center gap-3"><div class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary-container opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-[#d4f039] border border-[#b8d315]"></span></div><span class="font-body-md text-on-surface-variant font-medium">12 participants joined</span></div></div><button class="bg-primary text-on-primary rounded-full py-3 px-8 font-label-md text-[16px] flex items-center justify-center gap-3 hover:bg-on-surface transition-all active:scale-[0.98]"><span class="material-symbols-outlined">link</span>Copy Share Link</button></div></div>
+</div>
+</div>
+
+
+</body></html>

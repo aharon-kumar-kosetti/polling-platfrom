@@ -1,0 +1,23 @@
+Here are the prompts for generating the additional screens required to complete the platform's user flow:
+
+---
+
+### 1. Authentication (Login / Sign Up)
+**Prompt**: 
+"Create a modern authentication screen for a real-time engagement platform called 'QuizCore'. The screen should feature a split layout. On the left, a vibrant, editorial-style image showing active audience participation. On the right, a clean, minimalist form with options to 'Log In' or 'Sign Up'. Include input fields for Email and Password, a 'Forgot Password?' link, and social login buttons (Google, Microsoft). Use the existing Tailwind CSS design system with surface-container, primary, and secondary colors. Include subtle hover effects."
+
+### 2. Participant Waiting Room
+**Prompt**:
+"Create a 'Waiting Room' screen for participants who have just joined a live session but the host hasn't started it yet. The screen should be clean and engaging. It should display the Session Title, the Participant's chosen nickname, and an animated, pulsating status indicator saying 'Waiting for the host to start...'. Include a fun, interactive element like a mini-poll or a fun fact carousel to keep them engaged while they wait."
+
+### 3. Final Leaderboard (Participant & Organizer)
+**Prompt**:
+"Create a 'Final Leaderboard' screen displayed at the end of a live quiz. The design should feel celebratory and premium. Show a podium for the top 3 participants with confetti micro-animations. Below the podium, display a scrollable list of the top 10 participants and their scores. For the participant view, clearly highlight their own rank and score, even if they aren't in the top 10. Use a dark mode (inverse-surface) background for dramatic effect with bright secondary-container accents."
+
+### 4. Settings & Profile Management (Organizer)
+**Prompt**:
+"Create an 'Account Settings' screen for organizers. The layout should have a sidebar navigation (Profile, Organization, Billing, API Integrations) and a main content area. The main area should display a minimalist form to update their Name, Email, Profile Picture, and Organization details. Use a clean, paper-border aesthetic with soft shadows, keeping the typography consistent with the 'EB Garamond' and 'Plus Jakarta Sans' font families used in the platform."
+
+### 5. Generic Error / 404 / Session Ended Page
+**Prompt**:
+"Create a 404/Error screen for when a participant tries to join a session that has already ended or doesn't exist. The design should be friendly and not intimidating. Include a large, soft illustration or icon indicating a 'dead end', a clear headline ('Session not found or ended'), and a prominent button to 'Return to Home'. Ensure it uses the established color tokens and maintains the premium feel of the app."

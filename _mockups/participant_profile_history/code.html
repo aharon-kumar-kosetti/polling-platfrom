@@ -1,0 +1,354 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QUIZCORE - Profile &amp; Score History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=EB+Garamond:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "surface-bright": "#fbf9f9",
+                        "surface-container-highest": "#e4e2e2",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed-dim": "#c8c7bf",
+                        "surface-container": "#efeded",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-container": "#85847d",
+                        "surface-container-high": "#e9e8e7",
+                        "surface": "#fbf9f9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b8d315",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-dim": "#dbdad9",
+                        "on-background": "#1b1c1c",
+                        "tertiary-fixed": "#e4e2db",
+                        "on-tertiary-fixed": "#1b1c17",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "inverse-surface": "#303031",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary": "#576500",
+                        "outline-variant": "#c4c7c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f5f3f3",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-container": "#1b1c17",
+                        "primary": "#000000",
+                        "surface-variant": "#e4e2e2",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#d4f039",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#414c00",
+                        "on-secondary-container": "#5c6b00",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#474741",
+                        "secondary-fixed": "#d4f039",
+                        "primary-container": "#1c1b1b",
+                        "background": "#fbf9f9",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#191e00",
+                        "on-primary-container": "#858383"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "64px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "display-sm": ["EB Garamond", "serif"],
+                        "display-lg": ["EB Garamond", "serif"],
+                        "label-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg-mobile": ["EB Garamond", "serif"],
+                        "body-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-lg": ["EB Garamond", "serif"],
+                        "label-sm": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "display-sm": ["48px", { "lineHeight": "1.1", "fontWeight": "600" }],
+                        "display-lg": ["72px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.0", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "1.0", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #fbf9f9; color: #1b1c1c; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .symbol-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Subtle Grid Background for that editorial airy feel */
+        .bg-grid-pattern {
+            background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen bg-grid-pattern overflow-x-hidden relative">
+<!-- TopNavBar (Web & Mobile, fixed top) -->
+<header class="bg-surface dark:bg-background full-width top-0 sticky z-50">
+<div class="flex justify-between items-center px-container-padding h-20 w-full max-w-7xl mx-auto border-b border-on-surface/10 dark:border-on-surface-variant/10">
+<!-- Brand Logo -->
+<div class="font-display-sm text-display-sm text-primary dark:text-on-primary">
+                QUIZCORE
+            </div>
+<!-- Navigation Links (Hidden on small mobile, handled by BottomNav if this was an app, but per prompt showing TopNav) -->
+<nav class="hidden md:flex items-center gap-8">
+<!-- Inactive -->
+<a class="text-on-surface-variant dark:text-outline font-body-md text-body-md uppercase tracking-wider hover:text-secondary dark:hover:text-secondary-fixed transition-colors scale-95 active:scale-90 transition-transform" href="#">
+                    Quiz
+                </a>
+<a class="text-on-surface-variant dark:text-outline font-body-md text-body-md uppercase tracking-wider hover:text-secondary dark:hover:text-secondary-fixed transition-colors scale-95 active:scale-90 transition-transform" href="#">
+                    Poll
+                </a>
+<!-- Active: Profile doesn't exactly match nav links, but treating 'Profile' intent as a separate view. 
+                     Since 'Feedback', 'Quiz', 'Poll' are options, we'll leave them inactive. 
+                     Wait, the prompt says 'Profile' isn't in TopNavBar links. I'll leave them all inactive to signify we are on Profile view. -->
+<a class="text-on-surface-variant dark:text-outline font-body-md text-body-md uppercase tracking-wider hover:text-secondary dark:hover:text-secondary-fixed transition-colors scale-95 active:scale-90 transition-transform" href="#">
+                    Feedback
+                </a>
+</nav>
+<!-- Trailing Action -->
+<button class="hidden md:flex items-center justify-center bg-primary text-on-primary rounded-full px-6 py-3 font-label-md text-label-md hover:bg-secondary-container hover:text-on-secondary-container transition-colors scale-95 active:scale-90 transition-transform">
+                Create Session
+            </button>
+<!-- Mobile Menu Icon (Placeholder for interaction) -->
+<button class="md:hidden text-primary">
+<span class="material-symbols-outlined text-3xl" data-icon="menu">menu</span>
+</button>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-container-padding py-12 md:py-16 grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 relative z-10">
+<!-- Decorative Blob (Background) -->
+<div class="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary-container/20 rounded-full blur-[100px] -z-10 mix-blend-multiply pointer-events-none"></div>
+<!-- Left Column: Profile Card & Score Summary (4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-8">
+<!-- Header Card: Score -->
+<div class="bg-surface-container-lowest rounded-[24px] p-8 border border-primary/10 relative overflow-hidden group">
+<!-- Tonal layering / soft shadow implied by the border and light background, plus a subtle drop -->
+<div class="absolute -right-12 -top-12 w-40 h-40 bg-secondary-container/30 rounded-full blur-2xl group-hover:bg-secondary-container/50 transition-colors duration-500"></div>
+<div class="flex items-start gap-4 mb-8">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-surface-container-highest">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A striking minimalist portrait of a modern individual against a stark white background. The lighting is high-key and soft, emphasizing clean lines and a sophisticated, contemporary aesthetic. The mood is confident and poised, fitting a premium digital profile avatar. Crisp details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn6CArB_rBG3V_rAnaJjKwqkOWkjzZ8RKXaEUZ-W18xElYkuygVlOu5gs_g7Nf6-X6Nr9hWlFyPYR7oVbQqo6fGbAtLA_bueLGSNamJN-TETBME1uJi5CHPUiKp0GF9n4GvGfwneWqpVPX6yAIbiTyCHzlHR6elQy7TWcJxvMbCXagsA8OwJWP_Cdrirg22hnSZlzOQrN-Uis-RuESJq44Ew9CzZalCoySM5OqidDXZiZDHmhfAl_Y">
+</div>
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-1">Alex Mercer</h1>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Master Quizzer</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-outline">Total Score</span>
+<div class="font-display-sm text-display-sm text-primary flex items-baseline gap-2">
+                        4,500 <span class="font-label-md text-label-md text-secondary">pts</span>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-primary/5 flex justify-between items-center">
+<div>
+<span class="font-label-sm text-label-sm text-outline block mb-1">Current Session</span>
+<div class="font-body-lg text-body-lg text-primary font-semibold">200 pts</div>
+</div>
+<div class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 -rotate-3 transform origin-right">
+<span class="material-symbols-outlined text-[16px] symbol-filled" data-icon="local_fire_department">local_fire_department</span>
+                        On Fire
+                    </div>
+</div>
+</div>
+<!-- Profile Actions / Details (Bento style mini cards) -->
+<div class="grid grid-cols-2 gap-4">
+<button class="bg-primary text-on-primary rounded-full py-4 px-6 flex items-center justify-center gap-2 hover:bg-primary-container transition-colors font-label-md text-label-md group">
+<span class="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform" data-icon="edit">edit</span>
+                    Edit Profile
+                </button>
+<button class="bg-surface-container-highest text-on-surface rounded-full py-4 px-6 flex items-center justify-center gap-2 hover:bg-surface-dim transition-colors font-label-md text-label-md group border border-primary/5">
+<span class="material-symbols-outlined text-[18px] group-hover:rotate-45 transition-transform" data-icon="settings">settings</span>
+                    Settings
+                </button>
+</div>
+<!-- Overall Stats Mini -->
+<div class="bg-surface-container-lowest rounded-[24px] p-6 border border-primary/10">
+<h3 class="font-label-md text-label-md text-primary uppercase tracking-widest mb-4">Quick Stats</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Quizzes Taken</span>
+<span class="font-body-md text-body-md text-primary font-semibold">42</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Win Rate</span>
+<span class="font-body-md text-body-md text-primary font-semibold">68%</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Global Rank</span>
+<span class="font-body-md text-body-md text-primary font-semibold">#1,204</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Trend Chart & History (8 cols) -->
+<div class="lg:col-span-8 flex flex-col gap-12">
+<!-- Trend Line Chart Section -->
+<section>
+<div class="flex justify-between items-end mb-6">
+<h2 class="font-display-sm text-display-sm text-primary">Score Trend</h2>
+<select class="bg-transparent border-none text-on-surface-variant font-label-md text-label-md focus:ring-0 cursor-pointer hover:text-primary transition-colors pr-8">
+<option>Last 30 Days</option>
+<option>Last 3 Months</option>
+<option>All Time</option>
+</select>
+</div>
+<div class="bg-surface-container-lowest rounded-[24px] p-6 border border-primary/10 h-64 relative flex items-end">
+<!-- Faux Line Chart using SVG (Inline for visual representation in this demo without external charting libs) -->
+<div class="absolute inset-0 p-6 flex flex-col justify-between z-0 pointer-events-none opacity-20">
+<div class="w-full border-t border-dashed border-outline-variant"></div>
+<div class="w-full border-t border-dashed border-outline-variant"></div>
+<div class="w-full border-t border-dashed border-outline-variant"></div>
+<div class="w-full border-t border-dashed border-outline-variant"></div>
+</div>
+<svg class="w-full h-full overflow-visible z-10" preserveAspectRatio="none" viewBox="0 0 100 40">
+<!-- Gradient Fill under line -->
+<defs>
+<linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#d4f039" stop-opacity="0.4"></stop>
+<stop offset="100%" stop-color="#d4f039" stop-opacity="0.0"></stop>
+</linearGradient>
+</defs>
+<path d="M0,35 Q10,25 20,28 T40,15 T60,20 T80,5 T100,10 L100,40 L0,40 Z" fill="url(#chartGradient)"></path>
+<!-- The Line -->
+<path d="M0,35 Q10,25 20,28 T40,15 T60,20 T80,5 T100,10" fill="none" stroke="#576500" stroke-linecap="round" stroke-width="0.8"></path>
+<!-- Data Points -->
+<circle cx="20" cy="28" fill="#ffffff" r="1.5" stroke="#576500" stroke-width="0.5"></circle>
+<circle cx="40" cy="15" fill="#ffffff" r="1.5" stroke="#576500" stroke-width="0.5"></circle>
+<circle cx="60" cy="20" fill="#ffffff" r="1.5" stroke="#576500" stroke-width="0.5"></circle>
+<circle cx="80" cy="5" fill="#ffffff" r="1.5" stroke="#576500" stroke-width="0.5"></circle>
+<circle class="animate-pulse" cx="100" cy="10" fill="#d4f039" r="1.5" stroke="#576500" stroke-width="0.5"></circle>
+</svg>
+</div>
+</section>
+<!-- History List Section -->
+<section>
+<div class="flex justify-between items-center mb-6 border-b border-primary/10 pb-4">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">History</h2>
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 group">
+                        Filter <span class="material-symbols-outlined text-[18px] group-hover:translate-y-0.5 transition-transform" data-icon="filter_list">filter_list</span>
+</button>
+</div>
+<div class="flex flex-col gap-4">
+<!-- History Item 1 -->
+<div class="group bg-surface-container-lowest rounded-[20px] p-5 border border-primary/5 hover:border-primary/20 hover:shadow-[0_20px_40px_rgba(21,21,21,0.04)] transition-all duration-300 flex flex-col sm:flex-row justify-between sm:items-center gap-4 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-primary group-hover:bg-secondary-container group-hover:text-on-secondary-container transition-colors">
+<span class="material-symbols-outlined" data-icon="science">science</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg text-primary font-medium mb-1">Quantum Physics 101</h4>
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant uppercase">
+<span>Oct 24, 2023</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span>Science Tech</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-primary/5">
+<div class="text-left sm:text-right">
+<span class="block font-label-sm text-label-sm text-outline uppercase mb-1">Rank</span>
+<span class="font-body-lg text-body-lg text-primary font-semibold">1st / 45</span>
+</div>
+<div class="text-left sm:text-right">
+<span class="block font-label-sm text-label-sm text-outline uppercase mb-1">Score</span>
+<span class="font-body-lg text-body-lg text-secondary font-semibold">+850</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- History Item 2 -->
+<div class="group bg-surface-container-lowest rounded-[20px] p-5 border border-primary/5 hover:border-primary/20 hover:shadow-[0_20px_40px_rgba(21,21,21,0.04)] transition-all duration-300 flex flex-col sm:flex-row justify-between sm:items-center gap-4 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-primary group-hover:bg-secondary-container group-hover:text-on-secondary-container transition-colors">
+<span class="material-symbols-outlined" data-icon="palette">palette</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg text-primary font-medium mb-1">Renaissance Art History</h4>
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant uppercase">
+<span>Oct 21, 2023</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span>Arts &amp; Humanities</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-primary/5">
+<div class="text-left sm:text-right">
+<span class="block font-label-sm text-label-sm text-outline uppercase mb-1">Rank</span>
+<span class="font-body-lg text-body-lg text-primary font-semibold">4th / 120</span>
+</div>
+<div class="text-left sm:text-right">
+<span class="block font-label-sm text-label-sm text-outline uppercase mb-1">Score</span>
+<span class="font-body-lg text-body-lg text-primary font-semibold">+620</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- History Item 3 -->
+<div class="group bg-surface-container-lowest rounded-[20px] p-5 border border-primary/5 hover:border-primary/20 hover:shadow-[0_20px_40px_rgba(21,21,21,0.04)] transition-all duration-300 flex flex-col sm:flex-row justify-between sm:items-center gap-4 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-primary group-hover:bg-secondary-container group-hover:text-on-secondary-container transition-colors">
+<span class="material-symbols-outlined" data-icon="public">public</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg text-primary font-medium mb-1">Global Capitals Challenge</h4>
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant uppercase">
+<span>Oct 18, 2023</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span>Geography</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-primary/5">
+<div class="text-left sm:text-right">
+<span class="block font-label-sm text-label-sm text-outline uppercase mb-1">Rank</span>
+<span class="font-body-lg text-body-lg text-primary font-semibold">12th / 300</span>
+</div>
+<div class="text-left sm:text-right">
+<span class="block font-label-sm text-label-sm text-outline uppercase mb-1">Score</span>
+<span class="font-body-lg text-body-lg text-primary font-semibold">+410</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-center">
+<button class="font-label-md text-label-md text-primary border-b border-primary pb-1 hover:text-secondary hover:border-secondary transition-colors">
+                        Load More History
+                    </button>
+</div>
+</section>
+</div>
+</main>
+</body></html>

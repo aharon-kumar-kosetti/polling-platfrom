@@ -1,0 +1,105 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const Authentication = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
+      // Redirect to a placeholder dashboard (which is currently just a catch-all)
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="h-full min-h-screen bg-background text-on-background antialiased flex">
+      <div className="hidden lg:flex lg:w-1/2 bg-surface-container relative overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center" 
+          style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDJ_NaJGmO5dkl_XDz5mZYmuHde_ATd6D_jk-SkVaFORB7MSjnyB1THJGjrendxSk6P9lwgaEuT7EZVAL27fGO6JrQJEq89j273DHCxsVoW1T-Pwslwx8qlcSkpeKq8HLBwXHF37YKeBpkptP4UwvirxwXLfnRfx5R0WEKzz88EHSQ3ty6I8lHAx1orXTi97a-95CPc5FMmcpUj5iY9nUWZ0c2mRfsAh9RicAcCwB_6fKyIEs8WFhza')"}}>
+        </div>
+        <div className="absolute inset-0 bg-primary/10"></div>
+        <div className="absolute bottom-section-gap left-section-gap z-10 text-white max-w-md">
+          <h2 className="font-display-sm text-display-sm mb-gutter">Engage Your Audience Like Never Before.</h2>
+          <p className="font-body-lg text-body-lg opacity-90">Join thousands of creators hosting interactive quizzes and polls.</p>
+        </div>
+      </div>
+      
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-container-padding lg:px-section-gap relative">
+        <div className="absolute top-container-padding left-container-padding lg:left-section-gap">
+          <Link to="/" className="font-display-sm text-display-sm text-primary">QUIZCORE</Link>
+        </div>
+        
+        <div className="w-full max-w-[480px] bg-surface-container-lowest rounded-[24px] border border-primary/10 p-8 md:p-10 flex flex-col relative z-10 shadow-editorial">
+          
+          <div className="mb-8">
+            <h1 className="font-display-sm text-display-sm text-primary">Log in</h1>
+            <p className="mt-2 font-body-lg text-body-lg text-on-surface-variant">Welcome back to QUIZCORE.</p>
+          </div>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-error-container text-on-error-container rounded-lg font-body-md text-body-md text-center">
+              {error}
+            </div>
+          )}
+
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+            <div>
+              <label className="block font-label-md text-label-md text-on-surface mb-2" htmlFor="email">Email address</label>
+              <input 
+                className="w-full h-12 bg-surface-container-lowest border border-outline-variant rounded-lg px-4 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors placeholder:text-outline/70" 
+                id="email" 
+                placeholder="name@example.com" 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block font-label-md text-label-md text-on-surface" htmlFor="password">Password</label>
+                <a className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Forgot Password?</a>
+              </div>
+              <input 
+                className="w-full h-12 bg-surface-container-lowest border border-outline-variant rounded-lg px-4 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors placeholder:text-outline/70" 
+                id="password" 
+                placeholder="••••••••" 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <button 
+              className="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full mt-2 hover:bg-primary-container hover:text-on-primary-container transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50" 
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? 'Logging in...' : 'Log in'}
+            </button>
+          </form>
+          
+          <p className="mt-8 text-center font-body-md text-body-md text-on-surface-variant">
+            Don't have an account? <Link className="font-label-md text-label-md text-primary hover:underline" to="/signup">Sign up</Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Authentication;

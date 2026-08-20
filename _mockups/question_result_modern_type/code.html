@@ -1,0 +1,232 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Result Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "surface-bright": "#fbf9f9",
+                        "surface-container-highest": "#e4e2e2",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed-dim": "#c8c7bf",
+                        "surface-container": "#efeded",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-container": "#85847d",
+                        "surface-container-high": "#e9e8e7",
+                        "surface": "#fbf9f9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b8d315",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-dim": "#dbdad9",
+                        "on-background": "#1b1c1c",
+                        "tertiary-fixed": "#e4e2db",
+                        "on-tertiary-fixed": "#1b1c17",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "inverse-surface": "#303031",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary": "#576500",
+                        "outline-variant": "#c4c7c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f5f3f3",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-container": "#1b1c17",
+                        "primary": "#000000",
+                        "surface-variant": "#e4e2e2",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#d4f039",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#414c00",
+                        "on-secondary-container": "#5c6b00",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#474741",
+                        "secondary-fixed": "#d4f039",
+                        "primary-container": "#1c1b1b",
+                        "background": "#fbf9f9",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#191e00",
+                        "on-primary-container": "#858383"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "section-gap": "64px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "unit": "8px"
+                    },
+                    fontFamily: {
+                        "body-md": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "sans-serif"],
+                        "display-sm": ["Poppins", "sans-serif"],
+                        "display-lg": ["Poppins", "sans-serif"],
+                        "label-md": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "sans-serif"],
+                        "headline-lg-mobile": ["Poppins", "sans-serif"],
+                        "body-lg": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "sans-serif"],
+                        "headline-lg": ["Poppins", "sans-serif"],
+                        "label-sm": ["-apple-system", "BlinkMacSystemFont", "SF Pro", "Segoe UI", "Roboto", "sans-serif"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "display-sm": ["48px", { lineHeight: "1.1", fontWeight: "600" }],
+                        "display-lg": ["72px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "label-md": ["14px", { lineHeight: "1.0", letterSpacing: "0.02em", fontWeight: "600" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "1.2", fontWeight: "500" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-lg": ["32px", { lineHeight: "1.2", fontWeight: "500" }],
+                        "label-sm": ["12px", { lineHeight: "1.0", fontWeight: "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Editorial Playful Specific Adjustments */
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, sans-serif; }
+        h1, h2, h3, .serif { font-family: 'Poppins', sans-serif; }
+        
+        /* Soft Ambient Occlusion shadow based on guidance */
+        .editorial-shadow {
+            box-shadow: 0px 20px 40px rgba(21, 21, 21, 0.04);
+        }
+
+        /* Minimal Animations */
+        @keyframes float-up {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(0.95); }
+        }
+        .animate-float { animation: float-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+        
+        /* Confetti structural styles */
+        .confetti-piece {
+            position: absolute;
+            background-color: theme('colors.secondary-fixed');
+            z-index: 0;
+            opacity: 0;
+            animation: float-up 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface h-screen w-full overflow-hidden flex flex-col items-center justify-center relative">
+<!-- Decorative Asymmetric Confetti Layer -->
+<div aria-hidden="true" class="absolute inset-0 pointer-events-none overflow-hidden">
+<!-- Top Left Cluster -->
+<div class="confetti-piece rounded-full w-4 h-4 top-[15%] left-[20%]" style="animation-delay: 0.1s;"></div>
+<div class="confetti-piece rounded-full w-2 h-2 top-[20%] left-[15%]" style="animation-delay: 0.2s;"></div>
+<div class="confetti-piece rounded-sm w-1.5 h-8 top-[12%] left-[25%] rotate-[15deg]" style="animation-delay: 0.3s;"></div>
+<!-- Top Right Cluster -->
+<div class="confetti-piece rounded-full w-6 h-6 top-[10%] right-[18%]" style="animation-delay: 0.15s;"></div>
+<div class="confetti-piece rounded-full w-3 h-3 top-[25%] right-[22%]" style="animation-delay: 0.25s;"></div>
+<div class="confetti-piece rounded-sm w-2 h-10 top-[15%] right-[12%] rotate-[-25deg]" style="animation-delay: 0.35s;"></div>
+<!-- Bottom Ambient -->
+<div class="confetti-piece rounded-full w-3 h-3 bottom-[30%] left-[10%]" style="animation-delay: 0.4s;"></div>
+<div class="confetti-piece rounded-full w-4 h-4 bottom-[25%] right-[15%]" style="animation-delay: 0.5s;"></div>
+</div>
+<!-- Main Content Canvas -->
+<main class="w-full max-w-2xl px-container-padding flex flex-col items-center justify-center relative z-10 animate-float">
+<!-- Celebration Header -->
+<header class="text-center mb-section-gap relative w-full">
+<!-- Tilted Marketing Tag (Zine Aesthetic) -->
+<div class="absolute -top-6 right-8 md:right-16 rotate-[-4deg] bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm px-3 py-1 rounded-full border border-primary shadow-sm z-20">
+                Personal Best
+            </div>
+<h1 class="font-display-lg text-display-lg text-primary mb-gutter flex items-center justify-center gap-4 flex-wrap">
+                Correct!
+                <span class="material-symbols-outlined text-[64px] text-secondary-fixed hidden md:inline-block" style="font-variation-settings: 'FILL' 1;">
+                    check_circle
+                </span>
+</h1>
+<h2 class="font-headline-lg text-headline-lg text-on-surface-variant flex items-center justify-center gap-2">
+                You are currently in <span class="text-primary font-bold border-b-4 border-secondary-fixed pb-1">2nd Place</span>
+</h2>
+</header>
+<!-- Live Leaderboard Preview (Editorial Card) -->
+<section class="w-full bg-surface-container-lowest border border-primary/10 rounded-xl editorial-shadow overflow-hidden mb-section-gap relative">
+<!-- Subtle decorative header -->
+<div class="bg-surface-container-low px-gutter py-unit border-b border-primary/5 flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Live Leaderboard</span>
+<span class="flex items-center gap-1 font-label-sm text-label-sm text-secondary">
+<span class="material-symbols-outlined text-[14px]">sensors</span>
+                    Live
+                </span>
+</div>
+<!-- List Content -->
+<div class="p-gutter flex flex-col gap-2">
+<!-- Rank 1 -->
+<div class="flex items-center gap-4 py-2 px-3 rounded-lg hover:bg-surface-container-low transition-colors">
+<span class="font-label-md text-label-md text-on-surface-variant w-6 text-center">1</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-primary/10">
+<img class="w-full h-full object-cover" data-alt="A small, stylized avatar illustration of a cat wearing glasses in a vibrant, flat vector style. Bright colors, minimal detailing, set against a solid pastel background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQO3AD4NedIP6TZeCI2t2LPExqEKkutJ9meRocxkZnRxaUxNCqHKBqUjr9JEkBHWxe9oqV4RZOjG9YTegDX_WRELP2-t2t3J4aG9VTthuxQ6B-gRfx0FskjZHyyaebf-5KCoqMOMV6Fhfh0-LVDjMttoi1DwucHWcYhBDStmlAAtVDUweyEq15kQmKe3-kFrDItzW5dPEiet96nu_3kDCVVgki2rY7K441lAw3oeAp7IIkDnbY_6cl">
+</div>
+<span class="font-body-md text-body-md text-primary flex-1 truncate">Alex W.</span>
+<span class="font-label-md text-label-md text-primary">2,450</span>
+</div>
+<!-- Rank 2 (Current User - Highlighted) -->
+<div class="flex items-center gap-4 py-2 px-3 rounded-lg bg-surface-container-highest border border-primary/5 relative overflow-hidden">
+<!-- Subtle highlight indicator -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary-fixed"></div>
+<span class="font-label-md text-label-md text-primary w-6 text-center">2</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-primary/10">
+<img class="w-full h-full object-cover" data-alt="A small, stylized geometric avatar representing a human profile. Abstract shapes forming a face in a modern, Bauhaus-inspired color palette of black, white, and primary colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrVrb18NqyHPw7lUdV3KzaYtvIBM_jrsb1jAgWkf-Ebm-e-8nm2iWvOOeLCCpUDnPP6ulcYhIF8gj4BeBllYtnxmn-X0uqxUd2UdA2B3eA0834XnRKjnlPdaojarWKGAdpWV8N913W88E1aXKsWBTTYtrWQWBUgYKzzuvr2MhkKhAIEwlyC36g27zbGxqymp-k2K1wEcSAUtSNvJC8M2Prgjc2RXoh0SP8bDRoK7QoReLdIZDlLPte">
+</div>
+<span class="font-body-md text-body-md text-primary flex-1 truncate font-bold">You</span>
+<span class="font-label-md text-label-md text-primary font-bold">2,310</span>
+</div>
+<!-- Rank 3 -->
+<div class="flex items-center gap-4 py-2 px-3 rounded-lg hover:bg-surface-container-low transition-colors">
+<span class="font-label-md text-label-md text-on-surface-variant w-6 text-center">3</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-primary/10">
+<img class="w-full h-full object-cover" data-alt="A minimalist 3D rendering of a generic profile silhouette in matte white plastic texture, set against a stark black background with dramatic rim lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxZrtzCrrqjRTEs7Xk1IKxc403EUoJxxmBXOIS7loLalw3nnKVQ7EewWcQkTobXp4e5k2hGsaGtDDAA5CvxpEH7c_ydM6yXvogniIF4fR95QjKbw2EuLSj9atT3eqVNw7jw0NEx29owammqgzzyzTg-uPVCgU078SdxdhDspVkC0BGaAPPFUi9jiU7VmXKD5tnU9XnPRJoDiH5ibD4OUhvuV3wchfW9V0pAhBkFGBRMBwIbCnMQIJn">
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant flex-1 truncate">Sam R.</span>
+<span class="font-label-md text-label-md text-on-surface-variant">2,105</span>
+</div>
+<!-- Rank 4 -->
+<div class="flex items-center gap-4 py-2 px-3 rounded-lg hover:bg-surface-container-low transition-colors">
+<span class="font-label-md text-label-md text-on-surface-variant w-6 text-center">4</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-label-md text-label-md text-on-surface-variant border border-primary/10">
+                        J
+                    </div>
+<span class="font-body-md text-body-md text-on-surface-variant flex-1 truncate">Jamie T.</span>
+<span class="font-label-md text-label-md text-on-surface-variant">1,980</span>
+</div>
+<!-- Rank 5 -->
+<div class="flex items-center gap-4 py-2 px-3 rounded-lg hover:bg-surface-container-low transition-colors opacity-70">
+<span class="font-label-md text-label-md text-on-surface-variant w-6 text-center">5</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-label-md text-label-md text-on-surface-variant border border-primary/10">
+                        M
+                    </div>
+<span class="font-body-md text-body-md text-on-surface-variant flex-1 truncate">Morgan L.</span>
+<span class="font-label-md text-label-md text-on-surface-variant">1,850</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Sticky Bottom Status Indicator -->
+<footer class="fixed bottom-8 left-0 w-full flex justify-center z-50 pointer-events-none">
+<div class="bg-primary text-on-primary rounded-full px-6 py-3 flex items-center gap-3 shadow-lg pointer-events-auto animate-pulse-slow">
+<span class="material-symbols-outlined text-[18px]">hourglass_empty</span>
+<span class="font-label-md text-label-md">Waiting for next question...</span>
+</div>
+</footer>
+</body></html>

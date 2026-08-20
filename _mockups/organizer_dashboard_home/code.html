@@ -1,0 +1,464 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Organizer Dashboard - QuizCore</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Guidelines -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#444748",
+                    "surface-bright": "#fbf9f9",
+                    "surface-container-highest": "#e4e2e2",
+                    "on-primary-fixed-variant": "#474646",
+                    "tertiary-fixed-dim": "#c8c7bf",
+                    "surface-container": "#efeded",
+                    "tertiary": "#000000",
+                    "primary-fixed": "#e5e2e1",
+                    "on-tertiary-container": "#85847d",
+                    "surface-container-high": "#e9e8e7",
+                    "surface": "#fbf9f9",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#b8d315",
+                    "inverse-on-surface": "#f2f0f0",
+                    "surface-dim": "#dbdad9",
+                    "on-background": "#1b1c1c",
+                    "tertiary-fixed": "#e4e2db",
+                    "on-tertiary-fixed": "#1b1c17",
+                    "error-container": "#ffdad6",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "inverse-surface": "#303031",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#c8c6c5",
+                    "on-primary-fixed": "#1c1b1b",
+                    "secondary": "#576500",
+                    "outline-variant": "#c4c7c7",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#f5f3f3",
+                    "surface-tint": "#5f5e5e",
+                    "tertiary-container": "#1b1c17",
+                    "primary": "#000000",
+                    "surface-variant": "#e4e2e2",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#d4f039",
+                    "on-surface": "#1b1c1c",
+                    "on-secondary-fixed-variant": "#414c00",
+                    "on-secondary-container": "#5c6b00",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#474741",
+                    "secondary-fixed": "#d4f039",
+                    "primary-container": "#1c1b1b",
+                    "background": "#fbf9f9",
+                    "outline": "#747878",
+                    "on-secondary-fixed": "#191e00",
+                    "on-primary-container": "#858383"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "section-gap": "64px",
+                    "container-padding": "24px",
+                    "gutter": "16px",
+                    "unit": "8px"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "plusJakartaSans", "sans-serif"
+                    ],
+                    "display-sm": [
+                            "ebGaramond", "serif"
+                    ],
+                    "display-lg": [
+                            "ebGaramond", "serif"
+                    ],
+                    "label-md": [
+                            "plusJakartaSans", "sans-serif"
+                    ],
+                    "headline-lg-mobile": [
+                            "ebGaramond", "serif"
+                    ],
+                    "body-lg": [
+                            "plusJakartaSans", "sans-serif"
+                    ],
+                    "headline-lg": [
+                            "ebGaramond", "serif"
+                    ],
+                    "label-sm": [
+                            "plusJakartaSans", "sans-serif"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "1.6",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "display-sm": [
+                            "48px",
+                            {
+                                    "lineHeight": "1.1",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "72px",
+                            {
+                                    "lineHeight": "1.1",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "1.0",
+                                    "letterSpacing": "0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "1.6",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "1.0",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        /* Base typography setup */
+        body {
+            font-family: 'plusJakartaSans', sans-serif;
+            background-color: #fbf9f9; /* background */
+            color: #1b1c1c; /* on-background */
+        }
+        h1, h2, h3, h4, h5, h6, .font-display, .font-headline {
+            font-family: 'ebGaramond', serif;
+        }
+        
+        /* Editorial & Playful Utilities */
+        .editorial-shadow {
+            box-shadow: 0px 20px 40px rgba(21, 21, 21, 0.04);
+        }
+        .border-subtle {
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .border-editorial {
+            border: 1px solid rgba(21, 21, 21, 0.1);
+        }
+        .rotate-tag {
+            transform: rotate(-3deg);
+        }
+        .rotate-tag-reverse {
+            transform: rotate(4deg);
+        }
+        
+        /* Blob shapes for background texture */
+        .blob-1 {
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            animation: morph 8s ease-in-out infinite;
+        }
+        
+        @keyframes morph {
+            0%, 100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+            34% { border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%; }
+            67% { border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex overflow-x-hidden">
+<!-- Top Navigation (Mobile Only) -->
+<header class="md:hidden sticky top-0 w-full z-40 bg-surface border-b border-on-surface/10 flex justify-between items-center px-container-padding h-20">
+<div class="font-display-sm text-headline-lg-mobile text-primary">QUIZCORE</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar (Desktop/Tablet) -->
+<nav class="hidden md:flex h-screen w-64 fixed left-0 top-0 flex-col py-unit gap-unit bg-surface-container-low shadow-sm z-50 overflow-y-auto">
+<!-- Brand/Header -->
+<div class="px-6 py-6 mb-4">
+<div class="font-display-sm text-display-sm text-primary mb-6">QUIZCORE</div>
+<div class="flex items-center gap-3 mb-6 p-2 rounded-xl hover:bg-surface-container-highest transition-all cursor-pointer">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Organizer Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a creative event organizer, Alex, wearing stylish glasses, looking approachable in a bright, modern studio setting with a clean editorial lighting aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZmd4_LilHsbnVxkaJspdh6DbOfWtleTsdY1trgaGsK7QwRiGXKWtlS8B8XlTZkEJLOkHKdG76zLCSImN2XesrujUvR3ITU5IleXfquZq9-88Ke4GA-dUJ2Gdkkm0LDaJY_vKnZtWPoAlILaxOptpEKrPgwkAY9YWeOwhw4AVjVD0ncl_aqbxuWkaBxd4gzow4PJLAsdMjB3mxDtsHUM3fnoE69G_Year2TYJ8h8O75tAGMdqZZeFu">
+</div>
+<div>
+<div class="font-label-md text-label-md text-primary">Organizer Workspace</div>
+<div class="text-[11px] font-semibold text-on-surface-variant mt-1 px-2 py-0.5 bg-secondary-container text-on-secondary-container inline-block rounded-full">Premium Account</div>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary rounded-full py-3 px-4 font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-all hover:-translate-y-0.5 editorial-shadow">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">add</span>
+                New Session
+            </button>
+</div>
+<!-- Main Nav Links -->
+<div class="flex flex-col gap-2 flex-grow">
+<!-- Active Tab: Dashboard -->
+<a class="bg-secondary-container text-on-secondary-container rounded-full px-4 py-2 mx-2 flex items-center gap-3 font-label-md text-label-md transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                Dashboard
+            </a>
+<!-- Inactive Tabs -->
+<a class="text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-2 mx-2 flex items-center gap-3 font-label-md text-label-md hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">sensors</span>
+                Live Sessions
+            </a>
+<a class="text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-2 mx-2 flex items-center gap-3 font-label-md text-label-md hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">library_books</span>
+                Library
+            </a>
+<a class="text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-2 mx-2 flex items-center gap-3 font-label-md text-label-md hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">analytics</span>
+                Analytics
+            </a>
+</div>
+<!-- Footer Nav Links -->
+<div class="mt-auto mb-6 flex flex-col gap-2 pt-4 border-t border-outline-variant/20 mx-4">
+<a class="text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-2 flex items-center gap-3 font-label-md text-label-md hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+                Settings
+            </a>
+<a class="text-on-surface-variant hover:bg-surface-variant rounded-full px-4 py-2 flex items-center gap-3 font-label-md text-label-md hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">help</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-grow w-full md:pl-64 flex flex-col min-h-screen relative">
+<!-- Decorative Ambient Background Blobs -->
+<div class="fixed top-0 right-0 w-[600px] h-[600px] bg-secondary-container/20 rounded-full blur-[100px] -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
+<div class="fixed bottom-0 left-[300px] w-[500px] h-[500px] bg-surface-variant/40 rounded-full blur-[80px] -z-10 pointer-events-none translate-y-1/3"></div>
+<div class="px-container-padding py-8 md:py-12 max-w-[1440px] mx-auto w-full">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+<div>
+<div class="inline-block px-3 py-1 bg-surface-container-high rounded-full font-label-sm text-label-sm text-on-surface mb-4 rotate-tag">Overview</div>
+<h1 class="font-display-lg text-display-sm md:text-display-lg text-primary tracking-tight">Hello, Alex.</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2 max-w-xl">Ready to engage your audience? Create a new session or check how your recent events performed.</p>
+</div>
+<div class="hidden md:flex gap-3">
+<div class="bg-surface-container-lowest rounded-2xl p-4 border-editorial editorial-shadow flex flex-col items-center justify-center min-w-[120px]">
+<span class="font-display-sm text-display-sm text-primary">12</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Active</span>
+</div>
+<div class="bg-surface-container-lowest rounded-2xl p-4 border-editorial editorial-shadow flex flex-col items-center justify-center min-w-[120px]">
+<span class="font-display-sm text-display-sm text-primary">8.4k</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Players</span>
+</div>
+</div>
+</div>
+<!-- Creation Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-section-gap">
+<!-- New Quiz Card -->
+<button class="group relative bg-surface-container-lowest rounded-3xl p-8 border-editorial editorial-shadow flex flex-col items-start justify-between h-[280px] hover:-translate-y-2 transition-transform duration-300 overflow-hidden text-left">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary-container rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500"></div>
+<div class="relative z-10 w-16 h-16 rounded-2xl bg-primary text-on-primary flex items-center justify-center mb-6 shadow-lg">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 0;">psychology_alt</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">New Quiz</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Create an interactive multiple-choice challenge.</p>
+</div>
+<div class="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+</div>
+</div>
+</button>
+<!-- New Poll Card -->
+<button class="group relative bg-surface-container-lowest rounded-3xl p-8 border-editorial editorial-shadow flex flex-col items-start justify-between h-[280px] hover:-translate-y-2 transition-transform duration-300 overflow-hidden text-left">
+<div class="absolute bottom-0 right-0 w-40 h-40 bg-surface-container-high rounded-tl-full opacity-50 transition-transform group-hover:scale-110 duration-500"></div>
+<div class="relative z-10 w-16 h-16 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center mb-6 border border-secondary/20">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 0;">bar_chart</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">New Poll</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Gather instant opinions and live voting data.</p>
+</div>
+<div class="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+</div>
+</div>
+</button>
+<!-- New Feedback Card -->
+<button class="group relative bg-surface-container-lowest rounded-3xl p-8 border-editorial editorial-shadow flex flex-col items-start justify-between h-[280px] hover:-translate-y-2 transition-transform duration-300 overflow-hidden text-left">
+<div class="relative z-10 w-16 h-16 rounded-2xl bg-surface-container-highest text-primary flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 0;">forum</span>
+</div>
+<div class="relative z-10">
+<h3 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">New Feedback</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Collect open-ended responses and Q&amp;A.</p>
+</div>
+<div class="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+</div>
+</div>
+</button>
+</div>
+<!-- Past Sessions Section -->
+<div class="mb-section-gap">
+<div class="flex justify-between items-center mb-8 border-b border-outline-variant/30 pb-4">
+<h2 class="font-display-sm text-headline-lg-mobile md:text-display-sm text-primary">Recent Sessions</h2>
+<a class="font-label-md text-label-md text-primary hover:text-secondary flex items-center gap-1 transition-colors" href="#">
+                        View All <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</a>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Session Item 1: Live -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 border-editorial editorial-shadow flex flex-col md:flex-row items-start md:items-center gap-6 hover:bg-surface-bright transition-colors cursor-pointer relative overflow-hidden group">
+<!-- Status Indicator Edge -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary"></div>
+<div class="w-12 h-12 rounded-xl bg-secondary-container/50 flex flex-shrink-0 items-center justify-center border border-secondary/20 ml-2">
+<span class="material-symbols-outlined text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">sensors</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-3 mb-1">
+<h4 class="font-label-md text-body-lg font-bold text-primary">Tech All-Hands Q3</h4>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-secondary text-on-secondary animate-pulse">Live</span>
+</div>
+<p class="font-body-md text-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">psychology_alt</span> Quiz • Started 15m ago
+                            </p>
+</div>
+<div class="flex items-center gap-8 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-outline-variant/20">
+<div class="text-left md:text-right">
+<div class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-1">Participants</div>
+<div class="font-label-md text-body-lg text-primary flex items-center gap-1">
+                                    428 <span class="material-symbols-outlined text-[16px] text-secondary">trending_up</span>
+</div>
+</div>
+<div class="text-left md:text-right">
+<div class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-1">Engagement</div>
+<div class="font-label-md text-body-lg text-primary">92%</div>
+</div>
+<button class="ml-auto w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Session Item 2: Ended -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 flex flex-col md:flex-row items-start md:items-center gap-6 hover:bg-surface-bright transition-colors cursor-pointer group">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest flex flex-shrink-0 items-center justify-center ml-2">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">bar_chart</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-3 mb-1">
+<h4 class="font-label-md text-body-lg font-bold text-primary">Design System Feedback</h4>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-surface-container-high text-on-surface-variant">Ended</span>
+</div>
+<p class="font-body-md text-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">forum</span> Poll • Oct 24, 2023
+                            </p>
+</div>
+<div class="flex items-center gap-8 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-outline-variant/20">
+<div class="text-left md:text-right">
+<div class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-1">Participants</div>
+<div class="font-label-md text-body-lg text-primary">156</div>
+</div>
+<div class="text-left md:text-right">
+<div class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-1">Avg Score</div>
+<div class="font-label-md text-body-lg text-primary">N/A</div>
+</div>
+<button class="ml-auto w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Session Item 3: Ended -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 flex flex-col md:flex-row items-start md:items-center gap-6 hover:bg-surface-bright transition-colors cursor-pointer group">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest flex flex-shrink-0 items-center justify-center ml-2">
+<span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">psychology_alt</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-3 mb-1">
+<h4 class="font-label-md text-body-lg font-bold text-primary">Weekly Trivia: Pop Culture</h4>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-surface-container-high text-on-surface-variant">Ended</span>
+</div>
+<p class="font-body-md text-sm text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">psychology_alt</span> Quiz • Oct 18, 2023
+                            </p>
+</div>
+<div class="flex items-center gap-8 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-outline-variant/20">
+<div class="text-left md:text-right">
+<div class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-1">Participants</div>
+<div class="font-label-md text-body-lg text-primary">892</div>
+</div>
+<div class="text-left md:text-right">
+<div class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-1">Avg Score</div>
+<div class="font-label-md text-body-lg text-primary">74%</div>
+</div>
+<button class="ml-auto w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center group-hover:bg-primary group-hover:text-on-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Nav Bar (Mobile Only) - Suppressed as requested by rules for Dashboard, relying on Top Nav for mobile entry, but actually SideNavBar logic states we need a BottomNavBar on mobile if it's a top level destination. I will inject a simplified version based on standard app behavior for mobile if side nav is hidden. -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 bg-surface-container-lowest shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-xl flex justify-around items-center px-4 py-3 pb-safe border-t border-editorial">
+<a class="flex flex-col items-center justify-center w-16" href="#">
+<div class="bg-secondary text-on-secondary rounded-full w-12 h-8 flex items-center justify-center mb-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+</div>
+<span class="font-label-sm text-[10px] font-bold text-primary">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center w-16 text-on-surface-variant opacity-70 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">sensors</span>
+<span class="font-label-sm text-[10px] font-bold">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center w-16 text-on-surface-variant opacity-70 hover:opacity-100 transition-opacity" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">library_books</span>
+<span class="font-label-sm text-[10px] font-bold">Library</span>
+</a>
+</nav>
+<!-- Mobile padding spacer for bottom nav -->
+<div class="h-20 md:hidden w-full"></div>
+</main>
+</body></html>

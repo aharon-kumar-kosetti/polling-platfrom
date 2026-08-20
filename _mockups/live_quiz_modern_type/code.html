@@ -1,0 +1,228 @@
+<!DOCTYPE html><html class="h-full" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QUIZCORE - Live Quiz Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#444748",
+                        "surface-bright": "#fbf9f9",
+                        "surface-container-highest": "#e4e2e2",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed-dim": "#c8c7bf",
+                        "surface-container": "#efeded",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-tertiary-container": "#85847d",
+                        "surface-container-high": "#e9e8e7",
+                        "surface": "#fbf9f9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#b8d315",
+                        "inverse-on-surface": "#f2f0f0",
+                        "surface-dim": "#dbdad9",
+                        "on-background": "#1b1c1c",
+                        "tertiary-fixed": "#e4e2db",
+                        "on-tertiary-fixed": "#1b1c17",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "inverse-surface": "#303031",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "on-primary-fixed": "#1c1b1b",
+                        "secondary": "#576500",
+                        "outline-variant": "#c4c7c7",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f5f3f3",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-container": "#1b1c17",
+                        "primary": "#000000",
+                        "surface-variant": "#e4e2e2",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#d4f039",
+                        "on-surface": "#1b1c1c",
+                        "on-secondary-fixed-variant": "#414c00",
+                        "on-secondary-container": "#5c6b00",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#474741",
+                        "secondary-fixed": "#d4f039",
+                        "primary-container": "#1c1b1b",
+                        "background": "#fbf9f9",
+                        "outline": "#747878",
+                        "on-secondary-fixed": "#191e00",
+                        "on-primary-container": "#858383"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "64px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["SF Pro Display", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+                        "display-sm": ["Poppins", "sans-serif"],
+                        "display-lg": ["Poppins", "sans-serif"],
+                        "label-md": ["SF Pro Display", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+                        "headline-lg-mobile": ["Poppins", "sans-serif"],
+                        "body-lg": ["SF Pro Display", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+                        "headline-lg": ["Poppins", "sans-serif"],
+                        "label-sm": ["SF Pro Display", "-apple-system", "BlinkMacSystemFont", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "display-sm": ["48px", { "lineHeight": "1.1", "fontWeight": "600" }],
+                        "display-lg": ["72px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.0", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "1.0", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body { font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+        
+        /* Ambient Blobs */
+        .ambient-blob-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(212, 240, 57, 0.15) 0%, rgba(251, 249, 249, 0) 70%);
+            border-radius: 50%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .ambient-blob-2 {
+            position: absolute;
+            bottom: -20%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.03) 0%, rgba(251, 249, 249, 0) 70%);
+            border-radius: 50%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Timer Animation */
+        .timer-circle {
+            stroke-dasharray: 283;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-full flex flex-col relative overflow-hidden">
+<!-- Decorative Background -->
+<div class="ambient-blob-1"></div>
+<div class="ambient-blob-2"></div>
+<!-- Main Canvas (Focused Nav Suppression) -->
+<main class="flex-grow flex flex-col justify-center px-container-padding py-section-gap relative z-10 max-w-4xl mx-auto w-full">
+<!-- Header Info (Score & Timer) -->
+<div class="flex justify-between items-center w-full mb-12">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0, 'wght' 200;">stars</span>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Score: 1,250</span>
+</div>
+<!-- Circular Timer -->
+<div class="relative w-16 h-16 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="45" stroke="#e4e2e2" stroke-width="6"></circle>
+<circle class="timer-circle" cx="50" cy="50" fill="none" id="timerRing" r="45" stroke="#d4f039" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<span class="font-label-md text-label-md font-bold text-primary relative z-10" id="timerText">15</span>
+</div>
+</div>
+<!-- Question Area -->
+<div class="mb-section-gap text-center px-4 md:px-12 relative">
+<!-- Subtle Tag -->
+<div class="absolute -top-6 left-1/2 transform -translate-x-1/2 -rotate-3 bg-primary text-on-primary px-3 py-1 rounded-full font-label-sm text-label-sm uppercase z-20 shadow-sm border border-primary/10">
+                Question 4 of 10
+            </div>
+<h1 class="font-poppins font-display-sm md:font-display-lg text-primary mb-4 leading-tight text-headline-lg">
+                Which architectural style is characterized by pointed arches, ribbed vaults, and flying buttresses?
+            </h1>
+</div>
+<!-- Answer Options (2x2 Grid) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter w-full">
+<!-- Option A -->
+<button class="group relative flex items-center justify-between p-6 bg-surface-container-lowest border border-primary/10 rounded-[24px] hover:border-primary/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-left shadow-[0_4px_20px_rgba(21,21,21,0.02)] hover:shadow-[0_12px_40px_rgba(21,21,21,0.06)] transform hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-label-md text-label-md text-on-surface-variant group-hover:bg-primary group-hover:text-on-primary transition-colors">A</div>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Romanesque</span>
+</div>
+</button>
+<!-- Option B -->
+<button class="group relative flex items-center justify-between p-6 bg-surface-container-lowest border border-primary/10 rounded-[24px] hover:border-primary/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-left shadow-[0_4px_20px_rgba(21,21,21,0.02)] hover:shadow-[0_12px_40px_rgba(21,21,21,0.06)] transform hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-label-md text-label-md text-on-surface-variant group-hover:bg-primary group-hover:text-on-primary transition-colors">B</div>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Gothic</span>
+</div>
+</button>
+<!-- Option C -->
+<button class="group relative flex items-center justify-between p-6 bg-surface-container-lowest border border-primary/10 rounded-[24px] hover:border-primary/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-left shadow-[0_4px_20px_rgba(21,21,21,0.02)] hover:shadow-[0_12px_40px_rgba(21,21,21,0.06)] transform hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-label-md text-label-md text-on-surface-variant group-hover:bg-primary group-hover:text-on-primary transition-colors">C</div>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Baroque</span>
+</div>
+</button>
+<!-- Option D -->
+<button class="group relative flex items-center justify-between p-6 bg-surface-container-lowest border border-primary/10 rounded-[24px] hover:border-primary/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-left shadow-[0_4px_20px_rgba(21,21,21,0.02)] hover:shadow-[0_12px_40px_rgba(21,21,21,0.06)] transform hover:-translate-y-1">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center font-label-md text-label-md text-on-surface-variant group-hover:bg-primary group-hover:text-on-primary transition-colors">D</div>
+<span class="font-body-lg text-body-lg text-on-surface group-hover:text-primary transition-colors">Neoclassical</span>
+</div>
+</button>
+</div>
+</main>
+<script>
+        // Simple countdown logic for visual demonstration
+        const totalTime = 15;
+        let timeLeft = totalTime;
+        const timerText = document.getElementById('timerText');
+        const timerRing = document.getElementById('timerRing');
+        const circumference = 283; // 2 * pi * 45
+
+        function updateTimer() {
+            timeLeft--;
+            if (timeLeft >= 0) {
+                timerText.textContent = timeLeft;
+                const offset = circumference - (timeLeft / totalTime) * circumference;
+                timerRing.style.strokeDashoffset = offset;
+                
+                // Color shift as time runs out
+                if(timeLeft <= 5) {
+                    timerRing.style.stroke = '#ba1a1a'; // error color
+                    timerText.style.color = '#ba1a1a';
+                }
+            } else {
+                clearInterval(timerInterval);
+                // Handle timeout visual state here if needed
+            }
+        }
+
+        const timerInterval = setInterval(updateTimer, 1000);
+    </script>
+</body></html>
