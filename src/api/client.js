@@ -1,34 +1,51 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// client.js
+const BASE_URL = '/api';
 
 // Helper to make fetch requests with standard options (like credentials for HttpOnly cookies)
 async function fetchClient(endpoint, options = {}) {
+  const timeoutMs = options.timeout || 5000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const config = {
     ...options,
+    signal: options.signal || controller.signal,
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
     credentials: 'include', // Important for sending/receiving HttpOnly cookies
   };
-
-  const response = await fetch(`${BASE_URL}${endpoint}`, config);
-  const text = await response.text();
-  let data = null;
+  // Remove non-fetch keys
+  delete config.timeout;
 
   try {
-    data = text ? JSON.parse(text) : {};
-  } catch (err) {
-    if (!response.ok) {
-      throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+    const response = await fetch(`${BASE_URL}${endpoint}`, config);
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    let data = null;
+
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (err) {
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+      }
+      throw new Error('Invalid server JSON response');
     }
-    throw new Error('Invalid server JSON response');
-  }
 
-  if (!response.ok) {
-    throw new Error(data.message || `API request failed with status ${response.status}`);
-  }
+    if (!response.ok) {
+      throw new Error(data.message || `API request failed with status ${response.status}`);
+    }
 
-  return data;
+    return data;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    throw err;
+  }
 }
 
 // ---------------------------
@@ -148,5 +165,35 @@ export const sessionAPI = {
       method: 'POST',
       body: JSON.stringify({ pin, username }),
     });
+  }
+};
+
+export const questionAPI = {
+  getSavedQuestions: async () => {
+    if (USE_MOCKS) {
+      await delay(400);
+      return { success: true, questions: [] };
+    }
+    return fetchClient('/questions/bank', { method: 'GET' });
+  },
+  
+  saveToBank: async (questions) => {
+    if (USE_MOCKS) {
+      await delay(600);
+      return { success: true, questions };
+    }
+    return fetchClient('/questions/bank', {
+      method: 'POST',
+      body: JSON.stringify({ questions }),
+      timeout: 15000,
+    });
+  },
+
+  deleteSavedQuestion: async (id) => {
+    if (USE_MOCKS) {
+      await delay(300);
+      return { success: true };
+    }
+    return fetchClient(`/questions/bank/${id}`, { method: 'DELETE' });
   }
 };

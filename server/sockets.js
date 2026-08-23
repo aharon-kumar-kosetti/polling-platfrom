@@ -1,5 +1,9 @@
+// sockets.js
 const jwt = require('jsonwebtoken');
+const cookie = require('cookie');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_for_now';
+
+const activeSessions = {};
 
 module.exports = function setupSockets(io) {
   // Middleware for Socket Authentication
@@ -17,21 +21,32 @@ module.exports = function setupSockets(io) {
     }
 
     // Check for organizer token in cookies (HttpOnly)
-    // In a real production scenario, you would parse socket.handshake.headers.cookie
-    // using the 'cookie' package to extract access_token and verify it.
-    // For this prototype, we'll allow connection and rely on explicit 'join_room' checks.
-    
-    // For now, let them connect.
+    const rawCookies = socket.handshake.headers.cookie;
+    if (rawCookies) {
+      const cookies = cookie.parseCookie(rawCookies);
+      const accessToken = cookies.access_token;
+      if (accessToken) {
+        try {
+          const decoded = jwt.verify(accessToken, JWT_SECRET);
+          socket.user = { ...decoded, role: decoded.role || 'organizer' };
+          return next();
+        } catch (err) {
+          return next(new Error('Authentication error'));
+        }
+      }
+    }
+
+    // Allow unauthenticated connections (they won't be able to do organizer actions)
     next();
   });
 
   io.on('connection', (socket) => {
-    console.log(`[Socket] User connected: ${socket.id}`);
+    console.log(`[Socket] User connected: ${socket.id} (role: ${socket.user?.role || 'anonymous'})`);
 
     // Join a specific session room
     socket.on('join_room', ({ sessionId }) => {
       // Basic validation - is this socket allowed to join?
-      if (socket.user && socket.user.sessionId !== sessionId) {
+      if (socket.user && socket.user.role === 'participant' && String(socket.user.sessionId) !== String(sessionId)) {
         // Participant trying to join wrong room
         return;
       }
@@ -43,6 +58,11 @@ module.exports = function setupSockets(io) {
       if (socket.user && socket.user.role === 'participant') {
         io.to(sessionId).emit('participant_joined', { participantId: socket.user.participantId });
       }
+
+      // Send current state to the joining socket (with server timestamp for late joiners)
+      if (activeSessions[sessionId]) {
+        socket.emit('session_state_changed', activeSessions[sessionId]);
+      }
     });
 
     // Handle answer submission
@@ -51,22 +71,58 @@ module.exports = function setupSockets(io) {
       
       const sessionId = socket.user.sessionId;
       console.log(`[Socket] Answer submitted for Q:${questionId} by P:${socket.user.participantId}`);
-      // In a real app, save to DB and wait for round to end to broadcast leaderboard.
+
+      // Broadcast updated answer tally to host
+      if (activeSessions[sessionId] && activeSessions[sessionId].currentQuestion) {
+        const q = activeSessions[sessionId].currentQuestion;
+        if (q.options) {
+          const opt = q.options.find(o => (o.id || o.text) === optionId);
+          if (opt) {
+            opt.count = (opt.count || 0) + 1;
+          }
+        }
+        io.to(sessionId).emit('answer_tally', {
+          questionId,
+          options: q.options
+        });
+      }
     });
 
     // Organizer actions
-    socket.on('organizer:next_question', ({ sessionId }) => {
-      // Ensure it's the organizer (check socket.user or cookies in production)
-      // Broadcast state change
-      io.to(sessionId).emit('session_state_changed', {
+    socket.on('organizer:next_question', ({ sessionId, question }) => {
+      // Verify organizer identity
+      if (!socket.user || socket.user.role !== 'organizer') {
+        console.warn(`[Socket] Unauthorized next_question attempt from ${socket.id}`);
+        return;
+      }
+
+      // Strip isCorrect from options before broadcasting to participants
+      const sanitizedQuestion = {
+        ...question,
+        options: question.options ? question.options.map(o => {
+          const { isCorrect, ...rest } = o;
+          return { ...rest, count: 0 };
+        }) : []
+      };
+
+      const newState = {
         status: 'active',
-        currentQuestion: {
-          id: 'mock_q_1',
-          text: 'What is negative space?',
-          options: [{ id: 'opt_1', text: 'Empty pixels' }, { id: 'opt_2', text: 'White space that reduces cognitive load' }],
-          timeLimitSeconds: 30
-        }
-      });
+        currentQuestion: sanitizedQuestion,
+        startedAt: Date.now()
+      };
+      
+      activeSessions[sessionId] = newState;
+
+      // Broadcast state change
+      io.to(sessionId).emit('session_state_changed', newState);
+    });
+
+    // End quiz - clean up session state
+    socket.on('organizer:end_quiz', ({ sessionId }) => {
+      if (activeSessions[sessionId]) {
+        delete activeSessions[sessionId];
+      }
+      io.to(sessionId).emit('session_state_changed', { status: 'ended' });
     });
 
     socket.on('disconnect', () => {

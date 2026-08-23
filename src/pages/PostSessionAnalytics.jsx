@@ -166,8 +166,7 @@ const PostSessionAnalytics = () => {
 
       </main>
 
-      <footer className="py-6 text-center text-xs text-outline font-label-md">
-        QUIZCORE Analytics Platform
+      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> Analytics Platform
       </footer>
 
     </div>

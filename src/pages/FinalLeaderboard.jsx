@@ -149,8 +149,7 @@ const FinalLeaderboard = () => {
 
       </main>
 
-      <footer className="py-6 text-center text-xs text-white/40 font-label-md">
-        QUIZCORE • Masterclass Champions
+      <footer className="py-6 text-center text-xs text-white/40 font-label-md"><span className="text-white/80">QuizCore</span> • Masterclass Champions
       </footer>
 
     </div>

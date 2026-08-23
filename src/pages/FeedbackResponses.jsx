@@ -115,8 +115,7 @@ const FeedbackResponses = () => {
 
       </main>
 
-      <footer className="py-6 text-center text-xs text-outline font-label-md">
-        QUIZCORE • Audience Feedback Intelligence
+      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Audience Feedback Intelligence
       </footer>
 
     </div>

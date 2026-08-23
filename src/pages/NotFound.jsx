@@ -10,8 +10,7 @@ const NotFound = () => {
 
       <header className="w-full max-w-4xl flex items-center justify-between py-4">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span>
-          QUIZCORE
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
         </Link>
       </header>
 
@@ -47,8 +46,7 @@ const NotFound = () => {
 
       </main>
 
-      <footer className="py-4 text-center text-xs text-outline font-label-md">
-        QUIZCORE • Platform Navigation
+      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Platform Navigation
       </footer>
 
     </div>

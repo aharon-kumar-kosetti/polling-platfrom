@@ -15,8 +15,6 @@ import ParticipantProfile from './pages/ParticipantProfile'
 import PostSessionAnalytics from './pages/PostSessionAnalytics'
 import OrganizerDashboard from './pages/OrganizerDashboard'
 import SessionBuilder from './pages/SessionBuilder'
-import FormBuilder from './pages/FormBuilder'
-import FormTemplateSelection from './pages/FormTemplateSelection'
 import LiveMonitoring from './pages/LiveMonitoring'
 import AccountSettings from './pages/AccountSettings'
 import NotFound from './pages/NotFound'
@@ -56,8 +54,6 @@ function App() {
           <Route path="/dashboard" element={<OrganizerDashboard />} />
           <Route path="/builder" element={<SessionBuilder />} />
           <Route path="/builder/:id" element={<SessionBuilder />} />
-          <Route path="/builder/form" element={<FormBuilder />} />
-          <Route path="/builder/form/templates" element={<FormTemplateSelection />} />
           <Route path="/host" element={<LiveMonitoring />} />
           <Route path="/host/:sessionId" element={<LiveMonitoring />} />
           <Route path="/settings" element={<AccountSettings />} />

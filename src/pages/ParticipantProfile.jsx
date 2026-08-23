@@ -22,8 +22,7 @@ const ParticipantProfile = () => {
       {/* Top Header */}
       <header className="h-20 bg-surface-container-lowest border-b border-outline-variant/30 px-6 md:px-12 flex items-center justify-between sticky top-0 z-30">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span>
-          QUIZCORE
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
         </Link>
         <Link to="/join" className="px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:bg-primary-container transition-all flex items-center gap-1.5">
           <span>Join New Room</span>
@@ -133,8 +132,7 @@ const ParticipantProfile = () => {
 
       </main>
 
-      <footer className="py-6 text-center text-xs text-outline font-label-md">
-        QUIZCORE • Player Profiles
+      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Player Profiles
       </footer>
 
     </div>

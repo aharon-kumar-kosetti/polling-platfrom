@@ -96,8 +96,7 @@ const ParticipantQuestionResult = () => {
 
       </main>
 
-      <footer className="py-4 text-center text-xs text-outline font-label-md">
-        QUIZCORE • Round complete
+      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Round complete
       </footer>
 
     </div>

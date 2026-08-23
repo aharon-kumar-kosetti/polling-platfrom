@@ -26,7 +26,14 @@ const ParticipantWaitingRoom = () => {
 
   // Listen to socket state change
   useEffect(() => {
-    socketManager.connect();
+    const token = localStorage.getItem('participant_token');
+    const sessionId = localStorage.getItem('participant_sessionId');
+    
+    socketManager.connect(token);
+    
+    if (sessionId) {
+      socketManager.emit('join_room', { sessionId });
+    }
     
     const handleState = (data) => {
       if (data?.status === 'active' || data?.currentQuestion) {
@@ -40,10 +47,6 @@ const ParticipantWaitingRoom = () => {
     };
   }, [navigate, pin, username]);
 
-  const handleManualStart = () => {
-    navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}`);
-  };
-
   return (
     <div className="bg-surface text-on-surface font-body-md antialiased min-h-screen flex flex-col justify-between selection:bg-secondary-container selection:text-on-secondary-container relative overflow-hidden p-6 md:p-12">
       
@@ -54,8 +57,7 @@ const ParticipantWaitingRoom = () => {
       {/* Header */}
       <header className="max-w-4xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4 z-10">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span>
-          QUIZCORE
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
         </Link>
 
         <div className="inline-flex items-center gap-3 bg-surface-container-lowest border border-outline-variant/30 px-5 py-2 rounded-full shadow-sm">
@@ -86,15 +88,6 @@ const ParticipantWaitingRoom = () => {
         <p className="font-body-md text-sm text-on-surface-variant max-w-md mb-8">
           Settle in! The session will automatically launch as soon as the organizer pushes the first question.
         </p>
-
-        {/* Quick manual start / demo test action */}
-        <button
-          onClick={handleManualStart}
-          className="px-6 py-3 rounded-full bg-primary text-on-primary font-label-md text-xs hover:bg-primary-container transition-all flex items-center gap-2 shadow-sm"
-        >
-          <span>Enter Live Quiz Preview</span>
-          <span className="material-symbols-outlined text-sm">arrow_forward</span>
-        </button>
 
       </main>
 

@@ -1,3 +1,4 @@
+// schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,9 +13,10 @@ model User {
   email         String    @unique
   passwordHash  String
   name          String
-  sessions      Session[]
-  forms         Form[]
-  createdAt     DateTime  @default(now())
+  sessions        Session[]
+  forms           Form[]
+  savedQuestions  SavedQuestion[]
+  createdAt       DateTime  @default(now())
 }
 
 model Session {
@@ -84,4 +86,17 @@ model FormFile {
   size           Int
   formQuestionId String
   formQuestion   FormQuestion @relation(fields: [formQuestionId], references: [id], onDelete: Cascade)
+}
+
+model SavedQuestion {
+  id               String   @id @default(uuid())
+  type             String   // single_choice, multiple_choice, true_false
+  text             String
+  imageUrl         String?
+  options          String   // JSON string of options
+  timeLimitSeconds Int      @default(30)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }

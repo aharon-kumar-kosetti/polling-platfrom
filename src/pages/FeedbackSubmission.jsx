@@ -51,8 +51,7 @@ const FeedbackSubmission = () => {
 
       <header className="max-w-2xl mx-auto w-full flex items-center justify-between py-4">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span>
-          QUIZCORE
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
         </Link>
         <div className="text-xs font-mono text-on-surface-variant font-bold">
           ROOM: {pin}
@@ -223,8 +222,7 @@ const FeedbackSubmission = () => {
 
       </main>
 
-      <footer className="py-4 text-center text-xs text-outline font-label-md">
-        QUIZCORE • Audience Feedback
+      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Audience Feedback
       </footer>
 
     </div>

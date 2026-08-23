@@ -31,8 +31,7 @@ const AccountSettings = () => {
       <aside className="hidden md:flex h-screen w-64 fixed left-0 top-0 flex-col py-6 bg-surface-container-low border-r border-outline-variant/30 z-40">
         <div className="px-6 mb-6">
           <Link to="/dashboard" className="font-display-sm text-[28px] text-primary flex items-center gap-2 mb-6">
-            <span className="material-symbols-outlined text-[28px] text-secondary">token</span>
-            QUIZCORE
+            <span className="material-symbols-outlined text-[28px] text-secondary">token</span><span className="text-black">QuizCore</span>
           </Link>
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30">
             <div className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-lg">

@@ -47,7 +47,10 @@ const Signup = () => {
 
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-24 py-12 relative overflow-y-auto">
         <div className="absolute top-8 left-8 lg:hidden">
-          <Link to="/" className="font-display-sm text-display-sm text-primary">QUIZCORE</Link>
+          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-[24px] text-secondary">token</span>
+            <span className="text-black">QuizCore</span>
+          </Link>
         </div>
         
         <div className="w-full max-w-[480px] bg-surface-container-lowest rounded-[24px] border border-primary/10 p-8 md:p-10 flex flex-col relative z-10 shadow-editorial mx-auto lg:mx-0">

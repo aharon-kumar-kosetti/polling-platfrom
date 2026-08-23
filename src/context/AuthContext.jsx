@@ -3,7 +3,13 @@ import { authAPI } from '../api/client';
 
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -42,9 +48,18 @@ export const AuthProvider = ({ children }) => {
     return await authAPI.register(email, password, name);
   };
 
+  // Don't render children until auth state is resolved
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={{ user, login, logout, register, loading, isAuthenticated: !!user }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

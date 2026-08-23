@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import socketManager from '../sockets/socketManager';
 
@@ -9,31 +9,54 @@ const ParticipantLiveQuiz = () => {
   const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
   const pin = searchParams.get('pin') || 'TECH-88';
 
-  const [timeLeft, setTimeLeft] = useState(20);
+  const [question, setQuestion] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [initialTime, setInitialTime] = useState(30);
   const [selectedOption, setSelectedOption] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
-  const [score, setScore] = useState(1450);
-  const [streak, setStreak] = useState(3);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const currentQIdRef = useRef(null);
 
-  const question = {
-    id: 'q1',
-    category: 'Design Systems',
-    number: 3,
-    total: 8,
-    text: 'What is the primary purpose of negative space in UI layout design?',
-    options: [
-      { id: 'a', text: 'To reduce cognitive load and visual clutter', isCorrect: true },
-      { id: 'b', text: 'To fill empty unallocated screen pixels', isCorrect: false },
-      { id: 'c', text: 'To increase memory consumption in rendering', isCorrect: false },
-      { id: 'd', text: 'To force users into one rigid click order', isCorrect: false },
-    ]
-  };
+  // Connect and listen to question state
+  useEffect(() => {
+    const token = localStorage.getItem('participant_token');
+    const sessionId = localStorage.getItem('participant_sessionId');
+    
+    socketManager.connect(token);
+    
+    if (sessionId) {
+      socketManager.emit('join_room', { sessionId });
+    }
+    
+    const handleState = (data) => {
+      if (data?.currentQuestion) {
+        const incoming = data.currentQuestion;
+        // Only update if it's a new question
+        if (!currentQIdRef.current || currentQIdRef.current !== incoming.id) {
+          currentQIdRef.current = incoming.id;
+          setSelectedOption(null);
+          setIsLocked(false);
+          const timeLimit = incoming.timeLimitSeconds || 30;
+          setTimeLeft(timeLimit);
+          setInitialTime(timeLimit);
+          setQuestion(incoming);
+        }
+      }
+    };
+
+    socketManager.on('session_state_changed', handleState);
+    return () => {
+      socketManager.off('session_state_changed', handleState);
+    };
+  }, []);
 
   // Circular timer calculation (circumference: 2 * pi * 40 = 251)
-  const initialTime = 20;
-  const strokeDashoffset = 251 - (251 * timeLeft) / initialTime;
+  const strokeDashoffset = initialTime > 0 ? 251 - (251 * timeLeft) / initialTime : 0;
 
   useEffect(() => {
+    if (!question) return;
+    
     if (timeLeft <= 0) {
       handleTimeUp();
       return;
@@ -42,10 +65,10 @@ const ParticipantLiveQuiz = () => {
       setTimeLeft(prev => prev - 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, question]);
 
   const handleSelectOption = (optId) => {
-    if (isLocked) return;
+    if (isLocked || !question) return;
     setSelectedOption(optId);
     setIsLocked(true);
 
@@ -55,19 +78,30 @@ const ParticipantLiveQuiz = () => {
     });
 
     // Short delay before showing result screen
+    // Note: correctness is determined server-side; navigate to waiting state
     setTimeout(() => {
-      const chosen = question.options.find(o => o.id === optId);
-      const isCorrect = !!chosen?.isCorrect;
-      navigate(`/result?correct=${isCorrect}&score=${score + (isCorrect ? 850 : 0)}&pin=${pin}&username=${encodeURIComponent(username)}`);
+      navigate(`/result?score=${score}&pin=${pin}&username=${encodeURIComponent(username)}`);
     }, 1500);
   };
 
   const handleTimeUp = () => {
+    if (isLocked) return;
     setIsLocked(true);
     setTimeout(() => {
       navigate(`/result?correct=false&score=${score}&pin=${pin}&username=${encodeURIComponent(username)}`);
     }, 1000);
   };
+
+  if (!question) {
+    return (
+      <div className="bg-background text-on-background min-h-screen flex items-center justify-center">
+        <div className="text-center flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-label-md text-on-surface-variant">Waiting for the host to push the question...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background text-on-background min-h-screen flex flex-col justify-between antialiased selection:bg-secondary-container selection:text-on-secondary-container relative overflow-hidden">
@@ -136,61 +170,67 @@ const ParticipantLiveQuiz = () => {
           </div>
 
           <div className="flex items-center gap-2 text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
-            <span>{question.category}</span>
-            <span>•</span>
-            <span>Question {question.number} of {question.total}</span>
+            <span>{question.type ? question.type.replace('_', ' ') : 'Quiz Question'}</span>
           </div>
         </div>
 
-        {/* Question Text */}
-        <h1 className="font-headline-lg text-2xl md:text-4xl text-primary font-bold text-center mb-10 max-w-2xl leading-snug">
-          {question.text}
-        </h1>
+        {/* Question Text & Image */}
+        <div className="flex flex-col items-center gap-4 mb-10 text-center w-full">
+          <h1 className="font-headline-lg text-2xl md:text-4xl text-primary font-bold max-w-2xl leading-snug">
+            {question.text}
+          </h1>
+          {question.imageUrl && (
+            <img src={question.imageUrl} alt="Question" className="max-h-48 object-contain rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
+          )}
+        </div>
 
         {/* 4 Interactive Answer Option Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-3xl">
-          {question.options.map((opt) => {
-            const isSelected = selectedOption === opt.id;
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(question.options || []).map((opt, idx) => {
+            const isSelected = selectedOption === (opt.id || opt.text);
+            const choiceId = opt.id || opt.text; // fallback if id is missing
+            
             return (
               <button
-                key={opt.id}
-                onClick={() => handleSelectOption(opt.id)}
+                key={idx}
+                onClick={() => handleSelectOption(choiceId)}
                 disabled={isLocked}
-                className={`p-6 rounded-3xl text-left border transition-all duration-200 flex items-start gap-4 active:scale-[0.98] ${
+                className={`relative p-5 rounded-3xl border-2 transition-all flex items-center gap-4 group overflow-hidden ${
                   isSelected 
-                    ? 'bg-secondary-container text-on-secondary-container border-secondary shadow-lg ring-2 ring-secondary' 
-                    : isLocked 
-                    ? 'bg-surface-container-lowest opacity-50 border-outline-variant/30 cursor-not-allowed' 
-                    : 'bg-surface-container-lowest hover:border-primary/40 border-outline-variant/40 shadow-sm hover:shadow-md hover:-translate-y-0.5'
+                    ? 'border-primary bg-primary-container text-on-primary-container shadow-md scale-[0.98]' 
+                    : isLocked
+                      ? 'border-outline-variant/30 bg-surface-container-lowest opacity-60'
+                      : 'border-outline-variant/40 bg-surface-container-lowest hover:border-primary hover:shadow-lg active:scale-95'
                 }`}
               >
-                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
-                  isSelected ? 'bg-secondary text-on-secondary' : 'bg-surface-container-high text-primary'
+                {/* Checkmark overlay for selected */}
+                {isSelected && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center animate-fadeIn">
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                  </div>
+                )}
+                
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm uppercase shrink-0 transition-colors ${
+                  isSelected ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-primary group-hover:bg-primary group-hover:text-on-primary'
                 }`}>
-                  {opt.id}
+                  {String.fromCharCode(97 + idx)}
                 </div>
-                <div className="flex-1 font-body-md text-base md:text-lg font-medium leading-tight">
-                  {opt.text}
+                
+                <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-2">
+                  <span className={`font-bold text-lg leading-tight pr-6 ${
+                    isSelected ? 'text-primary' : 'text-primary group-hover:text-primary'
+                  }`}>
+                    {opt.text}
+                  </span>
+                  {opt.imageUrl && (
+                    <img src={opt.imageUrl} alt="Option" className="h-12 w-12 object-cover rounded-lg shrink-0 border border-outline-variant/40" />
+                  )}
                 </div>
               </button>
             );
           })}
         </div>
-
-        {isLocked && (
-          <div className="mt-8 flex items-center gap-2 text-xs font-label-md text-on-surface-variant animate-pulse">
-            <span className="material-symbols-outlined text-sm">lock</span>
-            <span>Answer locked in! Waiting for round results...</span>
-          </div>
-        )}
-
       </main>
-
-      {/* Footer Branding */}
-      <footer className="py-4 text-center text-xs text-outline font-label-md">
-        QUIZCORE Live Interactive Session
-      </footer>
-
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { sessionAPI } from '../api/client';
+import { QRCodeSVG } from 'qrcode.react';
 
 const OrganizerDashboard = () => {
   const { user, logout } = useAuth();
@@ -24,44 +25,11 @@ const OrganizerDashboard = () => {
       if (res.sessions && res.sessions.length > 0) {
         setSessions(res.sessions);
       } else {
-        // Sample starter sessions if none exist yet
-        setSessions([
-          {
-            id: 'sess_default_1',
-            name: 'Tech All-Hands Q3 Challenge',
-            pin: 'TECH-88',
-            status: 'active',
-            type: 'quiz',
-            participants: [{ id: '1' }, { id: '2' }, { id: '3' }],
-            questions: [{ id: 'q1' }, { id: 'q2' }],
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 'sess_default_2',
-            name: 'Design System Sprint Feedback',
-            pin: 'DS-2024',
-            status: 'finished',
-            type: 'poll',
-            participants: [{ id: '1' }, { id: '2' }],
-            questions: [{ id: 'q1' }],
-            createdAt: new Date(Date.now() - 86400000).toISOString()
-          }
-        ]);
+        setSessions([]);
       }
     } catch (err) {
       console.warn('Could not fetch sessions from server, using fallback', err);
-      setSessions([
-        {
-          id: 'sess_fallback_1',
-          name: 'Tech All-Hands Q3 Challenge',
-          pin: 'TECH-88',
-          status: 'active',
-          type: 'quiz',
-          participants: [{ id: '1' }, { id: '2' }, { id: '3' }],
-          questions: [{ id: 'q1' }, { id: 'q2' }],
-          createdAt: new Date().toISOString()
-        }
-      ]);
+      setSessions([]);
     } finally {
       setLoading(false);
     }
@@ -81,6 +49,7 @@ const OrganizerDashboard = () => {
       if (res.session) {
         setSessions(prev => [res.session, ...prev]);
         setCreatedSession(res.session);
+        setShowCreateModal(false);
       }
     } catch (err) {
       console.warn('Backend createSession failed, generating local room:', err.message);
@@ -97,6 +66,7 @@ const OrganizerDashboard = () => {
       };
       setSessions(prev => [fallbackSession, ...prev]);
       setCreatedSession(fallbackSession);
+      setShowCreateModal(false);
     } finally {
       setCreating(false);
     }
@@ -135,9 +105,8 @@ const OrganizerDashboard = () => {
       {/* Side Navigation (Desktop/Tablet) */}
       <aside className="hidden md:flex h-screen w-64 fixed left-0 top-0 flex-col py-6 bg-surface-container-low border-r border-outline-variant/30 z-40">
         <div className="px-6 mb-6">
-          <Link to="/" className="font-display-sm text-display-sm text-primary flex items-center gap-2 mb-6">
-            <span className="material-symbols-outlined text-[28px] text-secondary">token</span>
-            QUIZCORE
+          <Link to="/" className="font-display-sm text-xl flex items-center gap-2 mb-6">
+            <span className="material-symbols-outlined text-[24px] text-secondary">token</span><span className="text-black">QuizCore</span>
           </Link>
           
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 shadow-sm">
@@ -162,14 +131,6 @@ const OrganizerDashboard = () => {
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New Session
-          </button>
-
-          <button 
-            onClick={() => navigate('/builder/form/templates')}
-            className="w-full bg-primary text-on-primary rounded-full py-3 px-4 font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-all hover:shadow-md active:scale-95"
-          >
-            <span className="material-symbols-outlined text-sm">add</span>
-            Create Form
           </button>
         </div>
 
@@ -233,7 +194,7 @@ const OrganizerDashboard = () => {
         <div className="md:hidden flex items-center justify-between p-4 bg-surface-container-lowest border-b border-outline-variant/30 sticky top-0 z-30">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-[24px]">token</span>
-            <span className="font-display-sm text-xl font-bold">QUIZCORE</span>
+            <span className="font-display-sm text-xl font-bold"><span className="text-black">QuizCore</span></span>
           </div>
           <div className="flex items-center gap-2">
             <button 
@@ -252,24 +213,21 @@ const OrganizerDashboard = () => {
           </div>
         </div>
 
-        {/* Ambient Decorative Background Blur */}
-        <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-secondary-container/20 rounded-full blur-[120px] -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
-        <div className="fixed bottom-0 left-[300px] w-[400px] h-[400px] bg-surface-variant/40 rounded-full blur-[90px] -z-10 pointer-events-none translate-y-1/3"></div>
-
-        <div className="px-6 py-8 md:px-12 md:py-10 max-w-[1400px] mx-auto w-full">
+        {/* Dashboard View Container */}
+        <div className="p-6 md:p-12 max-w-7xl w-full mx-auto flex flex-col flex-grow">
           
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
+          {/* Header & Stats Banner */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container-high rounded-full font-label-sm text-label-sm text-on-surface mb-3">
-                <span className="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
-                <span>Organizer Workspace</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container/60 text-on-secondary-container text-xs font-label-md mb-2 border border-secondary/20">
+                <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                <span>ORGANIZER WORKSPACE</span>
               </div>
-              <h1 className="font-display-lg text-3xl md:text-5xl text-primary tracking-tight">
-                Hello, {user?.name || 'Organizer'}.
+              <h1 className="font-display-sm text-3xl md:text-5xl font-extrabold text-primary tracking-tight">
+                Control Hub
               </h1>
-              <p className="font-body-lg text-body-lg text-on-surface-variant mt-2 max-w-xl">
-                Ready to engage your audience? Create a new session or manage your active quizzes and polls.
+              <p className="font-body-md text-sm md:text-base text-on-surface-variant mt-1">
+                Launch interactive quizzes, real-time polls, and audience feedback sessions.
               </p>
             </div>
 
@@ -481,127 +439,208 @@ const OrganizerDashboard = () => {
         </div>
       </main>
 
-      {/* Create Session Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {/* Create Session Modal (Only for entering name/type) */}
+      {showCreateModal && !createdSession && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest rounded-3xl max-w-lg w-full p-8 border border-outline-variant/40 shadow-2xl relative animate-fadeIn">
             
             <button 
               onClick={() => setShowCreateModal(false)}
-              className="absolute top-6 right-6 text-on-surface-variant hover:text-primary p-1 rounded-full hover:bg-surface-container transition-colors"
+              className="absolute top-6 right-6 text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container transition-colors"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
 
-            {!createdSession ? (
-              <>
-                <h3 className="font-display-sm text-2xl font-bold text-primary mb-2">Create New Session</h3>
-                <p className="font-body-md text-sm text-on-surface-variant mb-6">
-                  Set up a real-time room. A shareable PIN code will be automatically generated.
-                </p>
+            <h3 className="font-display-sm text-2xl font-bold text-primary mb-2">Create New Session</h3>
+            <p className="font-body-md text-sm text-on-surface-variant mb-6">
+              Set up a real-time room. A full-screen QR presentation deck and PIN will be generated.
+            </p>
 
-                <form onSubmit={handleCreateSession} className="flex flex-col gap-5">
-                  <div>
-                    <label className="block font-label-md text-xs uppercase tracking-wider text-on-surface-variant mb-2">
-                      Session Type
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['quiz', 'poll', 'feedback'].map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setSessionType(type)}
-                          className={`py-2 px-3 rounded-xl border text-xs font-bold capitalize transition-all ${
-                            sessionType === type 
-                              ? 'bg-primary text-on-primary border-primary shadow-sm' 
-                              : 'border-outline-variant/50 hover:bg-surface-container'
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-label-md text-xs uppercase tracking-wider text-on-surface-variant mb-2" htmlFor="title">
-                      Session Name / Title
-                    </label>
-                    <input 
-                      id="title"
-                      type="text" 
-                      value={sessionTitle}
-                      onChange={(e) => setSessionTitle(e.target.value)}
-                      placeholder="e.g. Design Systems 101, Team Trivia..."
-                      className="w-full h-12 bg-surface-container-lowest border border-outline-variant rounded-xl px-4 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 mt-4">
+            <form onSubmit={handleCreateSession} className="flex flex-col gap-5">
+              <div>
+                <label className="block font-label-md text-xs uppercase tracking-wider text-on-surface-variant mb-2">
+                  Session Type
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['quiz', 'poll', 'feedback'].map((type) => (
                     <button
+                      key={type}
                       type="button"
-                      onClick={() => setShowCreateModal(false)}
-                      className="px-5 py-2.5 rounded-full font-label-md text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+                      onClick={() => setSessionType(type)}
+                      className={`py-3 px-4 rounded-xl border text-xs font-label-md capitalize transition-all ${
+                        sessionType === type 
+                          ? 'bg-primary text-on-primary border-primary shadow-sm' 
+                          : 'border-outline-variant/50 hover:bg-surface-container'
+                      }`}
                     >
-                      Cancel
+                      {type}
                     </button>
-                    <button
-                      type="submit"
-                      disabled={creating}
-                      className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-sm hover:bg-primary-container transition-all disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {creating ? 'Creating...' : 'Create Room'}
-                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center mx-auto mb-4 border border-secondary/30">
-                  <span className="material-symbols-outlined text-3xl">check</span>
+                  ))}
                 </div>
-                <h3 className="font-display-sm text-2xl font-bold text-primary mb-1">Session Ready!</h3>
-                <p className="font-body-md text-sm text-on-surface-variant mb-6">
-                  {createdSession.name} is now live and waiting for participants.
-                </p>
+              </div>
 
-                <div className="bg-surface-container-low rounded-2xl p-6 mb-6 border border-outline-variant/40">
-                  <div className="text-xs uppercase tracking-widest text-on-surface-variant font-bold mb-1">Room PIN</div>
-                  <div className="font-mono text-3xl font-extrabold text-primary tracking-wider mb-3">
+              <div>
+                <label className="block font-label-md text-xs uppercase tracking-wider text-on-surface-variant mb-2" htmlFor="title">
+                  Session Name / Title
+                </label>
+                <input 
+                  id="title"
+                  type="text" 
+                  value={sessionTitle}
+                  onChange={(e) => setSessionTitle(e.target.value)}
+                  placeholder="e.g. Design Systems 101, Team Trivia..."
+                  className="w-full h-12 bg-surface-container-lowest border border-outline-variant rounded-xl px-4 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-5 py-2.5 rounded-full font-label-md text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-sm hover:bg-primary-container transition-all disabled:opacity-50 flex items-center gap-2 font-bold shadow-sm"
+                >
+                  {creating ? 'Creating...' : 'Launch Room Presenter'}
+                  <span className="material-symbols-outlined text-sm">fullscreen</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* FULL-PAGE PRESENTATION VIEW (NOT A POPUP) */}
+      {createdSession && (
+        <div className="fixed inset-0 z-50 bg-surface min-h-screen w-screen flex flex-col justify-between p-6 md:p-12 overflow-y-auto animate-fadeIn select-none">
+          
+          {/* Top Bar */}
+          <header className="flex items-center justify-between w-full max-w-7xl mx-auto pb-6 border-b border-outline-variant/30">
+            <Link to="/dashboard" className="font-display-sm text-xl font-bold flex items-center gap-2">
+              <span className="material-symbols-outlined text-[24px] text-secondary">token</span>
+              <span className="text-black">QuizCore</span>
+            </Link>
+
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary-container/70 text-on-secondary-container text-xs font-label-md border border-secondary/30 shadow-sm">
+              <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-ping"></span>
+              <span className="font-bold tracking-wider">LIVE AUDIENCE PRESENTATION</span>
+            </div>
+
+            <button
+              onClick={() => setCreatedSession(null)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-container text-xs font-label-md transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+              <span>Exit Presenter</span>
+            </button>
+          </header>
+
+          {/* Main Full-Screen Presenter Stage */}
+          <main className="flex-1 max-w-7xl mx-auto w-full flex flex-col items-center justify-center py-8 my-auto">
+            
+            {/* Title */}
+            <div className="text-center mb-8">
+              <h1 className="font-display-sm text-4xl md:text-6xl font-extrabold text-primary mb-3 tracking-tight">
+                {createdSession.name}
+              </h1>
+              <p className="text-base md:text-xl text-on-surface-variant font-body-md">
+                Scan with your phone camera or visit <span className="font-mono font-bold text-primary px-2 py-0.5 bg-surface-container rounded-lg">{window.location.origin}/join</span>
+              </p>
+            </div>
+
+            {/* Giant Presenter Layout */}
+            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-surface-container-lowest rounded-3xl p-8 md:p-12 border border-outline-variant/40 shadow-2xl">
+              
+              {/* Left Column: Extra Large QR Code (7 Cols) */}
+              <div className="lg:col-span-6 flex flex-col items-center justify-center">
+                <div className="p-6 md:p-8 bg-white rounded-3xl shadow-2xl border-4 border-surface-container-high flex items-center justify-center transition-transform hover:scale-[1.02] duration-300">
+                  <QRCodeSVG 
+                    value={`${window.location.origin}/join?pin=${createdSession.pin}`} 
+                    size={320}
+                    level="H"
+                    bgColor="#ffffff"
+                    fgColor="#111315"
+                  />
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-sm text-on-surface-variant font-label-md bg-surface-container px-4 py-1.5 rounded-full border border-outline-variant/30">
+                  <span className="material-symbols-outlined text-base text-secondary">photo_camera</span>
+                  <span>Point any smartphone camera to join directly</span>
+                </div>
+              </div>
+
+              {/* Right Column: Giant Room PIN & Direct Link (6 Cols) */}
+              <div className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left gap-6 pl-0 lg:pl-6">
+                
+                {/* Big PIN */}
+                <div className="w-full bg-surface-container-low rounded-3xl p-6 md:p-8 border border-outline-variant/40 shadow-inner">
+                  <span className="text-xs md:text-sm uppercase tracking-widest text-on-surface-variant font-bold">Room PIN Code</span>
+                  <div className="font-mono text-5xl md:text-7xl font-black text-primary tracking-widest my-2">
                     {createdSession.pin}
                   </div>
                   <button 
                     onClick={(e) => handleCopyPin(createdSession.pin, e)}
-                    className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface-container-highest hover:bg-outline-variant/30 text-xs font-label-md transition-colors"
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-surface-container-highest hover:bg-outline-variant/40 text-xs font-label-md transition-colors mt-2"
                   >
                     <span className="material-symbols-outlined text-sm">
                       {copiedPin === createdSession.pin ? 'check' : 'content_copy'}
                     </span>
-                    {copiedPin === createdSession.pin ? 'PIN Copied to Clipboard!' : 'Copy PIN Code'}
+                    <span>{copiedPin === createdSession.pin ? 'PIN Copied!' : 'Copy PIN Code'}</span>
                   </button>
                 </div>
 
-                <div className="flex gap-3 justify-center">
+                {/* Direct Link Box */}
+                <div className="w-full bg-surface-container rounded-2xl p-4 border border-outline-variant/30 text-left">
+                  <div className="text-xs text-on-surface-variant uppercase tracking-wider font-bold mb-1.5">Direct URL</div>
+                  <div className="font-mono text-xs md:text-sm text-primary truncate bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/30 select-all font-semibold">
+                    {`${window.location.origin}/join?pin=${createdSession.pin}`}
+                  </div>
                   <button
-                    onClick={() => setShowCreateModal(false)}
-                    className="px-5 py-2.5 rounded-full font-label-md text-sm border border-outline-variant hover:bg-surface-container transition-colors"
+                    onClick={(e) => {
+                      navigator.clipboard.writeText(`${window.location.origin}/join?pin=${createdSession.pin}`);
+                      setCopiedPin('link');
+                      setTimeout(() => setCopiedPin(null), 2000);
+                    }}
+                    className="mt-2 text-xs text-secondary font-bold hover:underline flex items-center gap-1"
                   >
-                    Close
+                    <span className="material-symbols-outlined text-sm">content_copy</span>
+                    <span>{copiedPin === 'link' ? 'Link Copied to Clipboard!' : 'Copy Direct Link'}</span>
                   </button>
-                  <Link
-                    to={`/waiting-room?pin=${createdSession.pin}`}
-                    className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-sm hover:bg-primary-container transition-all flex items-center gap-1.5"
-                  >
-                    <span>Go to Waiting Room</span>
-                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                  </Link>
                 </div>
-              </div>
-            )}
 
-          </div>
+              </div>
+
+            </div>
+
+          </main>
+
+          {/* Bottom Presenter Actions Bar */}
+          <footer className="flex flex-wrap gap-4 items-center justify-between w-full max-w-7xl mx-auto pt-6 border-t border-outline-variant/30">
+            <button
+              onClick={() => setCreatedSession(null)}
+              className="px-6 py-3.5 rounded-full font-label-md text-sm border border-outline-variant hover:bg-surface-container transition-colors flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              <span>Back to Dashboard</span>
+            </button>
+
+            <Link
+              to={`/host/${createdSession.id}?pin=${createdSession.pin}&title=${encodeURIComponent(createdSession.name)}`}
+              className="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-base hover:bg-primary-container transition-all flex items-center gap-2 shadow-xl hover:shadow-2xl font-bold"
+            >
+              <span className="material-symbols-outlined text-lg">sensors</span>
+              <span>Launch Live Host Deck</span>
+              <span className="material-symbols-outlined text-lg">arrow_forward</span>
+            </Link>
+          </footer>
+
         </div>
       )}
 
