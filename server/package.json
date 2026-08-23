@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "prisma db push && node index.js",
     "dev": "nodemon index.js",
-    "build": "prisma generate && prisma db push",
+    "build": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
