@@ -44,13 +44,22 @@ router.get('/', authenticateOrganizer, async (req, res) => {
 // POST /api/sessions - Create a new session
 router.post('/', authenticateOrganizer, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, pin: customPin } = req.body;
     if (!name) {
       return res.status(400).json({ message: 'Session name is required' });
     }
 
-    // Generate random 6-character PIN (e.g. QZ-4821)
-    const pin = 'QZ-' + Math.floor(1000 + Math.random() * 9000);
+    let pin = customPin;
+    if (!pin) {
+      // Generate random 6-character PIN (e.g. QZ-4821)
+      pin = 'QZ-' + Math.floor(1000 + Math.random() * 9000);
+    } else {
+      // Check if custom pin is already in use
+      const existing = await prisma.session.findUnique({ where: { pin } });
+      if (existing) {
+        return res.status(400).json({ message: 'Join code already in use, please choose another.' });
+      }
+    }
 
     const session = await prisma.session.create({
       data: {
@@ -68,6 +77,9 @@ router.post('/', authenticateOrganizer, async (req, res) => {
     res.status(201).json({ success: true, session });
   } catch (error) {
     console.error(error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: 'Join code already in use, please choose another.' });
+    }
     res.status(500).json({ message: 'Server error' });
   }
 });

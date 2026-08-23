@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 
 const FeedbackSubmission = () => {
@@ -6,16 +6,41 @@ const FeedbackSubmission = () => {
   const navigate = useNavigate();
 
   const pin = searchParams.get('pin') || 'TECH-88';
-  const username = searchParams.get('username') || 'PixelCrafter';
-
-  const [rating, setRating] = useState(5);
-  const [nps, setNps] = useState(9);
-  const [comment, setComment] = useState('');
+  
+  const [name, setName] = useState('');
+  const [branch, setBranch] = useState('');
+  const [difficulty, setDifficulty] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [file, setFile] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+  
+  const fileInputRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitted(true);
+  };
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   return (
@@ -40,83 +65,135 @@ const FeedbackSubmission = () => {
           <div className="bg-surface-container-lowest rounded-3xl p-8 md:p-10 border border-outline-variant/30 shadow-editorial">
             <div className="text-center mb-8">
               <span className="px-3 py-1 bg-surface-container-high rounded-full font-label-sm text-xs font-bold uppercase tracking-wider text-on-surface">
-                Attendee Feedback
+                Student Feedback
               </span>
               <h1 className="font-display-sm text-3xl font-bold text-primary mt-3 mb-1">
-                How was the session?
+                Share your experience
               </h1>
               <p className="text-sm text-on-surface-variant">
-                Your feedback helps the host craft better interactive experiences.
+                Your feedback helps us improve future sessions.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
               
-              {/* Star Rating */}
-              <div>
-                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-3 text-center">
-                  Overall Experience Rating
-                </label>
-                <div className="flex justify-center gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      className={`text-3xl transition-transform hover:scale-125 ${
-                        star <= rating ? 'text-secondary-fixed-dim' : 'text-outline-variant/50'
-                      }`}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* NPS 1-10 Scale */}
-              <div>
-                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2 text-center">
-                  Likelihood to Recommend (NPS)
-                </label>
-                <div className="grid grid-cols-10 gap-1">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setNps(num)}
-                      className={`h-10 rounded-xl text-xs font-bold font-mono transition-colors ${
-                        nps === num 
-                          ? 'bg-primary text-on-primary' 
-                          : 'bg-surface-container-low hover:bg-surface-container border border-outline-variant/30'
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex justify-between text-[10px] text-on-surface-variant mt-1">
-                  <span>Not likely (1)</span>
-                  <span>Extremely likely (10)</span>
-                </div>
-              </div>
-
-              {/* Comment Textarea */}
+              {/* 1. Name of the Student */}
               <div>
                 <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2">
-                  What was your favorite takeaway?
+                  1. Name of the Student <span className="text-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 font-body-md text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* 2. Branch */}
+              <div>
+                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2">
+                  2. Branch
+                </label>
+                <select
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 font-body-md text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Select your branch</option>
+                  <option value="CSD">CSD</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* 3. Difficulty Level */}
+              <div>
+                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-3">
+                  3. How was the difficulty level of the quiz questions?
+                </label>
+                <div className="flex flex-col gap-3">
+                  {['Very Easy', 'Easy', 'Moderate', 'Difficult', 'Very Difficult'].map((level) => (
+                    <label key={level} className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${difficulty === level ? 'border-primary bg-primary' : 'border-outline-variant group-hover:border-primary'}`}>
+                        {difficulty === level && <div className="w-2 h-2 rounded-full bg-on-primary"></div>}
+                      </div>
+                      <input
+                        type="radio"
+                        name="difficulty"
+                        value={level}
+                        checked={difficulty === level}
+                        onChange={(e) => setDifficulty(e.target.value)}
+                        className="hidden"
+                      />
+                      <span className="font-body-md text-sm text-on-surface">{level}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Feedback in Your Own Words */}
+              <div>
+                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2">
+                  4. Your Feedback in Your Own Words
                 </label>
                 <textarea
-                  rows={3}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share any thoughts, favorite questions, or suggestions..."
+                  rows={4}
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Share your experience and suggestions..."
                   className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 font-body-md text-sm focus:border-primary focus:outline-none resize-none"
                 />
               </div>
 
+              {/* 5. Add File */}
+              <div>
+                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2">
+                  5. Add File (Optional)
+                </label>
+                <div className="border-2 border-dashed border-outline-variant/50 rounded-2xl p-6 text-center">
+                  {!file ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="material-symbols-outlined text-4xl text-outline-variant">cloud_upload</span>
+                      <p className="text-xs text-on-surface-variant">Supported formats: PDF, DOC/DOCX, PNG, JPG/JPEG</p>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2 mt-2 bg-secondary-container text-on-secondary-container rounded-full font-label-md text-xs hover:bg-secondary/20 transition-colors"
+                      >
+                        Upload File
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex items-center gap-2 text-primary">
+                        <span className="material-symbols-outlined">description</span>
+                        <span className="font-label-md text-sm truncate max-w-[200px]">{file.name}</span>
+                      </div>
+                      <span className="text-xs text-on-surface-variant">{formatFileSize(file.size)}</span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="px-4 py-2 mt-2 border border-error text-error rounded-full font-label-md text-xs hover:bg-error-container transition-colors"
+                      >
+                        Remove File
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
-                className="w-full py-4 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shadow-md active:scale-98"
+                className="w-full py-4 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shadow-md active:scale-98 mt-2"
               >
                 Submit Feedback
               </button>
@@ -128,21 +205,15 @@ const FeedbackSubmission = () => {
             <div className="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-3xl mx-auto mb-4 border border-secondary/30">
               ✓
             </div>
-            <h2 className="font-display-sm text-3xl font-bold text-primary mb-2">Thank you, {username}!</h2>
+            <h2 className="font-display-sm text-3xl font-bold text-primary mb-2">Thank you for your feedback!</h2>
             <p className="text-sm text-on-surface-variant mb-8 max-w-sm mx-auto">
-              Your responses have been recorded and shared directly with the organizer.
+              Your responses have been recorded successfully.
             </p>
 
-            <div className="flex flex-col sm:flex-row justify-center gap-3">
-              <Link
-                to="/profile"
-                className="px-6 py-3 rounded-full border border-outline-variant font-label-md text-xs hover:bg-surface-container transition-colors"
-              >
-                View Player History
-              </Link>
+            <div className="flex justify-center">
               <Link
                 to="/"
-                className="px-6 py-3 rounded-full bg-primary text-on-primary font-label-md text-xs hover:bg-primary-container transition-all"
+                className="px-8 py-3 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all"
               >
                 Return to Home
               </Link>
@@ -161,3 +232,4 @@ const FeedbackSubmission = () => {
 };
 
 export default FeedbackSubmission;
+

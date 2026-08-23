@@ -6,6 +6,8 @@ const SessionBuilder = () => {
   const navigate = useNavigate();
   const [sessionTitle, setSessionTitle] = useState('Product Design Masterclass Quiz');
   const [sessionType, setSessionType] = useState('quiz'); // quiz, poll, feedback
+  const [joinCode, setJoinCode] = useState('');
+
   
   const [questions, setQuestions] = useState([
     {
@@ -98,7 +100,7 @@ const SessionBuilder = () => {
   const handlePublish = async () => {
     try {
       setIsPublishing(true);
-      const res = await sessionAPI.createSession(sessionTitle, sessionType);
+      const res = await sessionAPI.createSession(sessionTitle, sessionType, joinCode);
       const pin = res.session?.pin || 'QZ-' + Math.floor(1000 + Math.random() * 9000);
       const sessId = res.session?.id || 'sess_' + Date.now();
       navigate(`/host/${sessId}?pin=${pin}&title=${encodeURIComponent(sessionTitle)}`);
@@ -175,6 +177,14 @@ const SessionBuilder = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/\s/g, ''))}
+              placeholder="Custom PIN (Optional)"
+              maxLength={8}
+              className="px-4 py-2 rounded-full border border-outline-variant/50 text-on-surface font-label-md text-sm bg-transparent focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary w-44 placeholder:text-on-surface-variant/50"
+            />
             <button 
               onClick={() => navigate('/join')} 
               className="px-4 py-2 rounded-full border border-outline-variant/50 text-on-surface font-label-md text-sm hover:bg-surface-variant transition-colors hidden sm:flex items-center gap-1.5"

@@ -13,6 +13,7 @@ model User {
   passwordHash  String
   name          String
   sessions      Session[]
+  forms         Form[]
   createdAt     DateTime  @default(now())
 }
 
@@ -46,4 +47,41 @@ model Question {
   order            Int
   sessionId        String
   session          Session  @relation(fields: [sessionId], references: [id])
+}
+
+model Form {
+  id           String         @id @default(uuid())
+  title        String
+  description  String?
+  instructions String?
+  status       String         @default("draft") // draft, template, published
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  questions    FormQuestion[]
+}
+
+model FormQuestion {
+  id            String     @id @default(uuid())
+  type          String     // multiple-choice, multiple-select, true-false, short-answer, long-answer
+  text          String
+  options       String?    // JSON array of options
+  correctAnswer String?    // JSON string or simple string depending on type
+  marks         Int        @default(1)
+  isRequired    Boolean    @default(false)
+  order         Int
+  formId        String
+  form          Form       @relation(fields: [formId], references: [id], onDelete: Cascade)
+  files         FormFile[]
+}
+
+model FormFile {
+  id             String       @id @default(uuid())
+  filename       String
+  originalName   String
+  mimetype       String
+  size           Int
+  formQuestionId String
+  formQuestion   FormQuestion @relation(fields: [formQuestionId], references: [id], onDelete: Cascade)
 }

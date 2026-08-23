@@ -100,16 +100,16 @@ export const sessionAPI = {
     return fetchClient('/sessions', { method: 'GET' });
   },
 
-  createSession: async (name, type = 'quiz') => {
+  createSession: async (name, type = 'quiz', pin = '') => {
     if (USE_MOCKS) {
       await delay(600);
-      const randomPin = 'QUIZ-' + Math.floor(1000 + Math.random() * 9000);
+      const finalPin = pin || 'QUIZ-' + Math.floor(1000 + Math.random() * 9000);
       return {
         success: true,
         session: {
           id: 'sess_' + Date.now(),
           name,
-          pin: randomPin,
+          pin: finalPin,
           status: 'waiting',
           participants: [],
           questions: []
@@ -118,7 +118,7 @@ export const sessionAPI = {
     }
     return fetchClient('/sessions', {
       method: 'POST',
-      body: JSON.stringify({ name, type }),
+      body: JSON.stringify({ name, type, pin }),
     });
   },
 

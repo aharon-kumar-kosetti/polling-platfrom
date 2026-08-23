@@ -151,7 +151,7 @@ const OrganizerDashboard = () => {
           </div>
         </div>
 
-        <div className="px-6 mb-4">
+        <div className="px-6 mb-4 flex flex-col gap-3">
           <button 
             onClick={() => {
               setSessionTitle('');
@@ -162,6 +162,14 @@ const OrganizerDashboard = () => {
           >
             <span className="material-symbols-outlined text-sm">add</span>
             New Session
+          </button>
+
+          <button 
+            onClick={() => navigate('/builder/form/templates')}
+            className="w-full bg-primary text-on-primary rounded-full py-3 px-4 font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-all hover:shadow-md active:scale-95"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+            Create Form
           </button>
         </div>
 
@@ -190,6 +198,11 @@ const OrganizerDashboard = () => {
           <Link to="/settings" className="text-on-surface-variant hover:bg-surface-container-highest rounded-full px-4 py-2.5 flex items-center gap-3 font-label-md text-sm transition-colors">
             <span className="material-symbols-outlined text-[20px]">settings</span>
             Settings
+          </Link>
+
+          <Link to="/feedback" className="text-on-surface-variant hover:bg-surface-container-highest rounded-full px-4 py-2.5 flex items-center gap-3 font-label-md text-sm transition-colors">
+            <span className="material-symbols-outlined text-[20px]">feedback</span>
+            Feedback
           </Link>
           
           <Link 

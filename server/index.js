@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -5,7 +6,9 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const sessionRoutes = require('./routes/sessions');
+const formRoutes = require('./routes/forms');
 const setupSockets = require('./sockets');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,6 +28,10 @@ app.use(cookieParser());
 // REST Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/forms', formRoutes);
+
+// Static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Setup Socket.io
 const io = new Server(server, {
