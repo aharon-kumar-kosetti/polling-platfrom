@@ -20,21 +20,24 @@ const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
-// Flexible CORS setup for local development across LAN / WiFi
+// Flexible CORS setup for local development and production deployments (Vercel, LAN, etc.)
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
+    // Allow requests with no origin (like mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
     
-    // Allow localhost, 127.0.0.1, or any LAN IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const configuredOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+      .split(',')
+      .map(u => u.trim().replace(/\/$/, ''));
+
     const isAllowed = 
-      origin === FRONTEND_URL ||
+      configuredOrigins.includes(normalizedOrigin) ||
+      /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(normalizedOrigin) ||
       /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
       
-    if (isAllowed) {
+    if (isAllowed || IS_DEV) {
       callback(null, true);
-    } else if (IS_DEV) {
-      callback(null, true); // Permissive in local development only
     } else {
       callback(new Error('CORS not allowed for this origin'));
     }

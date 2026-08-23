@@ -48,11 +48,11 @@ router.post('/login', async (req, res) => {
     // Generate JWT
     const token = jwt.sign({ userId: user.id, role: 'organizer' }, JWT_SECRET, { expiresIn: '1d' });
 
-    // Set HttpOnly cookie
+    // Set HttpOnly cookie (sameSite: 'none' required for cross-domain Vercel <-> Render in production)
     res.cookie('access_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
 
@@ -68,11 +68,15 @@ router.post('/login', async (req, res) => {
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('access_token');
+  res.clearCookie('access_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  });
   res.json({ success: true });
 });
 
-// GET /api/user/me
+// GET /api/auth/me
 router.get('/me', async (req, res) => {
   try {
     const token = req.cookies.access_token;
