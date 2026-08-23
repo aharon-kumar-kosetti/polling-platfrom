@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: quizcore-backend
+    env: node
+    rootDir: server
+    buildCommand: npm install && npx prisma generate && npx prisma db push
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+    disk:
+      name: sqlite-data
+      mountPath: /data
+      sizeGB: 1
