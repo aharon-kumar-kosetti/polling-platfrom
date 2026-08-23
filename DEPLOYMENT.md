@@ -9,7 +9,7 @@ The project includes a `render.yaml` Blueprint. When you connect your GitHub rep
 ### Environment Variables on Render
 You must manually set these environment variables in your Render dashboard after connecting:
 
-- `DATABASE_URL`: `file:/data/dev.db` (This stores the SQLite database on the attached persistent disk).
+- `DATABASE_URL`: `file:/opt/render/project/src/server/data/dev.db` (This stores the SQLite database on the attached persistent disk).
 - `FRONTEND_URL`: `https://your-vercel-project-url.vercel.app` (This allows CORS requests from your frontend).
 - `ADMIN_EMAIL`: The email for your default organizer account (e.g. `admin@quizcore.com`)
 - `ADMIN_PASSWORD`: The password for your default organizer account.
