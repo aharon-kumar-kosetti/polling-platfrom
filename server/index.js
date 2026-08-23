@@ -65,7 +65,44 @@ const io = new Server(server, {
 });
 setupSockets(io);
 
+// Database client & Admin User Initialization
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
+const prisma = new PrismaClient();
+
+async function initAdminUser() {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@quizcore.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
+  const adminName = process.env.ADMIN_NAME || 'Admin Organizer';
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
+
+    if (!existing) {
+      const created = await prisma.user.create({
+        data: {
+          email: adminEmail,
+          passwordHash,
+          name: adminName
+        }
+      });
+      console.log(`[Backend] Initialized default admin account: ${adminEmail}`);
+    } else {
+      // Sync password in case it was updated in environment variables
+      await prisma.user.update({
+        where: { email: adminEmail },
+        data: { passwordHash, name: adminName }
+      });
+      console.log(`[Backend] Synced admin account credentials for: ${adminEmail}`);
+    }
+  } catch (err) {
+    console.error('[Backend] Warning: Failed to initialize admin user:', err.message);
+  }
+}
+
 // Start Server
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', async () => {
   console.log(`[Backend] Server listening on http://0.0.0.0:${PORT}`);
+  await initAdminUser();
 });
