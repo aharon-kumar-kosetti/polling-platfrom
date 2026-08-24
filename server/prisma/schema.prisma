@@ -43,12 +43,14 @@ model Participant {
 
 model Question {
   id               String   @id @default(uuid())
+  type             String   @default("single_choice")
   text             String
+  imageUrl         String?
   options          String   // JSON string of options [{id, text, isCorrect}]
   timeLimitSeconds Int      @default(30)
-  order            Int
+  order            Int      @default(0)
   sessionId        String
-  session          Session  @relation(fields: [sessionId], references: [id])
+  session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
 model Form {

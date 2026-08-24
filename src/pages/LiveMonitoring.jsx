@@ -99,14 +99,28 @@ const LiveMonitoring = () => {
     };
     loadSessionDetails();
 
-    // 3. Fetch organizer's saved question bank
-    const fetchBank = async () => {
+    // 3. Fetch organizer's saved question bank AND session questions
+    const fetchQuestions = async () => {
       try {
-        const res = await questionAPI.getSavedQuestions();
-        if (res.questions && res.questions.length > 0) {
-          const parsed = res.questions.reduce((acc, q) => {
+        let sessionQ = [];
+        // First try to load session-specific questions
+        if (sessionId) {
+          const sRes = await sessionAPI.getSession(sessionId);
+          if (sRes.session && sRes.session.questions && sRes.session.questions.length > 0) {
+            sessionQ = sRes.session.questions;
+          }
+        }
+        
+        // If session has no specific questions, fallback to the global bank
+        if (sessionQ.length === 0) {
+          const res = await questionAPI.getSavedQuestions();
+          if (res.questions) sessionQ = res.questions;
+        }
+
+        if (sessionQ.length > 0) {
+          const parsed = sessionQ.reduce((acc, q) => {
             try {
-              acc.push({ ...q, options: JSON.parse(q.options) });
+              acc.push({ ...q, options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options });
             } catch (e) {
               console.warn(`Skipping question ${q.id} with malformed options`);
             }
@@ -117,11 +131,11 @@ const LiveMonitoring = () => {
           setBankQuestions(DEFAULT_STARTER_QUESTIONS);
         }
       } catch (err) {
-        console.error('Failed to load question bank, using default starters', err);
+        console.warn('Could not fetch questions:', err);
         setBankQuestions(DEFAULT_STARTER_QUESTIONS);
       }
     };
-    fetchBank();
+    fetchQuestions();
 
     // 4. Socket Listeners for Players, Answers, Settings, and Leaderboard
     const handleParticipantsUpdated = (list) => {

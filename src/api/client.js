@@ -150,6 +150,18 @@ export const sessionAPI = {
     return fetchClient(`/sessions/${id}`, { method: 'GET' });
   },
 
+  updateSessionQuestions: async (id, questions) => {
+    if (USE_MOCKS) {
+      await delay(600);
+      return { success: true, questions };
+    }
+    return fetchClient(`/sessions/${id}/questions`, {
+      method: 'PUT',
+      body: JSON.stringify({ questions }),
+      timeout: 15000,
+    });
+  },
+
   getSessionByPin: async (pin) => {
     if (USE_MOCKS) {
       await delay(300);

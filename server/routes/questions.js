@@ -58,10 +58,12 @@ router.get('/bank', authenticateOrganizer, async (req, res) => {
       where: { userId: req.user.userId },
       orderBy: { createdAt: 'desc' },
     });
+    
+    console.log(`[Questions] GET /bank fetched ${questions.length} questions for user ${req.user.userId}`);
 
     res.json({ success: true, questions });
   } catch (error) {
-    console.error(error);
+    console.error('[Questions] GET /bank Error:', error);
     res.status(500).json({ message: 'Server error fetching question bank' });
   }
 });
@@ -93,7 +95,7 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
 
     console.log(`[Questions] Saving ${questions.length} question(s) for user ${userId}`);
 
-    // Use a transaction so all questions succeed or none persist
+    // Use a transaction to save the new questions
     const createdQuestions = await prisma.$transaction(
       questions.map(q =>
         prisma.savedQuestion.create({

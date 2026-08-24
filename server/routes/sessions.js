@@ -157,6 +157,50 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// PUT /api/sessions/:id/questions - Update session questions (Full Sync)
+router.put('/:id/questions', authenticateOrganizer, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { questions } = req.body;
+
+    if (!questions || !Array.isArray(questions)) {
+      return res.status(400).json({ message: 'A questions array is required' });
+    }
+
+    // Verify session ownership
+    const session = await prisma.session.findUnique({
+      where: { id, organizerId: req.user.userId }
+    });
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found or unauthorized' });
+    }
+
+    // Delete existing session questions and insert new ones
+    const transactionResults = await prisma.$transaction([
+      prisma.question.deleteMany({ where: { sessionId: id } }),
+      ...questions.map((q, index) =>
+        prisma.question.create({
+          data: {
+            type: q.type || 'single_choice',
+            text: q.text.trim(),
+            imageUrl: q.imageUrl || null,
+            options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
+            timeLimitSeconds: q.timeLimitSeconds || 30,
+            order: index,
+            sessionId: id
+          }
+        })
+      )
+    ]);
+
+    const createdQuestions = transactionResults.slice(1);
+    res.status(200).json({ success: true, questions: createdQuestions });
+  } catch (error) {
+    console.error('[Sessions] Error updating questions:', error.message);
+    res.status(500).json({ message: 'Server error updating session questions', detail: error.message });
+  }
+});
+
 // DELETE /api/sessions/:id - Delete a session
 router.delete('/:id', authenticateOrganizer, async (req, res) => {
   try {

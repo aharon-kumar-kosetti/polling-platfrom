@@ -406,6 +406,14 @@ const OrganizerDashboard = () => {
                         </button>
 
                         <Link
+                          to={`/builder/${session.id}`}
+                          className="px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-label-md hover:bg-surface-container-highest transition-all flex items-center gap-1 shadow-sm"
+                        >
+                          <span>Edit Questions</span>
+                          <span className="material-symbols-outlined text-[14px]">edit_document</span>
+                        </Link>
+
+                        <Link
                           to={`/host/${session.id}?pin=${session.pin}&title=${encodeURIComponent(session.name)}`}
                           className="px-3.5 py-1.5 rounded-full bg-secondary text-on-secondary text-xs font-label-md hover:opacity-90 transition-all flex items-center gap-1 shadow-sm"
                         >

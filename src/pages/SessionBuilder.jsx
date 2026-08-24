@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { questionAPI } from '../api/client';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { questionAPI, sessionAPI } from '../api/client';
 
 const SessionBuilder = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [sessionTitle, setSessionTitle] = useState('');
   const [sessionType, setSessionType] = useState('quiz'); // quiz, poll, feedback
@@ -21,8 +22,51 @@ const SessionBuilder = () => {
     }
   ]);
 
+  const [bankQuestions, setBankQuestions] = useState([]);
+  const [activeTab, setActiveTab] = useState('drafts');
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        let res;
+        if (id) {
+          res = await sessionAPI.getSession(id);
+          if (res.session && res.session.name) setSessionTitle(res.session.name);
+        } else {
+          res = await questionAPI.getSavedQuestions();
+        }
+
+        const sourceQuestions = id ? (res.session?.questions || []) : (res.questions || []);
+        
+        const bankRes = await questionAPI.getSavedQuestions();
+        if (bankRes.questions) {
+          const parsedBank = bankRes.questions.reduce((acc, q) => {
+            try { acc.push({ ...q, options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options }); } 
+            catch (e) { console.warn(`Skipping question ${q.id}`); }
+            return acc;
+          }, []);
+          setBankQuestions(parsedBank);
+        }
+
+        if (sourceQuestions.length > 0) {
+          const parsed = sourceQuestions.reduce((acc, q) => {
+            try { acc.push({ ...q, options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options }); } 
+            catch (e) { console.warn(`Skipping question ${q.id}`); }
+            return acc;
+          }, []);
+          if (parsed.length > 0) {
+            setQuestions(parsed);
+            setActiveQuestionIndex(0);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      }
+    };
+    fetchData();
+  }, [id]);
 
   const currentQ = questions[activeQuestionIndex] || questions[0];
 
@@ -116,18 +160,55 @@ const SessionBuilder = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveToBank = async () => {
+  const handleSaveSession = async () => {
     try {
       setIsPublishing(true);
-      await questionAPI.saveToBank(questions);
-      alert('Successfully saved questions to your bank!');
-      // Optionally navigate back to dashboard
-      navigate('/dashboard');
+      const validQuestions = questions.filter(q => q.text && q.text.trim() !== '');
+      if (validQuestions.length === 0) {
+        alert('Please write at least one question before saving.');
+        return;
+      }
+      
+      if (id) {
+        await sessionAPI.updateSessionQuestions(id, validQuestions);
+        alert('Successfully saved questions to this Session!');
+      } else {
+        alert('Please create a session first, or use the "Save to Bank" button on individual questions.');
+      }
     } catch (err) {
-      alert('Error saving to bank: ' + err.message);
+      alert('Error saving questions: ' + err.message);
     } finally {
       setIsPublishing(false);
     }
+  };
+
+  const handleSaveSingleToBank = async (q) => {
+    if (!q.text || q.text.trim() === '') return alert('Question text is empty');
+    try {
+      const res = await questionAPI.saveToBank([q]);
+      if (res.questions && res.questions.length > 0) {
+        const newBankQ = { ...res.questions[0], options: typeof res.questions[0].options === 'string' ? JSON.parse(res.questions[0].options) : res.questions[0].options };
+        setBankQuestions([...bankQuestions, newBankQ]);
+        alert('Saved to Question Bank!');
+      }
+    } catch (e) {
+      alert('Failed to save to bank: ' + e.message);
+    }
+  };
+
+  const handleDeleteFromBank = async (bankQId) => {
+    try {
+      await questionAPI.deleteSavedQuestion(bankQId);
+      setBankQuestions(bankQuestions.filter(q => q.id !== bankQId));
+    } catch (e) {
+      alert('Failed to delete from bank: ' + e.message);
+    }
+  };
+
+  const handleCopyFromBank = (bankQ) => {
+    const newQ = { ...bankQ, id: Date.now() }; // new local ID
+    setQuestions([...questions, newQ]);
+    setActiveQuestionIndex(questions.length);
   };
 
   return (
@@ -185,19 +266,23 @@ const SessionBuilder = () => {
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
             <div className="flex flex-col flex-1">
-              <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Question Bank Builder</span>
-              <div className="font-body-lg text-lg font-bold text-primary w-full">Create & Save Questions</div>
+              <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">
+                {id ? 'Session Builder' : 'Question Bank Builder'}
+              </span>
+              <div className="font-body-lg text-lg font-bold text-primary w-full">
+                {id ? `Editing: ${sessionTitle}` : 'Create & Save Questions'}
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button 
-              onClick={handleSaveToBank}
+              onClick={handleSaveSession}
               disabled={isPublishing}
               className="px-6 py-2.5 rounded-full bg-secondary text-on-secondary font-label-md text-sm hover:opacity-90 transition-all shadow flex items-center gap-2 active:scale-95 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">save</span>
-              {isPublishing ? 'Saving...' : 'Save to Bank'}
+              {isPublishing ? 'Saving...' : id ? 'Save Session' : 'Save Session'}
             </button>
           </div>
         </header>
@@ -207,46 +292,96 @@ const SessionBuilder = () => {
           
           {/* Left Panel: Question Outline List */}
           <aside className="w-72 bg-surface-container-lowest border-r border-outline-variant/20 flex flex-col shrink-0">
-            <div className="p-4 border-b border-outline-variant/20 flex justify-between items-center">
-              <span className="font-label-md text-sm font-bold text-primary">Questions ({questions.length})</span>
+            {/* Tabs */}
+            <div className="flex border-b border-outline-variant/20">
               <button 
-                onClick={handleAddQuestion}
-                className="w-7 h-7 rounded-full bg-surface-variant text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors"
-                title="Add new question"
+                onClick={() => setActiveTab('drafts')}
+                className={`flex-1 py-3 text-xs font-label-md transition-colors border-b-2 ${activeTab === 'drafts' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-primary hover:bg-surface-container'}`}
               >
-                <span className="material-symbols-outlined text-[16px]">add</span>
+                Drafts ({questions.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('bank')}
+                className={`flex-1 py-3 text-xs font-label-md transition-colors border-b-2 ${activeTab === 'bank' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-primary hover:bg-surface-container'}`}
+              >
+                Bank ({bankQuestions.length})
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-              {questions.map((q, idx) => {
-                const isActive = idx === activeQuestionIndex;
-                return (
-                  <div
-                    key={q.id}
-                    onClick={() => setActiveQuestionIndex(idx)}
-                    className={`rounded-xl p-3 flex gap-3 cursor-pointer transition-all border ${
-                      isActive 
-                        ? 'bg-surface-container-lowest border-primary shadow-sm ring-1 ring-primary' 
-                        : 'bg-surface-container-low border-outline-variant/30 hover:border-outline hover:bg-surface-container'
-                    }`}
+            {activeTab === 'drafts' ? (
+              <>
+                <div className="p-4 border-b border-outline-variant/20 flex justify-between items-center">
+                  <span className="font-label-md text-xs font-bold text-primary uppercase tracking-wider">Active List</span>
+                  <button 
+                    onClick={handleAddQuestion}
+                    className="w-7 h-7 rounded-full bg-surface-variant text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-colors shadow-sm"
+                    title="Add new question"
                   >
-                    <div className="flex flex-col items-center justify-center text-outline-variant font-bold text-xs">
-                      <span>{idx + 1}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="material-symbols-outlined text-[14px] text-secondary">psychology_alt</span>
-                        <span className="text-[10px] uppercase font-bold text-on-surface-variant">
-                          {q.type === 'single_choice' ? 'Single Choice' : q.type === 'multiple_choice' ? 'Multiple Choice' : 'True/False'}
-                        </span>
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
+                  {questions.map((q, idx) => {
+                    const isActive = idx === activeQuestionIndex;
+                    return (
+                      <div
+                        key={q.id}
+                        onClick={() => setActiveQuestionIndex(idx)}
+                        className={`rounded-xl p-3 flex gap-3 cursor-pointer transition-all border ${
+                          isActive 
+                            ? 'bg-surface-container-lowest border-primary shadow-sm ring-1 ring-primary' 
+                            : 'bg-surface-container-low border-outline-variant/30 hover:border-outline hover:bg-surface-container'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center justify-center text-outline-variant font-bold text-xs">
+                          <span>{idx + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="material-symbols-outlined text-[14px] text-secondary">psychology_alt</span>
+                            <span className="text-[10px] uppercase font-bold text-on-surface-variant">
+                              {q.type === 'single_choice' ? 'Single Choice' : q.type === 'multiple_choice' ? 'Multiple Choice' : 'True/False'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-primary font-medium truncate">{q.text || 'Untitled Question'}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-primary font-medium truncate">{q.text || 'Untitled Question'}</p>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-4 border-b border-outline-variant/20 flex flex-col gap-1">
+                  <span className="font-label-md text-xs font-bold text-primary uppercase tracking-wider">Question Bank</span>
+                  <span className="text-[10px] text-on-surface-variant">Saved globally. Click + to add to session.</span>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
+                  {bankQuestions.map((bq, i) => (
+                    <div key={bq.id} className="w-full text-left flex flex-col gap-1.5 rounded-xl px-4 py-3 transition-colors bg-surface-container-low border border-outline-variant/30 hover:border-primary/50 relative group">
+                      <span className="font-label-md text-[10px] opacity-70 uppercase tracking-widest">{bq.type.replace('_', ' ')}</span>
+                      <span className="text-xs font-medium line-clamp-2">{bq.text || 'Untitled'}</span>
+                      <div className="absolute top-2 right-2 flex opacity-0 group-hover:opacity-100 transition-opacity bg-surface-container-lowest shadow-sm rounded-md overflow-hidden border border-outline-variant/30">
+                        <button onClick={() => handleCopyFromBank(bq)} className="p-1.5 hover:bg-secondary-container hover:text-on-secondary-container transition-colors" title="Add to Session">
+                          <span className="material-symbols-outlined text-[14px]">add</span>
+                        </button>
+                        <button onClick={() => handleDeleteFromBank(bq.id)} className="p-1.5 hover:bg-error-container hover:text-error transition-colors" title="Delete from Bank">
+                          <span className="material-symbols-outlined text-[14px]">delete</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  ))}
+                  {bankQuestions.length === 0 && (
+                    <div className="p-6 text-center text-sm text-on-surface-variant opacity-70 flex flex-col items-center gap-2">
+                      <span className="material-symbols-outlined text-3xl">inventory_2</span>
+                      Your Question Bank is empty.
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </aside>
 
           {/* Center Workspace: Active Question Editor */}
@@ -271,6 +406,17 @@ const SessionBuilder = () => {
                     <option value="multiple_choice">Multiple Choice</option>
                     <option value="true_false">True / False</option>
                   </select>
+
+                  <div className="w-px h-4 bg-outline-variant/40 mx-1"></div>
+
+                  <button 
+                    onClick={() => handleSaveSingleToBank(currentQ)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-secondary-container hover:text-on-secondary-container transition-colors text-xs font-label-md shadow-sm border border-outline-variant/20"
+                    title="Save this specific question to your global Question Bank"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">inventory_2</span>
+                    <span>Save to Bank</span>
+                  </button>
                 </div>
               </div>
 
