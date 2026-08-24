@@ -201,14 +201,18 @@ const LiveMonitoring = () => {
 
   // Timer countdown
   useEffect(() => {
-    let interval = null;
-    if (isTimerRunning && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    } else if (timeLeft === 0 && isTimerRunning) {
-      setIsTimerRunning(false);
-    }
+    if (!isTimerRunning || timeLeft <= 0) return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsTimerRunning(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [isTimerRunning, timeLeft]);
+  }, [isTimerRunning, currentQ?.id]);
 
   const handlePushFromBank = (bankQ) => {
     setIsAnswerRevealed(false);
@@ -526,16 +530,14 @@ const LiveMonitoring = () => {
               <div className="flex flex-col gap-3 mb-6 flex-1">
                 {currentQ.options.map((opt, idx) => {
                   const percentage = totalResponses > 0 ? Math.round(((opt.count || 0) / totalResponses) * 100) : 0;
-                  const isOptionCorrect = opt.isCorrect;
+                  const isOptionCorrect = isAnswerRevealed && (opt.isCorrect === true || opt.isCorrect === 'true');
                   return (
                     <div 
                       key={opt.id || idx}
                       className={`p-3.5 rounded-2xl border transition-all relative overflow-hidden ${
-                        isAnswerRevealed && isOptionCorrect
+                        isOptionCorrect
                           ? 'border-secondary bg-secondary-container/20 ring-2 ring-secondary'
-                          : isOptionCorrect
-                            ? 'border-secondary/60 bg-secondary-container/10'
-                            : 'border-outline-variant/40 bg-surface-container-low'
+                          : 'border-outline-variant/40 bg-surface-container-low'
                       }`}
                     >
                       {/* Progress Fill Indicator */}
@@ -555,8 +557,9 @@ const LiveMonitoring = () => {
                           </span>
                           <span className="font-medium text-primary text-sm">{opt.text}</span>
                           {isOptionCorrect && (
-                            <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full">
-                              Correct (+2)
+                            <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs">check</span>
+                              <span>Correct (+2)</span>
                             </span>
                           )}
                           {opt.imageUrl && (

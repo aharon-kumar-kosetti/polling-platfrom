@@ -195,18 +195,22 @@ const ParticipantLiveQuiz = () => {
   // Circular timer calculation
   const strokeDashoffset = initialTime > 0 ? 251 - (251 * timeLeft) / initialTime : 0;
 
+  // Continuous Countdown Timer for Student Dashboard
   useEffect(() => {
-    if (!question || isLocked || revealedInfo) return;
-    
-    if (timeLeft <= 0) {
-      handleTimeUp();
-      return;
-    }
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+    if (!question || revealedInfo) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsLocked(true);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, question, isLocked, revealedInfo]);
+
+    return () => clearInterval(interval);
+  }, [question?.id, revealedInfo]);
 
   const handleSelectOption = (optId) => {
     if (isLocked || !question || revealedInfo) return;
@@ -224,11 +228,6 @@ const ParticipantLiveQuiz = () => {
       sessionId,
       pin
     });
-  };
-
-  const handleTimeUp = () => {
-    if (isLocked) return;
-    setIsLocked(true);
   };
 
   // 1. NO ACTIVE QUESTION SCREEN: Tell user to wait for host
