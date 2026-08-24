@@ -336,6 +336,26 @@ const SessionBuilder = () => {
       toast('Please write at least one question before saving.', 'error');
       return;
     }
+    if (id) {
+      setIsPublishing(true);
+      try {
+        const sessionRes = await sessionAPI.updateSessionQuestions(id, validQuestions);
+        if (sessionRes.questions) {
+          const updatedQs = sessionRes.questions.map(q => ({
+            ...q,
+            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+          }));
+          setQuestions(updatedQs);
+        }
+        toast('Successfully saved questions to this Session!', 'success');
+      } catch (err) {
+        toast('Error saving session: ' + err.message, 'error');
+      } finally {
+        setIsPublishing(false);
+      }
+      return;
+    }
+
     openBankModal('bulk');
   };
 
@@ -366,6 +386,7 @@ const SessionBuilder = () => {
         const questionsWithBank = validQuestions.map(q => ({ ...q, bankName: finalBankName }));
 
         if (id) {
+          // This should never be reached now, but kept for completeness
           const sessionRes = await sessionAPI.updateSessionQuestions(id, validQuestions);
           const bankRes = await questionAPI.saveToBank(questionsWithBank);
 
@@ -717,6 +738,14 @@ const SessionBuilder = () => {
                               className="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-secondary-container hover:text-on-secondary-container transition-colors press-effect border-l border-outline-variant/30"
                             >
                               <span className="material-symbols-outlined text-[15px]">add</span>
+                            </button>
+                            <button
+                              onClick={() => handleEditBankQuestion(bq)}
+                              aria-label="Edit bank question"
+                              title="Edit Bank Question"
+                              className="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-primary-container hover:text-primary transition-colors press-effect border-l border-outline-variant/30"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">edit</span>
                             </button>
                             <button
                               onClick={() => requestDeleteBankQuestion(bq.id)}
