@@ -121,17 +121,11 @@ const ParticipantLiveQuiz = () => {
       }
     };
 
-    // Real-time live score feedback immediately upon answer submission
+    // Lock confirmation upon answer submission
     const handleAnswerAck = (ack) => {
       console.log('[Socket] Answer submitted ack:', ack);
-      if (ack && typeof ack.newScore === 'number') {
-        setScore(ack.newScore);
-        localStorage.setItem('participant_score', String(ack.newScore));
-      }
-      if (ack?.isCorrect && ack?.pointsEarned > 0) {
-        setScoreDelta(ack.pointsEarned);
-      } else {
-        setScoreDelta(0);
+      if (ack?.isLocked) {
+        setIsLocked(true);
       }
     };
 

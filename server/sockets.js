@@ -126,14 +126,12 @@ function getQuestionResponders(sessionIdOrPin) {
     rank: idx + 1,
     username: a.username,
     optionId: a.optionId,
-    isCorrect: a.isCorrect,
     isHighlighted: true
   }));
 
   const others = sorted.slice(3).map(a => ({
     username: a.username,
     optionId: a.optionId,
-    isCorrect: a.isCorrect,
     isHighlighted: false
   }));
 
@@ -298,7 +296,7 @@ module.exports = function setupSockets(io) {
       }
     });
 
-    // Handle answer submission with STRICT accuracy and LIVE score update
+    // Handle answer submission: Locks answer WITHOUT awarding points yet (points awarded on reveal only!)
     socket.on('submit_answer', ({ questionId, optionId, username, sessionId, pin }) => {
       let candidateKey = sessionId || pin || socket.user?.sessionId;
 
@@ -350,7 +348,7 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      // Check correctness strictly against full question options and correctInfo
+      // Check correctness strictly against correctInfo / fullQ
       let isCorrect = false;
       if (correctInfo) {
         const optStr = String(optionId).trim().toLowerCase();
@@ -374,9 +372,9 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      console.log(`[Socket] Submission for Q:${questionId}, opt:${optionId} by ${participantName} (${userKey}) => isCorrect: ${isCorrect}`);
+      console.log(`[Socket] Answer locked for Q:${questionId}, opt:${optionId} by ${participantName} (${userKey})`);
 
-      // Record submitted answer with timestamp
+      // Record submitted answer with timestamp (points will be awarded when host reveals!)
       const answerRecord = {
         userKey,
         username: participantName,
@@ -391,26 +389,6 @@ module.exports = function setupSockets(io) {
           sessionSubmittedAnswers[k] = new Map();
         }
         sessionSubmittedAnswers[k].set(userKey, answerRecord);
-      });
-
-      // LIVE SCORE UPDATE: Award +2 marks ONLY if isCorrect is strictly true
-      let updatedPlayerScore = 0;
-      allKeys.forEach(k => {
-        if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
-        let pScore = sessionPlayerScores[k].get(userKey);
-        if (!pScore) {
-          pScore = { id: userKey, username: participantName, score: 0, correctCount: 0, wrongCount: 0 };
-        }
-
-        if (isCorrect) {
-          pScore.score += 2; // +2 marks only on verified correct answer
-          pScore.correctCount += 1;
-        } else {
-          pScore.wrongCount += 1; // 0 marks on wrong answer
-        }
-
-        sessionPlayerScores[k].set(userKey, pScore);
-        updatedPlayerScore = pScore.score;
       });
 
       // Update question vote count tally
@@ -439,35 +417,27 @@ module.exports = function setupSockets(io) {
         });
       }
 
-      // Broadcast updated top 3 responders & updated live leaderboard & participants list to ALL connected sockets
+      // Broadcast updated responders list to all rooms
       const respondersData = getQuestionResponders(candidateKey);
-      const updatedLeaderboard = getLeaderboard(candidateKey);
-      const currentList = getParticipantsList(candidateKey);
-
       allKeys.forEach(k => {
         io.to(k).emit('question_responders_updated', respondersData);
-        io.to(k).emit('leaderboard_updated', { rankings: updatedLeaderboard });
-        io.to(k).emit('participants_updated', currentList);
       });
 
-      // Send live acknowledgment with verified score to the answering socket
+      // Lock acknowledgment to answering socket without revealing score yet
       socket.emit('answer_submitted_ack', {
         isLocked: true,
         questionId,
-        selectedOptionId: optionId,
-        isCorrect,
-        pointsEarned: isCorrect ? 2 : 0,
-        newScore: updatedPlayerScore
+        selectedOptionId: optionId
       });
     });
 
-    // Organizer reveals the correct answer
+    // Organizer reveals the correct answer -> Points ARE AWARDED HERE ONLY!
     socket.on('organizer:reveal_answer', ({ sessionId, pin, question }) => {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
       const allKeys = Array.from(new Set([...getRelatedRoomKeys(primaryKey), ...(pin ? getRelatedRoomKeys(pin) : [])]));
 
-      console.log(`[Socket] Organizer revealing answer for rooms: [${allKeys.join(', ')}]`);
+      console.log(`[Socket] Organizer revealing answer and computing scores for rooms: [${allKeys.join(', ')}]`);
 
       if (question) {
         allKeys.forEach(k => {
@@ -504,6 +474,35 @@ module.exports = function setupSockets(io) {
 
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
       const correctOptionText = correctOpt ? correctOpt.text : '';
+
+      // Score calculation on REVEAL: Award +2 marks for correct answers, 0 for wrong
+      let answersMap = new Map();
+      for (const k of allKeys) {
+        if (sessionSubmittedAnswers[k]) {
+          for (const [uKey, ans] of sessionSubmittedAnswers[k].entries()) {
+            answersMap.set(uKey, ans);
+          }
+        }
+      }
+
+      answersMap.forEach((ans, uKey) => {
+        allKeys.forEach(k => {
+          if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
+          let pScore = sessionPlayerScores[k].get(uKey);
+          if (!pScore) {
+            pScore = { id: uKey, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
+          }
+
+          if (ans.isCorrect) {
+            pScore.score += 2; // +2 marks awarded on reveal
+            pScore.correctCount += 1;
+          } else {
+            pScore.wrongCount += 1; // 0 marks on wrong answer
+          }
+
+          sessionPlayerScores[k].set(uKey, pScore);
+        });
+      });
 
       const revealPayload = {
         questionId: fullQ?.id || 'q_active',
