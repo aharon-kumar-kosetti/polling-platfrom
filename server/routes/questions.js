@@ -95,10 +95,12 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
 
     console.log(`[Questions] Saving ${questions.length} question(s) for user ${userId}`);
 
-    // Use a transaction to save the new questions
-    const createdQuestions = await prisma.$transaction(
-      questions.map(q =>
-        prisma.savedQuestion.create({
+    // Process questions: if id is a UUID (length 36), update it. Otherwise create new.
+    const results = [];
+    for (const q of questions) {
+      const isNew = String(q.id).length !== 36;
+      if (isNew) {
+        const created = await prisma.savedQuestion.create({
           data: {
             type: q.type || 'single_choice',
             text: q.text.trim(),
@@ -107,12 +109,44 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
             timeLimitSeconds: q.timeLimitSeconds || 30,
             userId: userId,
           }
-        })
-      )
-    );
+        });
+        results.push(created);
+      } else {
+        try {
+          const updated = await prisma.savedQuestion.update({
+            where: { id: String(q.id) },
+            data: {
+              type: q.type || 'single_choice',
+              text: q.text.trim(),
+              imageUrl: q.imageUrl || null,
+              options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
+              timeLimitSeconds: q.timeLimitSeconds || 30,
+            }
+          });
+          results.push(updated);
+        } catch (err) {
+          // If the record doesn't exist (e.g., it was a Session Question UUID, or it was deleted), fallback to create
+          if (err.code === 'P2025') {
+            const created = await prisma.savedQuestion.create({
+              data: {
+                type: q.type || 'single_choice',
+                text: q.text.trim(),
+                imageUrl: q.imageUrl || null,
+                options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
+                timeLimitSeconds: q.timeLimitSeconds || 30,
+                userId: userId,
+              }
+            });
+            results.push(created);
+          } else {
+            throw err;
+          }
+        }
+      }
+    }
 
-    console.log(`[Questions] Successfully saved ${createdQuestions.length} question(s)`);
-    res.status(201).json({ success: true, questions: createdQuestions });
+    console.log(`[Questions] Successfully saved ${results.length} question(s)`);
+    res.status(201).json({ success: true, questions: results });
   } catch (error) {
     console.error('[Questions] Error saving to bank:', error.message);
     console.error('[Questions] Full error:', error);

@@ -170,10 +170,53 @@ const SessionBuilder = () => {
       }
       
       if (id) {
-        await sessionAPI.updateSessionQuestions(id, validQuestions);
-        alert('Successfully saved questions to this Session!');
+        const sessionRes = await sessionAPI.updateSessionQuestions(id, validQuestions);
+        const bankRes = await questionAPI.saveToBank(validQuestions);
+        
+        if (sessionRes.questions) {
+          const updatedQs = sessionRes.questions.map(q => ({
+            ...q,
+            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+          }));
+          setQuestions(updatedQs);
+        }
+
+        if (bankRes.questions) {
+          const newBankQs = bankRes.questions.map(q => ({
+            ...q,
+            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+          }));
+          setBankQuestions(prev => {
+            const newBank = [...prev];
+            newBankQs.forEach(newQ => {
+              const idx = newBank.findIndex(bq => bq.id === newQ.id);
+              if (idx >= 0) newBank[idx] = newQ;
+              else newBank.push(newQ);
+            });
+            return newBank;
+          });
+        }
+        alert('Successfully saved questions to this Session and your Question Bank!');
       } else {
-        alert('Please create a session first, or use the "Save to Bank" button on individual questions.');
+        const res = await questionAPI.saveToBank(validQuestions);
+        if (res.questions) {
+          const updatedQs = res.questions.map(q => ({
+            ...q,
+            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+          }));
+          setQuestions(updatedQs);
+          
+          setBankQuestions(prev => {
+            const newBank = [...prev];
+            updatedQs.forEach(newQ => {
+              const idx = newBank.findIndex(bq => bq.id === newQ.id);
+              if (idx >= 0) newBank[idx] = newQ;
+              else newBank.push(newQ);
+            });
+            return newBank;
+          });
+        }
+        alert('Successfully saved questions to your Question Bank!');
       }
     } catch (err) {
       alert('Error saving questions: ' + err.message);
@@ -188,7 +231,24 @@ const SessionBuilder = () => {
       const res = await questionAPI.saveToBank([q]);
       if (res.questions && res.questions.length > 0) {
         const newBankQ = { ...res.questions[0], options: typeof res.questions[0].options === 'string' ? JSON.parse(res.questions[0].options) : res.questions[0].options };
-        setBankQuestions([...bankQuestions, newBankQ]);
+        
+        setBankQuestions(prev => {
+          const exists = prev.findIndex(bq => bq.id === newBankQ.id);
+          if (exists >= 0) {
+            const copy = [...prev];
+            copy[exists] = newBankQ;
+            return copy;
+          }
+          return [...prev, newBankQ];
+        });
+
+        setQuestions(prev => {
+          const copy = [...prev];
+          const idx = copy.findIndex(activeQ => activeQ.id === q.id);
+          if (idx >= 0) copy[idx] = newBankQ;
+          return copy;
+        });
+
         alert('Saved to Question Bank!');
       }
     } catch (e) {
