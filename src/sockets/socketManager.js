@@ -64,6 +64,11 @@ class SocketManager {
       this.socket.emit(event, data);
     }
   }
+
+  // Get raw socket instance
+  getSocket() {
+    return this.socket;
+  }
 }
 
 // Export a singleton instance

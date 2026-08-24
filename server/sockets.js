@@ -86,13 +86,13 @@ function getLeaderboard(sessionIdOrPin) {
       for (const [pId, pScore] of sessionPlayerScores[k].entries()) {
         const uKey = (pScore.username || pId).trim().toLowerCase();
         if (!userMap.has(uKey) || pScore.score > userMap.get(uKey).score) {
-          userMap.set(uKey, { ...pScore });
+          userMap.set(uKey, { ...pScore, id: pScore.id || pId });
         }
       }
     }
   }
 
-  // Ensure all connected participants exist in leaderboard
+  // Ensure all connected participants exist in leaderboard with their current socketId
   const participants = getParticipantsList(sessionIdOrPin);
   participants.forEach(p => {
     const uKey = (p.username || p.id).trim().toLowerCase();
@@ -100,17 +100,27 @@ function getLeaderboard(sessionIdOrPin) {
       userMap.set(uKey, {
         id: p.id,
         username: p.username,
+        socketId: p.socketId,
         score: p.score || 0,
         correctCount: 0,
         wrongCount: 0
       });
+    } else {
+      // Update socketId to current connection
+      const existing = userMap.get(uKey);
+      if (p.socketId) existing.socketId = p.socketId;
     }
   });
 
   const sorted = Array.from(userMap.values()).sort((a, b) => b.score - a.score);
   return sorted.map((p, idx) => ({
     rank: idx + 1,
-    ...p
+    id: p.id,
+    username: p.username,
+    socketId: p.socketId,
+    score: p.score,
+    correctCount: p.correctCount || 0,
+    wrongCount: p.wrongCount || 0
   }));
 }
 
@@ -601,6 +611,18 @@ module.exports = function setupSockets(io) {
             pScore.wrongCount += 1; // 0 marks on wrong answer
           }
 
+          // Update socketId from current participant connection
+          for (const rk of allKeys) {
+            if (sessionParticipants[rk]) {
+              for (const [sId, pData] of sessionParticipants[rk].entries()) {
+                if (pData.username?.trim().toLowerCase() === uKey || pData.id === ans.participantId) {
+                  pScore.socketId = sId;
+                  break;
+                }
+              }
+            }
+          }
+
           sessionPlayerScores[k].set(matchedKey, pScore);
         });
       });
@@ -624,6 +646,7 @@ module.exports = function setupSockets(io) {
       const respondersData = getQuestionResponders(primaryKey);
       const currentList = getParticipantsList(primaryKey);
 
+      // Broadcast to all rooms
       allKeys.forEach(k => {
         io.to(k).emit('answer_revealed', {
           ...revealPayload,
@@ -633,6 +656,19 @@ module.exports = function setupSockets(io) {
         io.to(k).emit('leaderboard_updated', { rankings: updatedLeaderboard });
         io.to(k).emit('participants_updated', currentList);
         io.to(k).emit('question_responders_updated', respondersData);
+      });
+
+      // ALSO: Send individual score_update to each player's specific socket
+      updatedLeaderboard.forEach(entry => {
+        if (entry.socketId) {
+          io.to(entry.socketId).emit('score_update', {
+            score: entry.score,
+            rank: entry.rank,
+            username: entry.username,
+            correctOptionId,
+            correctOptionText
+          });
+        }
       });
     });
 

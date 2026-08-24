@@ -65,6 +65,28 @@ const ParticipantLiveQuiz = () => {
     
     socketManager.connect(token);
     socketManager.emit('join_room', { sessionId, pin, username: curUName, participantId: curPId });
+
+    // Helper: find own entry in a leaderboard array
+    const findMyEntry = (entries) => {
+      if (!Array.isArray(entries)) return null;
+      const myId = participantIdRef.current;
+      const mySocketId = socketManager.getSocket()?.id;
+      const myName = usernameRef.current?.trim().toLowerCase();
+
+      return entries.find(p =>
+        (p.id && p.id === myId) ||
+        (p.socketId && mySocketId && p.socketId === mySocketId) ||
+        (p.username && p.username.trim().toLowerCase() === myName)
+      ) || null;
+    };
+
+    // Helper: apply score/rank from a matched entry
+    const applyScore = (entry) => {
+      if (!entry) return;
+      setScore(entry.score);
+      if (entry.rank) setRank(entry.rank);
+      sessionStorage.setItem('participant_score', String(entry.score));
+    };
     
     const handleState = (data) => {
       if (data?.status === 'ended') {
@@ -106,22 +128,10 @@ const ParticipantLiveQuiz = () => {
         setResponders(data.responders);
       }
 
-      const myId = participantIdRef.current;
-      const myName = usernameRef.current;
-      let matchedScore = null;
-
-      if (Array.isArray(data?.leaderboard)) {
-        const myEntry = data.leaderboard.find(p => 
-          p.id === myId || 
-          p.socketId === socketManager.getSocket()?.id ||
-          (p.username && p.username.trim().toLowerCase() === myName.trim().toLowerCase())
-        );
-        if (myEntry) {
-          matchedScore = myEntry.score;
-          setScore(myEntry.score);
-          setRank(myEntry.rank);
-          sessionStorage.setItem('participant_score', String(myEntry.score));
-        }
+      // Try to find our entry in the leaderboard payload
+      const myEntry = findMyEntry(data?.leaderboard);
+      if (myEntry) {
+        applyScore(myEntry);
       }
 
       // Calculate score delta indicator strictly for visual feedback: +2 if correct, 0 if wrong
@@ -132,10 +142,10 @@ const ParticipantLiveQuiz = () => {
           String(myPick).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
           (data.correctOptionText && String(myPick).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
-        const delta = isCorrect ? 2 : 0;
-        setScoreDelta(delta);
+        setScoreDelta(isCorrect ? 2 : 0);
 
-        if (matchedScore === null && isCorrect) {
+        // Fallback local score bump if server didn't match us in the leaderboard
+        if (!myEntry && isCorrect) {
           setScore(prev => {
             const next = prev + 2;
             sessionStorage.setItem('participant_score', String(next));
@@ -145,21 +155,22 @@ const ParticipantLiveQuiz = () => {
       }
     };
 
-    const handleLeaderboard = (data) => {
-      if (Array.isArray(data?.rankings)) {
-        const myId = participantIdRef.current;
-        const myName = usernameRef.current;
+    // Direct per-player score push from server (most reliable path)
+    const handleScoreUpdate = (data) => {
+      console.log('[Socket] Direct score_update received:', data);
+      if (data?.score !== undefined) {
+        setScore(data.score);
+        sessionStorage.setItem('participant_score', String(data.score));
+      }
+      if (data?.rank) {
+        setRank(data.rank);
+      }
+    };
 
-        const myEntry = data.rankings.find(p => 
-          p.id === myId || 
-          p.socketId === socketManager.getSocket()?.id ||
-          (p.username && p.username.trim().toLowerCase() === myName.trim().toLowerCase())
-        );
-        if (myEntry) {
-          setScore(myEntry.score);
-          setRank(myEntry.rank);
-          sessionStorage.setItem('participant_score', String(myEntry.score));
-        }
+    const handleLeaderboard = (data) => {
+      const myEntry = findMyEntry(data?.rankings);
+      if (myEntry) {
+        applyScore(myEntry);
       }
     };
 
@@ -179,6 +190,7 @@ const ParticipantLiveQuiz = () => {
 
     socketManager.on('session_state_changed', handleState);
     socketManager.on('answer_revealed', handleAnswerRevealed);
+    socketManager.on('score_update', handleScoreUpdate);
     socketManager.on('leaderboard_updated', handleLeaderboard);
     socketManager.on('question_responders_updated', handleResponders);
     socketManager.on('answer_submitted_ack', handleAnswerAck);
@@ -186,11 +198,13 @@ const ParticipantLiveQuiz = () => {
     return () => {
       socketManager.off('session_state_changed', handleState);
       socketManager.off('answer_revealed', handleAnswerRevealed);
+      socketManager.off('score_update', handleScoreUpdate);
       socketManager.off('leaderboard_updated', handleLeaderboard);
       socketManager.off('question_responders_updated', handleResponders);
       socketManager.off('answer_submitted_ack', handleAnswerAck);
     };
-  }, [navigate, pin, sessionId, participantId, username]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, pin, sessionId]);
 
   // Circular timer calculation
   const strokeDashoffset = initialTime > 0 ? 251 - (251 * timeLeft) / initialTime : 0;
