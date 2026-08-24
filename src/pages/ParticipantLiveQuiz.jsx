@@ -251,7 +251,7 @@ const ParticipantLiveQuiz = () => {
         <header className="w-full max-w-4xl flex items-center justify-between py-4 border-b border-outline-variant/20">
           <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary">token</span>
-            <span className="text-black">QuizCore</span>
+            <span className="text-primary">QuizCore</span>
           </Link>
           <div className="flex items-center gap-3">
             <div className="text-xs font-mono font-bold bg-surface-container-high px-3 py-1.5 rounded-full text-primary border border-outline-variant/40">
@@ -259,14 +259,14 @@ const ParticipantLiveQuiz = () => {
             </div>
             <div className="flex items-center gap-1.5 px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-sm">
               <span className="material-symbols-outlined text-sm">stars</span>
-              <span className="font-mono text-sm font-extrabold">{score} pts</span>
+              <span className="font-mono text-sm font-bold">{score} pts</span>
             </div>
           </div>
         </header>
 
         <div className="text-center flex flex-col items-center gap-6 my-auto max-w-md p-8 bg-surface-container-lowest rounded-3xl border border-outline-variant/30 shadow-editorial animate-fadeIn">
           <div className="w-20 h-20 rounded-full bg-secondary-container/40 flex items-center justify-center text-secondary relative">
-            <span className="material-symbols-outlined text-3xl animate-bounce">hourglass_top</span>
+            <span className="material-symbols-outlined text-3xl animate-float">hourglass_top</span>
             <span className="absolute w-full h-full rounded-full border-2 border-secondary border-t-transparent animate-spin"></span>
           </div>
 
@@ -295,7 +295,7 @@ const ParticipantLiveQuiz = () => {
             </div>
             <div className="text-right">
               <div className="text-[10px] uppercase font-bold text-on-surface-variant">Your Points</div>
-              <div className="font-mono text-lg font-extrabold text-secondary">{score} pts</div>
+              <div className="font-mono text-lg font-bold text-secondary">{score} pts</div>
             </div>
           </div>
         </div>
@@ -340,7 +340,7 @@ const ParticipantLiveQuiz = () => {
         <div className="flex items-center gap-2">
           {rank && (
             <div className="flex items-center gap-1 px-3 py-1.5 bg-surface-container-high rounded-full text-xs font-bold text-primary border border-outline-variant/40">
-              <span>🏆</span>
+              <span className="material-symbols-outlined icon-fill text-sm text-secondary">emoji_events</span>
               <span>#{rank}</span>
             </div>
           )}
@@ -348,11 +348,11 @@ const ParticipantLiveQuiz = () => {
           {/* DYNAMIC SCORE BADGE */}
           <div className="relative flex items-center gap-1.5 px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-md transition-all">
             <span className="material-symbols-outlined text-base">stars</span>
-            <span className="font-mono text-sm md:text-base font-black tracking-wide">{score} pts</span>
+            <span className="font-mono text-sm md:text-base font-bold tracking-wide">{score} pts</span>
 
             {/* Floating Score Delta Badge */}
             {scoreDelta !== null && (
-              <span className={`absolute -bottom-6 right-0 text-xs font-black px-2 py-0.5 rounded-full shadow-md animate-bounce ${
+              <span className={`absolute -bottom-6 right-0 text-xs font-bold px-2 py-0.5 rounded-full shadow-md animate-slideDown ${
                 scoreDelta > 0 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
               }`}>
                 {scoreDelta > 0 ? `+${scoreDelta} pts` : '+0 pts'}
@@ -390,7 +390,7 @@ const ParticipantLiveQuiz = () => {
                   fill="transparent"
                 />
               </svg>
-              <span className={`absolute font-display-sm text-xl font-bold font-mono ${timeLeft <= 5 ? 'text-error animate-ping' : 'text-primary'}`}>
+              <span className={`absolute font-mono text-xl font-bold ${timeLeft <= 5 ? 'text-error animate-ping' : 'text-primary'}`}>
                 {timeLeft}
               </span>
             </div>
@@ -472,7 +472,7 @@ const ParticipantLiveQuiz = () => {
                   </div>
                 ) : null}
                 
-                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors ${
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors ${
                   revealedInfo && isThisOptionCorrect 
                     ? 'bg-secondary text-on-secondary' 
                     : revealedInfo && isSelected && !isThisOptionCorrect
@@ -490,13 +490,15 @@ const ParticipantLiveQuiz = () => {
                       {opt.text}
                     </span>
                     {revealedInfo && isThisOptionCorrect && (
-                      <div className="text-[11px] font-bold text-secondary mt-0.5">
-                        ✓ Correct Answer (+2 Marks)
+                      <div className="text-[11px] font-bold text-secondary mt-0.5 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">check_circle</span>
+                        Correct Answer (+2 Marks)
                       </div>
                     )}
                     {revealedInfo && isSelected && !isThisOptionCorrect && (
-                      <div className="text-[11px] font-bold text-error mt-0.5">
-                        ✗ Your Pick (+0 Marks)
+                      <div className="text-[11px] font-bold text-error mt-0.5 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">cancel</span>
+                        Your Pick (+0 Marks)
                       </div>
                     )}
                     {!revealedInfo && isSelected && (
@@ -529,10 +531,10 @@ const ParticipantLiveQuiz = () => {
                   {isCorrectChoice ? 'celebration' : selectedOption ? 'sentiment_dissatisfied' : 'info'}
                 </span>
                 <span>
-                  {isCorrectChoice 
-                    ? '🎉 Correct! +2 Points Added to Your Score!' 
-                    : selectedOption 
-                      ? '❌ Incorrect Answer (+0 Marks). Keep going!'
+                  {isCorrectChoice
+                    ? 'Correct! +2 Points Added to Your Score!'
+                    : selectedOption
+                      ? 'Incorrect Answer (+0 Marks). Keep going!'
                       : 'Time is up! You did not answer.'}
                 </span>
               </div>
@@ -573,15 +575,15 @@ const ParticipantLiveQuiz = () => {
                   key={player.id || player.username}
                   className={`p-3 rounded-2xl border-2 flex items-center justify-between shadow-md transition-all ${
                     player.rank === 1
-                      ? 'bg-amber-500/10 border-amber-500/60 ring-2 ring-amber-400/30'
+                      ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
                       : player.rank === 2
-                        ? 'bg-slate-300/10 border-slate-400/60 ring-2 ring-slate-300/30'
-                        : 'bg-orange-600/10 border-orange-500/60 ring-2 ring-orange-400/30'
+                        ? 'bg-surface-container-high border-outline-variant ring-2 ring-outline-variant/20'
+                        : 'bg-surface-container-lowest border-outline-variant/60'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="text-lg">
-                      {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'}
+                    <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
+                      {player.rank === 1 ? 'emoji_events' : player.rank === 2 ? 'workspace_premium' : 'military_tech'}
                     </span>
                     <div className="truncate text-left">
                       <div className="text-xs font-bold text-primary truncate max-w-[90px]">

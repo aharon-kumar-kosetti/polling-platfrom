@@ -79,7 +79,7 @@ const ParticipantQuestionResult = () => {
         </div>
 
         {/* Status Headline */}
-        <h1 className="font-display-lg text-3xl md:text-4xl font-bold text-primary mb-2">
+        <h1 className="font-headline-lg text-3xl md:text-4xl font-bold text-primary mb-2">
           {isCorrect ? 'Answer Recorded!' : 'Time Up!'}
         </h1>
         <p className="font-body-md text-sm text-on-surface-variant mb-8">
@@ -93,7 +93,7 @@ const ParticipantQuestionResult = () => {
           <div className="text-xs uppercase tracking-widest font-label-md text-on-surface-variant font-bold mb-1">
             Current Score
           </div>
-          <div className="font-display-sm text-4xl font-extrabold text-primary font-mono mb-3">
+          <div className="font-display-sm text-4xl font-bold text-primary font-mono mb-3">
             {score} <span className="text-sm font-normal text-on-surface-variant">pts</span>
           </div>
 
@@ -121,16 +121,16 @@ const ParticipantQuestionResult = () => {
 
           <button
             onClick={() => navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}&sessionId=${encodeURIComponent(sessionId)}`)}
-            className="w-full py-3 rounded-full border border-outline-variant/60 font-label-md text-sm hover:bg-surface-container transition-colors"
+            className="w-full py-3.5 rounded-full border border-outline-variant/60 font-label-md text-sm hover:bg-surface-container transition-colors"
           >
-            Go to Live Arena &rarr;
+            Go to Live Arena
           </button>
         </div>
 
       </main>
 
       <footer className="py-4 text-center text-xs text-outline font-label-md">
-        <span className="text-black font-bold">QuizCore</span> • Round complete
+        <span className="text-primary font-bold">QuizCore</span> • Round complete
       </footer>
 
     </div>

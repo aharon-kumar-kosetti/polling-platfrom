@@ -8,7 +8,7 @@ const TopNavBar = () => {
   const navigate = useNavigate();
 
   // Hide TopNavBar on dedicated full-screen pages
-  const fullScreenRoutes = ['/dashboard', '/builder', '/host', '/play', '/result', '/leaderboard', '/settings', '/waiting-room'];
+  const fullScreenRoutes = ['/dashboard', '/builder', '/host', '/play', '/result', '/leaderboard', '/settings', '/waiting-room', '/analytics', '/feedback/responses'];
   if (fullScreenRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }
@@ -22,17 +22,10 @@ const TopNavBar = () => {
     <nav className="full-width top-0 sticky border-b border-on-surface/10 bg-surface z-50 transition-all duration-300 backdrop-blur-md bg-opacity-90">
       <div className="flex justify-between items-center px-container-padding h-20 w-full max-w-7xl mx-auto md:px-[48px] lg:px-[64px]">
         {/* Logo */}
-        <Link className="font-display-sm text-xl flex items-center gap-2" to="/">
+        <Link className="font-display-sm text-xl flex items-center gap-2 select-none cursor-pointer" to="/">
           <span className="material-symbols-outlined text-[24px] text-secondary">token</span>
-          <span className="text-black">QuizCore</span>
+          <span className="text-primary">QuizCore</span>
         </Link>
-        {/* Navigation Links (Web) */}
-        <div className="hidden md:flex gap-8 items-center">
-          <Link className="font-body-md text-body-md uppercase tracking-wider text-on-surface-variant hover:text-secondary transition-colors" to="/join">Join Room</Link>
-          {isAuthenticated && (
-            <Link className="font-body-md text-body-md uppercase tracking-wider text-on-surface-variant hover:text-secondary transition-colors" to="/dashboard">Dashboard</Link>
-          )}
-        </div>
         {/* Trailing Action */}
         <div className="hidden md:flex items-center gap-3">
           {isAuthenticated ? (

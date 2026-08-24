@@ -1,24 +1,33 @@
 import React, { useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useToast } from '../components/ui/Toast';
 
 const FeedbackSubmission = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const pin = searchParams.get('pin') || 'TECH-88';
-  
+
   const [name, setName] = useState('');
   const [branch, setBranch] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [feedback, setFeedback] = useState('');
   const [file, setFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  
+
   const fileInputRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitting(true);
+    // Simulate persistence round-trip for a consistent async UX
+    setTimeout(() => {
+      setSubmitting(false);
+      setSubmitted(true);
+      toast('Feedback submitted. Thank you!');
+    }, 900);
   };
 
   const handleFileChange = (e) => {
@@ -51,7 +60,7 @@ const FeedbackSubmission = () => {
 
       <header className="max-w-2xl mx-auto w-full flex items-center justify-between py-4">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-primary">QuizCore</span>
         </Link>
         <div className="text-xs font-mono text-on-surface-variant font-bold">
           ROOM: {pin}
@@ -87,7 +96,7 @@ const FeedbackSubmission = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 font-body-md text-sm focus:border-primary focus:outline-none"
+                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-xl px-4 h-12 font-body-md text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-shadow"
                 />
               </div>
 
@@ -99,7 +108,7 @@ const FeedbackSubmission = () => {
                 <select
                   value={branch}
                   onChange={(e) => setBranch(e.target.value)}
-                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 font-body-md text-sm focus:border-primary focus:outline-none appearance-none cursor-pointer"
+                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-xl px-4 h-12 font-body-md text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer transition-shadow"
                 >
                   <option value="" disabled>Select your branch</option>
                   <option value="CSD">CSD</option>
@@ -142,7 +151,7 @@ const FeedbackSubmission = () => {
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Share your experience and suggestions..."
-                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 font-body-md text-sm focus:border-primary focus:outline-none resize-none"
+                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-xl p-4 font-body-md text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none resize-none transition-shadow"
                 />
               </div>
 
@@ -159,7 +168,7 @@ const FeedbackSubmission = () => {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2 mt-2 bg-secondary-container text-on-secondary-container rounded-full font-label-md text-xs hover:bg-secondary/20 transition-colors"
+                        className="px-4 py-2 mt-2 bg-secondary-container text-on-secondary-container rounded-full font-label-md text-xs hover:bg-secondary hover:text-on-secondary transition-colors press-effect"
                       >
                         Upload File
                       </button>
@@ -192,17 +201,19 @@ const FeedbackSubmission = () => {
 
               <button
                 type="submit"
-                className="w-full py-4 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shadow-md active:scale-98 mt-2"
+                disabled={submitting}
+                className="w-full py-4 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shadow-md active:scale-98 mt-2 flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                Submit Feedback
+                {submitting && <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                {submitting ? 'Submitting...' : 'Submit Feedback'}
               </button>
 
             </form>
           </div>
         ) : (
-          <div className="bg-surface-container-lowest rounded-3xl p-10 border border-outline-variant/30 shadow-editorial text-center animate-fadeIn">
-            <div className="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-3xl mx-auto mb-4 border border-secondary/30">
-              ✓
+          <div className="bg-surface-container-lowest rounded-3xl p-10 border border-outline-variant/30 shadow-editorial text-center animate-scaleIn">
+            <div className="w-16 h-16 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mx-auto mb-4 border border-secondary/30">
+              <span className="material-symbols-outlined text-3xl icon-fill">check_circle</span>
             </div>
             <h2 className="font-display-sm text-3xl font-bold text-primary mb-2">Thank you for your feedback!</h2>
             <p className="text-sm text-on-surface-variant mb-8 max-w-sm mx-auto">
@@ -222,7 +233,7 @@ const FeedbackSubmission = () => {
 
       </main>
 
-      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Audience Feedback
+      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-primary">QuizCore</span> • Audience Feedback
       </footer>
 
     </div>

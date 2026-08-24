@@ -115,7 +115,7 @@ const FinalLeaderboard = () => {
       <header className="max-w-4xl mx-auto w-full flex items-center justify-between z-10 mb-8">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface-container-highest/20 rounded-full text-xs font-label-md text-secondary-container font-bold mb-2">
-            <span>🎉</span>
+            <span className="material-symbols-outlined icon-fill text-sm">celebration</span>
             <span>Final Podium &amp; Results</span>
           </div>
           <h1 className="font-display-lg text-2xl md:text-4xl font-bold text-white tracking-tight">{sessionTitle}</h1>
@@ -124,16 +124,16 @@ const FinalLeaderboard = () => {
         <div className="flex gap-2">
           <Link
             to={`/feedback?pin=${pin}`}
-            className="px-4 py-2 rounded-full bg-secondary text-on-secondary font-label-md text-xs hover:opacity-90 transition-all flex items-center gap-1.5 shadow"
+            className="px-4 py-2 rounded-full bg-secondary text-on-secondary font-label-md text-xs hover:opacity-90 transition-all flex items-center gap-1.5 shadow press-effect"
           >
             <span>Feedback</span>
             <span className="material-symbols-outlined text-sm">rate_review</span>
           </Link>
           <Link
-            to="/dashboard"
-            className="px-4 py-2 rounded-full bg-white/10 text-white font-label-md text-xs hover:bg-white/20 transition-colors"
+            to="/"
+            className="px-4 py-2 rounded-full bg-white/10 text-white font-label-md text-xs hover:bg-white/20 transition-colors press-effect"
           >
-            Dashboard
+            Home
           </Link>
         </div>
       </header>
@@ -149,8 +149,8 @@ const FinalLeaderboard = () => {
             {secondPlace ? (
               <>
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center text-2xl mb-3 shadow-lg relative">
-                  <span>⚡</span>
-                  <span className="absolute -bottom-2 px-2 py-0.5 rounded-full bg-white text-primary text-[10px] font-extrabold uppercase">2nd</span>
+                  <span className="material-symbols-outlined icon-fill text-secondary-container">bolt</span>
+                  <span className="absolute -bottom-2 px-2 py-0.5 rounded-full bg-white text-primary text-[10px] font-bold uppercase">2nd</span>
                 </div>
                 <span className="font-label-md text-xs sm:text-sm font-bold text-white truncate max-w-[120px] text-center">
                   {secondPlace.username}
@@ -171,15 +171,15 @@ const FinalLeaderboard = () => {
           <div className="flex flex-col items-center flex-1 -mt-6">
             {firstPlace && (
               <>
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-secondary-container text-on-secondary-container border-4 border-secondary flex items-center justify-center text-3xl mb-3 shadow-2xl relative animate-bounce">
-                  <span>👑</span>
-                  <span className="absolute -bottom-2.5 px-3 py-0.5 rounded-full bg-secondary text-on-secondary text-xs font-black uppercase tracking-wider">1st</span>
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-secondary-container text-on-secondary-container border-4 border-secondary flex items-center justify-center text-3xl mb-3 shadow-2xl relative animate-float">
+                  <span className="material-symbols-outlined icon-fill">emoji_events</span>
+                  <span className="absolute -bottom-2.5 px-3 py-0.5 rounded-full bg-secondary text-on-secondary text-xs font-bold uppercase tracking-wider">1st</span>
                 </div>
                 <span className="font-label-md text-sm sm:text-base font-bold text-secondary-container truncate max-w-[140px] text-center">
                   {firstPlace.username}
                 </span>
                 <span className="font-mono text-sm text-secondary-container/90 font-bold mb-2">{firstPlace.score} pts</span>
-                <div className="w-full h-40 sm:h-52 bg-gradient-to-t from-secondary/10 to-secondary-container/30 rounded-t-2xl border-t-4 border-secondary flex items-center justify-center font-display-sm text-4xl text-secondary-container font-extrabold shadow-lg">
+                <div className="w-full h-40 sm:h-52 bg-gradient-to-t from-secondary/10 to-secondary-container/30 rounded-t-2xl border-t-4 border-secondary flex items-center justify-center font-display-sm text-4xl text-secondary-container font-bold shadow-lg">
                   1
                 </div>
               </>

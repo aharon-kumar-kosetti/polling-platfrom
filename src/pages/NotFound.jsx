@@ -9,8 +9,8 @@ const NotFound = () => {
       <div className="fixed top-1/3 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-surface-variant/40 blur-3xl pointer-events-none -z-10"></div>
 
       <header className="w-full max-w-4xl flex items-center justify-between py-4">
-        <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
+        <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2 select-none cursor-pointer">
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-primary">QuizCore</span>
         </Link>
       </header>
 
@@ -46,7 +46,7 @@ const NotFound = () => {
 
       </main>
 
-      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Platform Navigation
+      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-primary">QuizCore</span> • Platform Navigation
       </footer>
 
     </div>
@@ -54,3 +54,4 @@ const NotFound = () => {
 };
 
 export default NotFound;
+

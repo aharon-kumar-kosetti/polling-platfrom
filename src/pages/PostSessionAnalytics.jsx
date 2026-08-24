@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import Sidebar from '../components/ui/Sidebar';
 
 const PostSessionAnalytics = () => {
   const [searchParams] = useSearchParams();
@@ -44,31 +45,37 @@ const PostSessionAnalytics = () => {
   };
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container">
-      
+    <div className="bg-background text-on-background min-h-screen flex flex-col md:flex-row antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+
+      {/* Side Navigation (consistent across all workspace pages) */}
+      <Sidebar active="/analytics" />
+
+      {/* Main Content Area */}
+      <main className="flex-grow w-full md:pl-64 flex flex-col min-h-screen animate-pageEnter">
+
       {/* Top Bar */}
       <header className="h-20 bg-surface-container-lowest border-b border-outline-variant/30 px-6 md:px-12 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors">
+        <div className="flex items-center gap-4 min-w-0">
+          <Link to="/dashboard" className="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
           </Link>
-          <div>
+          <div className="min-w-0">
             <div className="text-[11px] font-label-md uppercase tracking-wider text-on-surface-variant">Post-Session Analytics</div>
             <h1 className="font-display-sm text-xl font-bold text-primary truncate">{sessionTitle}</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={handleExportCSV}
-            className="px-4 py-2 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-variant flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-variant flex items-center gap-1.5 transition-colors press-effect"
           >
             <span className="material-symbols-outlined text-sm">download</span>
             Export CSV
           </button>
           <Link
             to="/dashboard"
-            className="px-5 py-2 rounded-full bg-primary text-on-primary text-xs font-label-md hover:bg-primary-container transition-all"
+            className="px-5 py-2 rounded-full bg-primary text-on-primary text-xs font-label-md hover:bg-primary-container transition-all press-effect"
           >
             Dashboard
           </Link>
@@ -76,7 +83,7 @@ const PostSessionAnalytics = () => {
       </header>
 
       {/* Main Analytics Content */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 md:py-12 flex flex-col gap-10">
+      <div className="flex-1 max-w-6xl mx-auto w-full px-6 py-8 md:py-12 flex flex-col gap-10 animate-slideUp">
         
         {/* KPI Counter Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -164,13 +171,15 @@ const PostSessionAnalytics = () => {
           </Link>
         </div>
 
-      </main>
+      </div>
 
-      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> Analytics Platform
+      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-primary">QuizCore</span> Analytics Platform
       </footer>
+      </main>
 
     </div>
   );
 };
 
 export default PostSessionAnalytics;
+

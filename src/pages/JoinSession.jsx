@@ -99,64 +99,94 @@ const JoinSession = () => {
 
   return (
     <div className="bg-background text-on-background min-h-[calc(100vh-80px)] flex flex-col relative overflow-x-hidden antialiased selection:bg-secondary-container selection:text-on-secondary-container">
-      
+
       {/* Ambient background styling */}
-      <div className="fixed top-1/4 right-[-10%] w-[45vw] h-[45vw] rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10"></div>
+      <div className="fixed top-1/4 right-[-10%] w-[45vw] h-[45vw] rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10 animate-subtle-ripple"></div>
       <div className="fixed bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-surface-variant/40 blur-3xl pointer-events-none -z-10"></div>
 
       <main className="flex-grow flex items-center justify-center p-6 py-12 relative z-10 w-full">
-        <div className="w-full max-w-[480px] bg-surface-container-lowest rounded-[28px] border border-outline-variant/30 p-8 md:p-10 flex flex-col items-center gap-8 shadow-editorial relative overflow-hidden transition-all duration-300">
-          
-          <div className="text-center w-full flex flex-col items-center gap-2">
-            <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2">
-              <span className="material-symbols-outlined text-[24px] text-secondary">token</span>
-              <span className="text-black">QuizCore</span>
-            </Link>
-            <p className="font-body-md text-sm text-on-surface-variant">
-              {step === 'pin' ? 'Enter room PIN to join the session.' : `Joining Room ${pin.toUpperCase()}`}
-            </p>
+        <div className="w-full max-w-[480px] bg-surface-container-lowest rounded-[28px] border border-outline-variant/30 p-8 md:p-10 flex flex-col items-center gap-6 shadow-editorial relative overflow-hidden transition-all duration-300 animate-scaleIn">
+
+          {/* Step header */}
+          <div className="text-center w-full flex flex-col items-center gap-4">
+            {/* Step progress indicator */}
+            <div className="flex items-center gap-2 select-none" aria-label="Join progress">
+              {['pin', 'name'].map((s, i) => {
+                const stepIndex = step === 'pin' ? 0 : 1;
+                const done = i < stepIndex;
+                const current = i === stepIndex;
+                return (
+                  <React.Fragment key={s}>
+                    {i > 0 && <span className="w-10 h-0.5 rounded-full bg-outline-variant/40" />}
+                    <span
+                      className={`flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold font-label-md transition-all duration-300 ${
+                        current
+                          ? 'bg-primary text-on-primary shadow-sm'
+                          : done
+                            ? 'bg-secondary-container text-on-secondary-container'
+                            : 'bg-surface-container-high text-on-surface-variant'
+                      }`}
+                    >
+                      {done ? <span className="material-symbols-outlined text-[14px]">check</span> : i + 1}
+                    </span>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            <div key={step} className="animate-fadeIn">
+              <h1 className="font-headline-lg text-xl font-bold text-primary">
+                {step === 'pin' ? 'Join a Session' : 'Pick Your Nickname'}
+              </h1>
+              <p className="font-body-md text-sm text-on-surface-variant mt-1">
+                {step === 'pin' ? 'Enter the room PIN from the presenter screen.' : 'This is how you\u2019ll appear on the leaderboard.'}
+              </p>
+            </div>
           </div>
 
           {error && (
-            <div className="w-full p-3 bg-error-container text-on-error-container text-xs rounded-xl font-label-md text-center animate-fadeIn">
+            <div className="w-full p-3 bg-error-container text-on-error-container text-xs rounded-xl font-label-md text-center flex items-center justify-center gap-2 animate-slideDown">
+              <span className="material-symbols-outlined text-sm">error</span>
               {error}
             </div>
           )}
 
           {/* STEP 1: PIN ENTRY */}
           {step === 'pin' && (
-            <form className="w-full flex flex-col gap-5 animate-fadeIn" onSubmit={handlePinSubmit}>
+            <form key="step-pin" className="w-full flex flex-col gap-5 animate-tabIn" onSubmit={handlePinSubmit}>
               <div>
-                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2">
+                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2 text-center">
                   Session PIN
                 </label>
                 <input
                   type="text"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.toUpperCase())}
-                  placeholder="Enter your PIN"
-                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl px-5 py-3.5 font-mono text-lg font-bold text-primary uppercase tracking-wider focus:border-primary focus:outline-none text-center"
+                  placeholder="ENTER PIN"
+                  maxLength={12}
+                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-5 py-3.5 font-mono text-lg font-bold text-primary uppercase tracking-[0.3em] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 text-center transition-all placeholder:tracking-[0.15em] placeholder:text-outline placeholder:font-medium"
                   required
+                  autoFocus
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-secondary text-on-secondary font-label-md text-sm py-4 rounded-full hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-[0.98] mt-2"
+                className="w-full bg-secondary text-on-secondary font-label-md text-sm py-4 rounded-full hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md press-effect"
               >
                 <span>Next</span>
                 <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </button>
-              
-              <div className="w-full flex items-center gap-4 py-2">
-                <div className="h-px bg-outline-variant flex-grow"></div>
-                <span className="text-xs text-on-surface-variant font-label-md">OR</span>
-                <div className="h-px bg-outline-variant flex-grow"></div>
+
+              <div className="w-full flex items-center gap-4 py-1">
+                <div className="h-px bg-outline-variant/50 flex-grow"></div>
+                <span className="text-xs text-on-surface-variant font-label-md select-none">OR</span>
+                <div className="h-px bg-outline-variant/50 flex-grow"></div>
               </div>
-              
+
               <button
                 type="button"
-                className="w-full bg-surface-variant text-on-surface-variant border border-outline-variant font-label-md text-sm py-4 rounded-full hover:bg-surface-container transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-[0.98]"
+                className="w-full bg-surface-container-high text-primary border border-outline-variant/40 font-label-md text-sm py-4 rounded-full hover:bg-surface-container-highest hover:border-outline transition-all flex items-center justify-center gap-2 shadow-sm press-effect cursor-pointer"
                 onClick={() => setShowQRScanner(true)}
               >
                 <span className="material-symbols-outlined text-sm">qr_code_scanner</span>
@@ -167,45 +197,50 @@ const JoinSession = () => {
 
           {/* STEP 2: NICKNAME ENTRY */}
           {step === 'name' && (
-            <form className="w-full flex flex-col gap-5 animate-fadeIn" onSubmit={handleJoinSession}>
+            <form key="step-name" className="w-full flex flex-col gap-5 animate-tabIn" onSubmit={handleJoinSession}>
               <div>
-                <label className="block text-xs uppercase font-label-md text-on-surface-variant font-bold mb-2">
-                  Your Nickname
-                </label>
+                <div className="flex justify-center mb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container/40 border border-secondary/20 text-xs font-label-md font-bold text-on-secondary-container select-none">
+                    <span className="material-symbols-outlined text-sm">meeting_room</span>
+                    Room {pin.toUpperCase()}
+                  </div>
+                </div>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="e.g. Alex, Rahul, Sam"
-                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl px-5 py-3.5 font-body-md text-sm text-primary focus:border-primary focus:outline-none"
+                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-5 py-3.5 font-body-md text-base font-semibold text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all placeholder:font-normal placeholder:text-outline"
                   required
                   autoFocus
                 />
               </div>
 
-              <div className="flex gap-3 mt-2">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setStep('pin')}
-                  className="w-1/3 bg-surface-variant text-on-surface-variant font-label-md text-sm py-4 rounded-full hover:bg-surface-container transition-all"
+                  className="w-1/3 bg-surface-container-high text-on-surface-variant font-label-md text-sm py-4 rounded-full hover:bg-surface-container-highest hover:text-primary transition-all press-effect cursor-pointer flex items-center justify-center gap-1"
                 >
+                  <span className="material-symbols-outlined text-sm">arrow_back</span>
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-2/3 bg-primary text-on-primary font-label-md text-sm py-4 rounded-full hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-[0.98] disabled:opacity-50"
+                  className="w-2/3 bg-primary text-on-primary font-label-md text-sm py-4 rounded-full hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md press-effect disabled:opacity-50 disabled:pointer-events-none"
                 >
+                  {loading && <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                   <span>{loading ? 'Joining...' : 'Enter Session'}</span>
-                  <span className="material-symbols-outlined text-sm">login</span>
+                  {!loading && <span className="material-symbols-outlined text-sm">login</span>}
                 </button>
               </div>
             </form>
           )}
 
           {/* Quick Shortcuts */}
-          <div className="text-center text-xs text-on-surface-variant mt-2">
-            Hosting an event? <Link to="/login" className="text-primary font-bold hover:underline">Host Login</Link>
+          <div className="text-center text-xs text-on-surface-variant mt-1 select-none">
+            Hosting an event? <Link to="/login" className="text-primary font-bold hover:underline cursor-pointer">Host Login</Link>
           </div>
 
         </div>
@@ -213,7 +248,7 @@ const JoinSession = () => {
 
       {/* QR Scanner Modal */}
       {showQRScanner && (
-        <QRScannerModal 
+        <QRScannerModal
           onClose={() => setShowQRScanner(false)}
           onScan={handleQRScan}
         />

@@ -25,7 +25,7 @@ const ParticipantProfile = () => {
       {/* Top Header */}
       <header className="h-20 bg-surface-container-lowest border-b border-outline-variant/30 px-6 md:px-12 flex items-center justify-between sticky top-0 z-30">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-primary">QuizCore</span>
         </Link>
         <Link to="/join" className="px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:bg-primary-container transition-all flex items-center gap-1.5">
           <span>Join New Room</span>
@@ -57,9 +57,9 @@ const ParticipantProfile = () => {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="px-3 py-1 bg-surface-container border border-primary rounded-lg text-lg font-bold"
+                    className="px-3 py-1.5 bg-surface-container border border-primary rounded-xl text-lg font-bold focus:outline-none focus:ring-1 focus:ring-primary"
                   />
-                  <button onClick={handleSaveName} className="px-3 py-1 bg-primary text-on-primary text-xs rounded-lg font-label-md">
+                  <button onClick={handleSaveName} className="px-3.5 py-1.5 bg-primary text-on-primary text-xs rounded-full font-label-md hover:bg-primary-container transition-colors press-effect">
                     Save
                   </button>
                 </div>
@@ -87,26 +87,18 @@ const ParticipantProfile = () => {
           </h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center text-center">
-              <span className="text-3xl mb-2">⚡</span>
-              <span className="font-label-md text-xs font-bold text-primary">Streak Master</span>
-              <span className="text-[10px] text-on-surface-variant mt-0.5">5 correct in a row</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center text-center">
-              <span className="text-3xl mb-2">👑</span>
-              <span className="font-label-md text-xs font-bold text-primary">Top Podium</span>
-              <span className="text-[10px] text-on-surface-variant mt-0.5">1st place winner</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center text-center">
-              <span className="text-3xl mb-2">⏱️</span>
-              <span className="font-label-md text-xs font-bold text-primary">Speed Demon</span>
-              <span className="text-[10px] text-on-surface-variant mt-0.5">&lt; 3s response time</span>
-            </div>
-            <div className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center text-center">
-              <span className="text-3xl mb-2">🌟</span>
-              <span className="font-label-md text-xs font-bold text-primary">First Answer</span>
-              <span className="text-[10px] text-on-surface-variant mt-0.5">Fastest round answer</span>
-            </div>
+            {[
+              { icon: 'bolt', title: 'Streak Master', desc: '5 correct in a row' },
+              { icon: 'emoji_events', title: 'Top Podium', desc: '1st place winner' },
+              { icon: 'timer', title: 'Speed Demon', desc: '< 3s response time' },
+              { icon: 'auto_awesome', title: 'First Answer', desc: 'Fastest round answer' },
+            ].map((badge, i) => (
+              <div key={badge.title} className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 flex flex-col items-center text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md stagger-item" style={{ animationDelay: `${i * 70}ms` }}>
+                <span className={`material-symbols-outlined icon-fill text-3xl mb-2 ${i === 0 || i === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>{badge.icon}</span>
+                <span className="font-label-md text-xs font-bold text-primary">{badge.title}</span>
+                <span className="text-[10px] text-on-surface-variant mt-0.5">{badge.desc}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -135,7 +127,7 @@ const ParticipantProfile = () => {
 
       </main>
 
-      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Player Profiles
+      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-primary">QuizCore</span> • Player Profiles
       </footer>
 
     </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Sidebar from '../components/ui/Sidebar';
 
 const FeedbackResponses = () => {
   const feedbackData = [
@@ -30,15 +31,21 @@ const FeedbackResponses = () => {
   ];
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container">
-      
+    <div className="bg-background text-on-background min-h-screen flex flex-col md:flex-row antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+
+      {/* Side Navigation (consistent across all workspace pages) */}
+      <Sidebar active="/feedback/responses" />
+
+      {/* Main Content Area */}
+      <main className="flex-grow w-full md:pl-64 flex flex-col min-h-screen animate-pageEnter">
+
       {/* Top Bar */}
       <header className="h-20 bg-surface-container-lowest border-b border-outline-variant/30 px-6 md:px-12 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors">
+        <div className="flex items-center gap-4 min-w-0">
+          <Link to="/dashboard" className="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
           </Link>
-          <div>
+          <div className="min-w-0">
             <div className="text-[11px] font-label-md uppercase tracking-wider text-on-surface-variant">Feedback Aggregator</div>
             <h1 className="font-display-sm text-xl font-bold text-primary">Audience Responses &amp; Sentiment</h1>
           </div>
@@ -46,30 +53,30 @@ const FeedbackResponses = () => {
 
         <Link
           to="/analytics"
-          className="px-5 py-2 rounded-full border border-outline-variant/60 text-xs font-label-md hover:bg-surface-container transition-colors"
+          className="px-5 py-2 rounded-full border border-outline-variant/60 text-xs font-label-md hover:bg-surface-container transition-colors press-effect"
         >
           View Analytics
         </Link>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8 md:py-12 flex flex-col gap-8">
-        
+      <div className="flex-1 max-w-5xl mx-auto w-full px-6 py-8 md:py-12 flex flex-col gap-8 animate-slideUp">
+
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant/30 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant/30 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
             <span className="text-xs font-label-md text-on-surface-variant uppercase tracking-wider">Average Rating</span>
             <div className="font-display-sm text-4xl font-bold text-primary mt-1">4.8 / 5.0</div>
             <div className="text-xs text-secondary font-bold mt-1">★ ★ ★ ★ ★ (24 reviews)</div>
           </div>
 
-          <div className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant/30 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant/30 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
             <span className="text-xs font-label-md text-on-surface-variant uppercase tracking-wider">Net Promoter Score</span>
             <div className="font-display-sm text-4xl font-bold text-secondary mt-1">+84</div>
             <div className="text-xs text-on-surface-variant mt-1">92% Promoters</div>
           </div>
 
-          <div className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant/30 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant/30 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
             <span className="text-xs font-label-md text-on-surface-variant uppercase tracking-wider">Response Rate</span>
             <div className="font-display-sm text-4xl font-bold text-primary mt-1">86%</div>
             <div className="text-xs text-on-surface-variant mt-1">24 of 28 participants</div>
@@ -113,13 +120,15 @@ const FeedbackResponses = () => {
           </div>
         </div>
 
-      </main>
+      </div>
 
-      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Audience Feedback Intelligence
+      <footer className="py-6 text-center text-xs text-outline font-label-md"><span className="text-primary">QuizCore</span> • Audience Feedback Intelligence
       </footer>
+      </main>
 
     </div>
   );
 };
 
 export default FeedbackResponses;
+

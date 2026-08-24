@@ -25,28 +25,28 @@ const Authentication = () => {
     }
   };
   return (
-    <div className="h-full min-h-screen bg-background text-on-background antialiased flex">
+    <div className="h-[calc(100vh-80px)] overflow-hidden bg-background text-on-background antialiased flex">
       <div className="hidden lg:flex lg:w-1/2 bg-surface-container relative overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center" 
-          style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDJ_NaJGmO5dkl_XDz5mZYmuHde_ATd6D_jk-SkVaFORB7MSjnyB1THJGjrendxSk6P9lwgaEuT7EZVAL27fGO6JrQJEq89j273DHCxsVoW1T-Pwslwx8qlcSkpeKq8HLBwXHF37YKeBpkptP4UwvirxwXLfnRfx5R0WEKzz88EHSQ3ty6I8lHAx1orXTi97a-95CPc5FMmcpUj5iY9nUWZ0c2mRfsAh9RicAcCwB_6fKyIEs8WFhza')"}}>
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{backgroundImage: "url('https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=2400&auto=format&fit=crop')"}}>
         </div>
-        <div className="absolute inset-0 bg-primary/10"></div>
-        <div className="absolute bottom-section-gap left-section-gap z-10 text-white max-w-md">
-          <h2 className="font-display-sm text-display-sm mb-gutter">Engage Your Audience Like Never Before.</h2>
-          <p className="font-body-lg text-body-lg opacity-90">Join thousands of creators hosting interactive quizzes and polls.</p>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+        <div className="absolute bottom-12 left-12 right-12 z-10 text-white max-w-md select-none">
+          <h2 className="font-display-sm text-3xl xl:text-display-sm mb-4 leading-tight drop-shadow-lg">Engage Your Audience Like Never Before.</h2>
+          <p className="font-body-lg text-base xl:text-body-lg opacity-90 leading-relaxed">Join thousands of creators hosting interactive quizzes and polls.</p>
         </div>
       </div>
-      
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-container-padding lg:px-section-gap relative">
+
+      <div className="w-full lg:w-1/2 h-full overflow-y-auto flex flex-col justify-center px-container-padding lg:px-section-gap relative">
         <div className="absolute top-container-padding left-container-padding lg:left-section-gap">
-          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2">
+          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2 select-none cursor-pointer">
             <span className="material-symbols-outlined text-[24px] text-secondary">token</span>
-            <span className="text-black">QuizCore</span>
+            <span className="text-primary">QuizCore</span>
           </Link>
         </div>
-        
-        <div className="w-full max-w-[480px] bg-surface-container-lowest rounded-[24px] border border-primary/10 p-8 md:p-10 flex flex-col relative z-10 shadow-editorial">
+
+        <div className="w-full max-w-[480px] bg-surface-container-lowest rounded-[24px] border border-primary/10 p-8 md:p-10 flex flex-col relative z-10 shadow-editorial mx-auto animate-slideUp">
           
           <div className="mb-8">
             <h1 className="font-display-sm text-display-sm text-primary">Log in</h1>

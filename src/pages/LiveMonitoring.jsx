@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import socketManager from '../sockets/socketManager';
 import { QRCodeSVG } from 'qrcode.react';
 import { questionAPI, sessionAPI } from '../api/client';
+import Modal from '../components/ui/Modal';
 
 const DEFAULT_STARTER_QUESTIONS = [
   {
@@ -294,11 +295,11 @@ const LiveMonitoring = () => {
   };
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container h-screen overflow-hidden">
-      
-      {/* Real-time Join Toast Banner */}
+    <div className="bg-background text-on-background h-screen overflow-hidden flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+
+      {/* Real-time Join Toast Banner (system toast style) */}
       {recentJoinNotice && (
-        <div className="fixed top-24 right-8 z-50 bg-secondary text-on-secondary px-5 py-2.5 rounded-2xl shadow-xl font-label-md text-xs font-bold flex items-center gap-2 animate-bounce">
+        <div className="fixed top-24 right-8 z-50 bg-secondary-container text-on-secondary-container border border-secondary/30 px-5 py-2.5 rounded-full shadow-xl font-label-md text-xs font-bold flex items-center gap-2 animate-slideDown">
           <span className="material-symbols-outlined text-sm">person_add</span>
           <span>{recentJoinNotice}</span>
         </div>
@@ -349,9 +350,9 @@ const LiveMonitoring = () => {
           {/* PIN Badge */}
           <div className="flex items-center gap-2 bg-surface-container-high px-4 py-1.5 rounded-full border border-outline-variant/40">
             <span className="text-xs text-on-surface-variant font-label-md">PIN:</span>
-            <span className="font-mono font-extrabold text-sm text-primary tracking-wider">{pin}</span>
-            <button onClick={handleCopy} className="text-xs text-primary hover:underline ml-1">
-              {copied ? '✓' : <span className="material-symbols-outlined text-xs">content_copy</span>}
+            <span className="font-mono font-bold text-sm text-primary tracking-wider">{pin}</span>
+            <button onClick={handleCopy} className="text-xs text-primary hover:underline ml-1" aria-label="Copy PIN">
+              <span className={`material-symbols-outlined text-xs ${copied ? 'icon-fill text-secondary' : ''}`}>{copied ? 'check' : 'content_copy'}</span>
             </button>
           </div>
 
@@ -373,7 +374,7 @@ const LiveMonitoring = () => {
       </header>
 
       {/* Main Host View */}
-      <main className="flex-1 w-full flex flex-row overflow-hidden">
+      <main className="flex-1 w-full flex flex-col lg:flex-row overflow-hidden">
         
         {/* Left: Active Live Deck */}
         <section className="flex-1 p-6 md:p-8 overflow-y-auto flex flex-col gap-6">
@@ -520,10 +521,10 @@ const LiveMonitoring = () => {
                 </span>
                 
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setIsTimerRunning(!isTimerRunning)} 
+                  <button
+                    onClick={() => setIsTimerRunning(!isTimerRunning)}
                     disabled={timeLeft === 0}
-                    className="px-3 py-1.5 rounded-lg border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container disabled:opacity-50 transition-colors"
                   >
                     {isTimerRunning ? 'Pause Timer' : 'Resume Timer'}
                   </button>
@@ -604,22 +605,22 @@ const LiveMonitoring = () => {
                     <span className="text-[10px] text-on-surface-variant font-bold uppercase">Top 3 Highlighted</span>
                   </div>
 
-                  {/* Top 3 Highlighted Badges */}
+                  {/* Top 3 Highlighted Badges (system palette: lime → neutral → dark) */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
                     {responders.top3.map((player) => (
                       <div
                         key={player.username}
                         className={`p-2.5 rounded-xl border-2 flex items-center justify-between shadow-sm ${
                           player.rank === 1
-                            ? 'bg-amber-500/10 border-amber-500/60 ring-2 ring-amber-400/30'
+                            ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
                             : player.rank === 2
-                              ? 'bg-slate-300/10 border-slate-400/60 ring-2 ring-slate-300/30'
-                              : 'bg-orange-600/10 border-orange-500/60 ring-2 ring-orange-400/30'
+                              ? 'bg-surface-container-high border-outline-variant ring-2 ring-outline-variant/20'
+                              : 'bg-surface-container-lowest border-outline-variant/60'
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <span className="text-base">
-                            {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'}
+                          <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
+                            {player.rank === 1 ? 'emoji_events' : player.rank === 2 ? 'workspace_premium' : 'military_tech'}
                           </span>
                           <span className="text-xs font-bold text-primary truncate max-w-[100px]">
                             {player.username}
@@ -665,7 +666,7 @@ const LiveMonitoring = () => {
                   <span className="material-symbols-outlined text-[18px]">
                     {isAnswerRevealed ? 'check_circle' : 'visibility'}
                   </span>
-                  <span>{isAnswerRevealed ? '✓ Correct Answer Revealed to All Players' : 'Reveal Correct Answer to All Players'}</span>
+                  <span>{isAnswerRevealed ? 'Correct Answer Revealed to All Players' : 'Reveal Correct Answer to All Players'}</span>
                 </button>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -712,7 +713,7 @@ const LiveMonitoring = () => {
                       </span>
                       <span className="text-xs font-bold text-primary truncate max-w-[120px]">{player.username}</span>
                     </div>
-                    <span className="font-mono text-xs font-extrabold text-primary">{player.score} pts</span>
+                    <span className="font-mono text-xs font-bold text-primary">{player.score} pts</span>
                   </div>
                 ))}
               </div>
@@ -721,8 +722,8 @@ const LiveMonitoring = () => {
 
         </section>
 
-        {/* Right: Question Bank Sidebar */}
-        <aside className="w-80 md:w-96 bg-surface-container-lowest border-l border-outline-variant/30 flex flex-col shrink-0">
+        {/* Right: Question Bank Sidebar (stacks below the deck on small screens) */}
+        <aside className="w-full lg:w-80 xl:w-96 bg-surface-container-lowest border-t lg:border-t-0 lg:border-l border-outline-variant/30 flex flex-col shrink-0 max-h-56 lg:max-h-none">
           <div className="p-4 border-b border-outline-variant/30 bg-surface-container-low flex justify-between items-center">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[20px]">library_books</span>
@@ -747,9 +748,9 @@ const LiveMonitoring = () => {
                   </div>
                   <p className="text-sm font-bold text-primary line-clamp-2">{bankQ.text}</p>
                   
-                  <button 
+                  <button
                     onClick={() => handlePushFromBank(bankQ)}
-                    className="w-full bg-primary text-on-primary rounded-xl py-2 text-xs font-bold hover:bg-primary-container transition-colors flex justify-center items-center gap-1.5 mt-1 active:scale-95 shadow-sm"
+                    className="w-full bg-primary text-on-primary rounded-full py-2 text-xs font-bold hover:bg-primary-container transition-colors flex justify-center items-center gap-1.5 mt-1 active:scale-95 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[14px]">send</span>
                     Push Live Now
@@ -763,96 +764,95 @@ const LiveMonitoring = () => {
       </main>
 
       {/* QR Code Share Modal */}
-      {showQRModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-10 max-w-4xl w-full text-center border border-outline-variant/30 shadow-2xl relative animate-fadeIn">
-            
-            <button 
-              onClick={() => setShowQRModal(false)}
-              className="absolute top-6 right-6 p-2 rounded-full hover:bg-surface-container text-on-surface-variant z-10 transition-colors"
-            >
-              <span className="material-symbols-outlined text-2xl">close</span>
-            </button>
+      <Modal open={showQRModal} onClose={() => setShowQRModal(false)} maxWidth="max-w-4xl">
+        <div className="p-6 md:p-10 text-center relative">
 
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary-container/60 text-on-secondary-container text-xs font-label-md mb-3 border border-secondary/20">
-              <span className="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
-              <span>LIVE ROOM PRESENTATION</span>
+          <button
+            onClick={() => setShowQRModal(false)}
+            className="absolute top-6 right-6 p-2 rounded-full hover:bg-surface-container text-on-surface-variant z-10 transition-colors"
+            aria-label="Close"
+          >
+            <span className="material-symbols-outlined text-2xl">close</span>
+          </button>
+
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary-container/60 text-on-secondary-container text-xs font-label-md mb-3 border border-secondary/20">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+            <span>LIVE ROOM PRESENTATION</span>
+          </div>
+
+          <h2 className="font-display-sm text-2xl md:text-3xl font-bold text-primary mb-1">
+            Join {sessionTitle}
+          </h2>
+          <p className="text-xs md:text-sm text-on-surface-variant mb-6">
+            Scan the QR code with your phone camera or visit <span className="font-mono font-bold text-primary">{window.location.origin}/join</span>
+          </p>
+
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-surface-container-low rounded-3xl p-6 md:p-8 border border-outline-variant/40 shadow-inner mb-6">
+
+            {/* Left: Huge QR Code */}
+            <div className="flex flex-col items-center">
+              <div className="p-5 bg-white rounded-3xl shadow-xl border-4 border-surface-container-highest flex items-center justify-center">
+                <QRCodeSVG
+                  value={`${window.location.origin}/join?pin=${pin}`}
+                  size={260}
+                  level="H"
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
+              </div>
+              <div className="mt-3 flex items-center gap-1.5 text-xs text-on-surface-variant font-label-md">
+                <span className="material-symbols-outlined text-sm text-secondary">photo_camera</span>
+                <span>Point any phone camera to join</span>
+              </div>
             </div>
 
-            <h2 className="font-display-sm text-2xl md:text-3xl font-bold text-primary mb-1">
-              Join {sessionTitle}
-            </h2>
-            <p className="text-xs md:text-sm text-on-surface-variant mb-6">
-              Scan the QR code with your phone camera or visit <span className="font-mono font-bold text-primary">{window.location.origin}/join</span>
-            </p>
-
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-surface-container-low rounded-3xl p-6 md:p-8 border border-outline-variant/40 shadow-inner mb-6">
-              
-              {/* Left: Huge QR Code */}
-              <div className="flex flex-col items-center">
-                <div className="p-5 bg-white rounded-3xl shadow-xl border-4 border-surface-container-highest flex items-center justify-center">
-                  <QRCodeSVG 
-                    value={`${window.location.origin}/join?pin=${pin}`} 
-                    size={260}
-                    level="H"
-                    bgColor="#ffffff"
-                    fgColor="#1a1c1e"
-                  />
-                </div>
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-on-surface-variant font-label-md">
-                  <span className="material-symbols-outlined text-sm text-secondary">photo_camera</span>
-                  <span>Point any phone camera to join</span>
+            {/* Right: Big PIN & Details */}
+            <div className="flex flex-col items-center md:items-start text-center md:text-left gap-4">
+              <div>
+                <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Room PIN Code</span>
+                <div className="font-mono text-4xl md:text-5xl font-bold text-primary tracking-widest my-1">
+                  {pin}
                 </div>
               </div>
 
-              {/* Right: Big PIN & Details */}
-              <div className="flex flex-col items-center md:items-start text-center md:text-left gap-4">
-                <div>
-                  <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Room PIN Code</span>
-                  <div className="font-mono text-4xl md:text-5xl font-extrabold text-primary tracking-widest my-1">
-                    {pin}
-                  </div>
+              <div className="w-full bg-surface-container rounded-2xl p-4 border border-outline-variant/30 text-left">
+                <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Direct URL</div>
+                <div className="font-mono text-xs text-primary truncate bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/30 select-all">
+                  {`${window.location.origin}/join?pin=${pin}`}
                 </div>
-
-                <div className="w-full bg-surface-container rounded-2xl p-4 border border-outline-variant/30 text-left">
-                  <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Direct URL</div>
-                  <div className="font-mono text-xs text-primary truncate bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/30 select-all">
-                    {`${window.location.origin}/join?pin=${pin}`}
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/join?pin=${pin}`);
-                      handleCopy();
-                    }}
-                    className="mt-2 text-xs text-secondary font-bold hover:underline flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-sm">content_copy</span>
-                    {copied ? 'Link Copied to Clipboard!' : 'Copy Direct Link'}
-                  </button>
-                </div>
-
-                <button 
-                  onClick={handleCopy}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-surface-container-highest hover:bg-outline-variant/30 text-xs font-label-md transition-colors"
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/join?pin=${pin}`);
+                    handleCopy();
+                  }}
+                  className="mt-2 text-xs text-secondary font-bold hover:underline flex items-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-sm">
-                    {copied ? 'check' : 'pin'}
-                  </span>
-                  {copied ? 'PIN Copied!' : 'Copy PIN Code'}
+                  <span className="material-symbols-outlined text-sm">content_copy</span>
+                  {copied ? 'Link Copied to Clipboard!' : 'Copy Direct Link'}
                 </button>
               </div>
 
+              <button
+                onClick={handleCopy}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-surface-container-highest hover:bg-outline-variant/30 text-xs font-label-md transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {copied ? 'check' : 'pin'}
+                </span>
+                {copied ? 'PIN Copied!' : 'Copy PIN Code'}
+              </button>
             </div>
 
-            <button 
-              onClick={() => setShowQRModal(false)}
-              className="px-8 py-3 rounded-full bg-primary text-on-primary text-sm font-label-md hover:bg-primary-container transition-all shadow-md"
-            >
-              Continue to Host Deck
-            </button>
           </div>
+
+          <button
+            onClick={() => setShowQRModal(false)}
+            className="px-8 py-3 rounded-full bg-primary text-on-primary text-sm font-label-md hover:bg-primary-container transition-all shadow-md"
+          >
+            Continue to Host Deck
+          </button>
         </div>
-      )}
+      </Modal>
 
     </div>
   );

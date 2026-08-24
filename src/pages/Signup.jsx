@@ -30,7 +30,7 @@ const Signup = () => {
   };
 
   return (
-    <div className="h-full min-h-screen bg-background text-on-background antialiased flex">
+    <div className="h-[calc(100vh-80px)] overflow-hidden bg-background text-on-background antialiased flex">
       <div className="hidden lg:flex lg:w-1/2 bg-surface-container relative overflow-hidden">
         {/* Blob Animations */}
         <div className="absolute -top-[20%] -left-[10%] w-[80%] h-[80%] bg-surface-variant rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-subtle-ripple" style={{ animationDelay: '0s' }}></div>
@@ -45,11 +45,11 @@ const Signup = () => {
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-24 py-12 relative overflow-y-auto">
+      <div className="w-full lg:w-1/2 h-full overflow-y-auto flex flex-col justify-center px-8 sm:px-12 md:px-24 py-12 relative">
         <div className="absolute top-8 left-8 lg:hidden">
-          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2">
+          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2 select-none cursor-pointer">
             <span className="material-symbols-outlined text-[24px] text-secondary">token</span>
-            <span className="text-black">QuizCore</span>
+            <span className="text-primary">QuizCore</span>
           </Link>
         </div>
         

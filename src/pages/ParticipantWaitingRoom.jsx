@@ -89,7 +89,7 @@ const ParticipantWaitingRoom = () => {
       {/* Header */}
       <header className="max-w-4xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4 z-10">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary">token</span><span className="text-black">QuizCore</span>
+          <span className="material-symbols-outlined text-secondary">token</span><span className="text-primary">QuizCore</span>
         </Link>
 
         <div className="inline-flex items-center gap-3 bg-surface-container-lowest border border-outline-variant/30 px-5 py-2 rounded-full shadow-sm">
@@ -156,7 +156,7 @@ const ParticipantWaitingRoom = () => {
             Did you know?
           </div>
           <div className="min-h-[60px] flex items-center justify-center pt-2">
-            <p className="text-xs font-body-md text-on-surface transition-opacity duration-300">
+            <p key={currentFact} className="text-xs font-body-md text-on-surface animate-fadeIn transition-opacity duration-300">
               {facts[currentFact]}
             </p>
           </div>
@@ -165,8 +165,9 @@ const ParticipantWaitingRoom = () => {
               <button
                 key={i}
                 onClick={() => setCurrentFact(i)}
-                className={`h-1.5 rounded-full transition-all ${
-                  currentFact === i ? 'w-4 bg-primary' : 'w-1.5 bg-outline-variant'
+                aria-label={`Show fact ${i + 1}`}
+                className={`h-2.5 rounded-full transition-all duration-300 press-effect ${
+                  currentFact === i ? 'w-6 bg-primary' : 'w-2.5 bg-outline-variant hover:bg-outline'
                 }`}
               />
             ))}
