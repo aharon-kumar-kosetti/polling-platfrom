@@ -387,9 +387,9 @@ const SessionBuilder = () => {
               <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">
                 {id ? 'Session Builder' : 'Question Bank Builder'}
               </span>
-              <div className="font-body-lg text-lg font-bold text-primary truncate w-full">
+              <h1 className="font-display-sm text-xl md:text-2xl font-bold text-primary truncate w-full">
                 {id ? `Editing: ${sessionTitle}` : 'Create & Save Questions'}
-              </div>
+              </h1>
             </div>
           </div>
 
@@ -750,7 +750,7 @@ const SessionBuilder = () => {
       {/* Bank Selection Modal */}
       <Modal open={showBankModal} onClose={() => setShowBankModal(false)} maxWidth="max-w-md">
         <div className="p-6 md:p-8">
-          <h3 className="text-xl font-bold text-on-surface mb-2">Save to Question Bank</h3>
+          <h3 className="font-display-sm text-2xl font-bold text-on-surface mb-2">Save to Question Bank</h3>
           <p className="text-sm text-on-surface-variant mb-6">Select a section or create a new one to organize your questions.</p>
 
           <div className="flex flex-col gap-4 mb-6">
