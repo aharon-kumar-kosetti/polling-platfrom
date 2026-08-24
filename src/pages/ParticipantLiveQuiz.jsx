@@ -17,6 +17,7 @@ const ParticipantLiveQuiz = () => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
   const [revealedInfo, setRevealedInfo] = useState(null);
+  const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
   
   // Persistent score initialization from localStorage / URL
   const [score, setScore] = useState(() => {
@@ -28,11 +29,10 @@ const ParticipantLiveQuiz = () => {
   });
 
   const [rank, setRank] = useState(null);
-  const [negativeMarking, setNegativeMarking] = useState(false);
   const [scoreDelta, setScoreDelta] = useState(null);
   const currentQIdRef = useRef(null);
 
-  // Connect and listen to question state & answer reveals
+  // Connect and listen to question state, answer reveals, and responders
   useEffect(() => {
     const token = localStorage.getItem('participant_token');
     
@@ -47,20 +47,20 @@ const ParticipantLiveQuiz = () => {
 
       if (data?.currentQuestion) {
         const incoming = data.currentQuestion;
-        // Check if new question
         if (!currentQIdRef.current || currentQIdRef.current !== incoming.id) {
           currentQIdRef.current = incoming.id;
           setSelectedOption(null);
           setIsLocked(false);
           setRevealedInfo(null);
           setScoreDelta(null);
+          setResponders({ top3: [], others: [], totalAnswered: 0 });
           const timeLimit = incoming.timeLimitSeconds || 30;
           setTimeLeft(timeLimit);
           setInitialTime(timeLimit);
           setQuestion(incoming);
         }
-      } else if (!data?.currentQuestion && data?.status !== 'active') {
-        // No active question currently
+      } else {
+        // No active question currently pushed by host
         setQuestion(null);
       }
     };
@@ -68,14 +68,14 @@ const ParticipantLiveQuiz = () => {
     const handleAnswerRevealed = (data) => {
       console.log('[Socket] Answer revealed by host:', data);
       setRevealedInfo(data);
-      if (data?.negativeMarking !== undefined) {
-        setNegativeMarking(data.negativeMarking);
+
+      if (data?.responders) {
+        setResponders(data.responders);
       }
 
       const normalizedMyName = username.trim().toLowerCase();
       let matchedScore = null;
 
-      // Update from leaderboard if present
       if (Array.isArray(data?.leaderboard)) {
         const myEntry = data.leaderboard.find(p => 
           p.username?.trim().toLowerCase() === normalizedMyName || 
@@ -90,11 +90,12 @@ const ParticipantLiveQuiz = () => {
         }
       }
 
-      // Calculate score delta for feedback animation: only +2 for correct, 0 for incorrect
+      // Calculate score delta for feedback: only +2 on correct, 0 on incorrect
       if (selectedOption) {
         const isCorrect = (
           selectedOption === data.correctOptionId || 
-          String(selectedOption).toLowerCase() === String(data.correctOptionId).toLowerCase()
+          String(selectedOption).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
+          (data.correctOptionText && String(selectedOption).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
         const delta = isCorrect ? 2 : 0;
         setScoreDelta(delta);
@@ -125,22 +126,22 @@ const ParticipantLiveQuiz = () => {
       }
     };
 
-    const handleSettings = (data) => {
-      if (data?.negativeMarking !== undefined) {
-        setNegativeMarking(data.negativeMarking);
+    const handleResponders = (data) => {
+      if (data && (Array.isArray(data.top3) || Array.isArray(data.others))) {
+        setResponders(data);
       }
     };
 
     socketManager.on('session_state_changed', handleState);
     socketManager.on('answer_revealed', handleAnswerRevealed);
     socketManager.on('leaderboard_updated', handleLeaderboard);
-    socketManager.on('settings_updated', handleSettings);
+    socketManager.on('question_responders_updated', handleResponders);
 
     return () => {
       socketManager.off('session_state_changed', handleState);
       socketManager.off('answer_revealed', handleAnswerRevealed);
       socketManager.off('leaderboard_updated', handleLeaderboard);
-      socketManager.off('settings_updated', handleSettings);
+      socketManager.off('question_responders_updated', handleResponders);
     };
   }, [navigate, pin, username, sessionId, score, selectedOption]);
 
@@ -210,10 +211,10 @@ const ParticipantLiveQuiz = () => {
               Waiting for Host
             </span>
             <h2 className="font-headline-lg text-2xl font-bold text-primary mb-2">
-              Get Ready for the Next Question!
+              Get Ready for the Question!
             </h2>
             <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">
-              Questions and live points will appear on your screen automatically when the host launches them.
+              The question will appear on your screen the moment the host pushes it.
             </p>
           </div>
 
@@ -225,7 +226,7 @@ const ParticipantLiveQuiz = () => {
               </div>
               <div className="text-left">
                 <div className="font-bold text-xs text-primary">{username} (You)</div>
-                <div className="text-[10px] text-on-surface-variant">{rank ? `Current Rank: #${rank}` : 'Live Arena'}</div>
+                <div className="text-[10px] text-on-surface-variant">{rank ? `Rank: #${rank}` : 'Live Arena'}</div>
               </div>
             </div>
             <div className="text-right">
@@ -245,17 +246,18 @@ const ParticipantLiveQuiz = () => {
   // 2. LIVE QUESTION ARENA
   const isCorrectChoice = revealedInfo && selectedOption && (
     selectedOption === revealedInfo.correctOptionId ||
-    String(selectedOption).toLowerCase() === String(revealedInfo.correctOptionId).toLowerCase()
+    String(selectedOption).toLowerCase() === String(revealedInfo.correctOptionId).toLowerCase() ||
+    (revealedInfo.correctOptionText && String(selectedOption).trim().toLowerCase() === String(revealedInfo.correctOptionText).trim().toLowerCase())
   );
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex flex-col justify-between antialiased selection:bg-secondary-container selection:text-on-secondary-container relative overflow-hidden">
+    <div className="bg-background text-on-background min-h-screen flex flex-col justify-between antialiased selection:bg-secondary-container selection:text-on-secondary-container relative overflow-x-hidden">
       
       {/* Background ambient blobs */}
       <div className="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-surface-variant/30 blur-3xl pointer-events-none -z-10"></div>
 
-      {/* Top Participant Status Bar with Prominent Score */}
+      {/* Top Participant Status Bar */}
       <header className="px-6 py-4 md:px-12 flex items-center justify-between z-10 border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs shadow-inner">
@@ -287,9 +289,9 @@ const ParticipantLiveQuiz = () => {
             {/* Floating Score Delta Badge */}
             {scoreDelta !== null && (
               <span className={`absolute -bottom-6 right-0 text-xs font-black px-2 py-0.5 rounded-full shadow-md animate-bounce ${
-                scoreDelta > 0 ? 'bg-secondary text-on-secondary' : scoreDelta < 0 ? 'bg-error text-on-error' : 'bg-surface-container-highest text-primary'
+                scoreDelta > 0 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
               }`}>
-                {scoreDelta > 0 ? `+${scoreDelta} pts` : scoreDelta < 0 ? `${scoreDelta} pts` : '+0 pts'}
+                {scoreDelta > 0 ? `+${scoreDelta} pts` : '+0 pts'}
               </span>
             )}
           </div>
@@ -358,11 +360,10 @@ const ParticipantLiveQuiz = () => {
             const choiceId = opt.id || opt.text;
             const isSelected = selectedOption === choiceId || selectedOption === opt.id || selectedOption === opt.text;
             
-            // Correctness styling after answer reveal
+            // Accurate correctness matching strictly when host revealed
             const isThisOptionCorrect = revealedInfo && (
-              opt.isCorrect ||
-              choiceId === revealedInfo.correctOptionId ||
-              String(choiceId).toLowerCase() === String(revealedInfo.correctOptionId).toLowerCase()
+              (revealedInfo.correctOptionId && (choiceId === revealedInfo.correctOptionId || opt.id === revealedInfo.correctOptionId)) ||
+              (revealedInfo.correctOptionText && opt.text?.trim().toLowerCase() === revealedInfo.correctOptionText?.trim().toLowerCase())
             );
 
             let cardStyle = 'border-outline-variant/40 bg-surface-container-lowest hover:border-primary';
@@ -376,7 +377,8 @@ const ParticipantLiveQuiz = () => {
                 cardStyle = 'border-outline-variant/20 bg-surface-container-lowest opacity-40';
               }
             } else if (isSelected) {
-              cardStyle = 'border-primary bg-primary-container text-on-primary-container shadow-md scale-[0.98] ring-2 ring-primary';
+              // Selected / Locked before reveal (Amber/Indigo neutral lock style - NOT green!)
+              cardStyle = 'border-primary bg-surface-container-high text-primary shadow-md scale-[0.98] ring-2 ring-primary/40';
             } else if (isLocked) {
               cardStyle = 'border-outline-variant/30 bg-surface-container-lowest opacity-60 cursor-not-allowed';
             }
@@ -392,16 +394,17 @@ const ParticipantLiveQuiz = () => {
                 {revealedInfo ? (
                   isThisOptionCorrect ? (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center animate-fadeIn shadow-md">
-                      <span className="material-symbols-outlined text-[18px]">check</span>
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
                     </div>
                   ) : isSelected ? (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-error text-on-error flex items-center justify-center animate-fadeIn shadow-md">
-                      <span className="material-symbols-outlined text-[18px]">close</span>
+                      <span className="material-symbols-outlined text-[18px]">cancel</span>
                     </div>
                   ) : null
                 ) : isSelected ? (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center animate-fadeIn">
-                    <span className="material-symbols-outlined text-[16px]">lock</span>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full bg-primary text-on-primary flex items-center gap-1 text-[11px] font-bold animate-fadeIn">
+                    <span className="material-symbols-outlined text-xs">lock</span>
+                    <span>Locked</span>
                   </div>
                 ) : null}
                 
@@ -417,7 +420,7 @@ const ParticipantLiveQuiz = () => {
                   {String.fromCharCode(97 + idx)}
                 </div>
                 
-                <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-1 pr-8">
+                <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-1 pr-14">
                   <div>
                     <span className="font-bold text-base md:text-lg leading-tight text-primary">
                       {opt.text}
@@ -432,6 +435,11 @@ const ParticipantLiveQuiz = () => {
                         ✗ Your Pick (+0 Marks)
                       </div>
                     )}
+                    {!revealedInfo && isSelected && (
+                      <div className="text-[11px] font-bold text-primary/70 mt-0.5">
+                        Your Submitted Choice (Locked)
+                      </div>
+                    )}
                   </div>
                   {opt.imageUrl && (
                     <img src={opt.imageUrl} alt="Option" className="h-10 w-10 object-cover rounded-lg shrink-0 border border-outline-variant/40" />
@@ -443,7 +451,7 @@ const ParticipantLiveQuiz = () => {
         </div>
 
         {/* Lock / Result Feedback Bar */}
-        <div className="w-full max-w-xl text-center">
+        <div className="w-full max-w-xl text-center mb-6">
           {revealedInfo ? (
             <div className={`p-4 rounded-2xl border text-sm font-bold flex flex-col items-center gap-1.5 animate-fadeIn shadow-sm ${
               isCorrectChoice 
@@ -471,14 +479,79 @@ const ParticipantLiveQuiz = () => {
           ) : isLocked ? (
             <div className="p-3.5 bg-surface-container-low rounded-2xl border border-outline-variant/40 text-xs font-bold text-primary flex items-center justify-center gap-2 animate-fadeIn">
               <span className="material-symbols-outlined text-secondary text-sm">lock</span>
-              <span>Answer Locked! Waiting for host to reveal results or launch next question.</span>
+              <span>Answer Locked! Waiting for host to reveal the correct answer.</span>
             </div>
           ) : (
             <div className="text-xs text-on-surface-variant font-label-md">
-              Tap an option above to lock in your answer
+              Tap an option above to submit your answer
             </div>
           )}
         </div>
+
+        {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION */}
+        {(responders.top3.length > 0 || responders.others.length > 0) && (
+          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn">
+            
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-lg">bolt</span>
+                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
+                  Question Responders ({responders.totalAnswered})
+                </span>
+              </div>
+              <span className="text-[11px] text-on-surface-variant font-medium">Top 3 Fastest Highlighted</span>
+            </div>
+
+            {/* TOP 3 HIGHLIGHTED CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+              {responders.top3.map((player) => (
+                <div
+                  key={player.username}
+                  className={`p-3 rounded-2xl border-2 flex items-center justify-between shadow-md transition-all ${
+                    player.rank === 1
+                      ? 'bg-amber-500/10 border-amber-500/60 ring-2 ring-amber-400/30'
+                      : player.rank === 2
+                        ? 'bg-slate-300/10 border-slate-400/60 ring-2 ring-slate-300/30'
+                        : 'bg-orange-600/10 border-orange-500/60 ring-2 ring-orange-400/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="text-lg">
+                      {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'}
+                    </span>
+                    <div className="truncate text-left">
+                      <div className="text-xs font-bold text-primary truncate max-w-[90px]">
+                        {player.username}
+                      </div>
+                      <div className="text-[10px] font-bold text-secondary">
+                        {player.rank === 1 ? 'Fastest' : `#${player.rank} Quick`}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-xs text-secondary">check</span>
+                </div>
+              ))}
+            </div>
+
+            {/* OTHER NON-HIGHLIGHTED PLAYERS */}
+            {responders.others.length > 0 && (
+              <div className="pt-3 border-t border-outline-variant/20">
+                <div className="text-[10px] uppercase font-bold text-on-surface-variant mb-2">Other Responders</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {responders.others.map((otherP) => (
+                    <span
+                      key={otherP.username}
+                      className="px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant/30 text-xs text-on-surface-variant font-medium"
+                    >
+                      {otherP.username}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
 
       </main>
     </div>

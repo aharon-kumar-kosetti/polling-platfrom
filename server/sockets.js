@@ -9,13 +9,11 @@ const sessionParticipants = {};
 // Bidirectional mapping between sessionId <-> pin
 const roomAliases = new Map();
 
-// Session Settings: roomKey -> { negativeMarking: boolean }
-const sessionSettings = {};
 // Real-time Player Cumulative Scores: roomKey -> Map(userKey -> { id, username, score, correctCount, wrongCount })
 const sessionPlayerScores = {};
 // Current Full Question with isCorrect: roomKey -> question
 const sessionCurrentQuestionFull = {};
-// Submitted answers for current question: roomKey -> Map(userKey -> { optionId, isCorrect, timestamp, username })
+// Submitted answers for current question: roomKey -> Map(userKey -> { userKey, username, questionId, optionId, isCorrect, timestamp })
 const sessionSubmittedAnswers = {};
 
 function registerAlias(sessionId, pin) {
@@ -97,6 +95,43 @@ function getLeaderboard(sessionIdOrPin) {
   }));
 }
 
+function getQuestionResponders(sessionIdOrPin) {
+  const relatedKeys = getRelatedRoomKeys(sessionIdOrPin);
+  const answersMap = new Map();
+
+  for (const k of relatedKeys) {
+    if (sessionSubmittedAnswers[k]) {
+      for (const [uKey, ans] of sessionSubmittedAnswers[k].entries()) {
+        answersMap.set(uKey, ans);
+      }
+    }
+  }
+
+  // Sort by submission timestamp (fastest first)
+  const sorted = Array.from(answersMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+
+  const top3 = sorted.slice(0, 3).map((a, idx) => ({
+    rank: idx + 1,
+    username: a.username,
+    optionId: a.optionId,
+    isCorrect: a.isCorrect,
+    isHighlighted: true
+  }));
+
+  const others = sorted.slice(3).map(a => ({
+    username: a.username,
+    optionId: a.optionId,
+    isCorrect: a.isCorrect,
+    isHighlighted: false
+  }));
+
+  return {
+    top3,
+    others,
+    totalAnswered: sorted.length
+  };
+}
+
 function parseCookies(rawStr) {
   if (!rawStr) return {};
   try {
@@ -126,7 +161,6 @@ module.exports = function setupSockets(io) {
   // Middleware for Socket Authentication
   io.use((socket, next) => {
     try {
-      // 1. Check for participant or organizer token in auth object
       const token = socket.handshake.auth?.token;
       if (token) {
         try {
@@ -138,7 +172,6 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      // 2. Check for organizer token in HttpOnly cookies
       const rawCookies = socket.handshake.headers.cookie;
       if (rawCookies) {
         try {
@@ -154,7 +187,6 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      // Default: allow connection with fallback role
       socket.user = { role: 'anonymous' };
       next();
     } catch (err) {
@@ -171,7 +203,6 @@ module.exports = function setupSockets(io) {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
 
-      // Register alias between sessionId and pin if both provided
       if (sessionId && pin) {
         registerAlias(sessionId, pin);
       }
@@ -181,7 +212,6 @@ module.exports = function setupSockets(io) {
         getRelatedRoomKeys(pin).forEach(k => allKeys.push(k));
       }
 
-      // Join all related room channels
       const uniqueKeys = Array.from(new Set(allKeys));
       uniqueKeys.forEach(k => socket.join(k));
 
@@ -201,7 +231,6 @@ module.exports = function setupSockets(io) {
           joinedAt: Date.now(),
         };
 
-        // Save into session participants maps for all related keys
         uniqueKeys.forEach(k => {
           if (!sessionParticipants[k]) {
             sessionParticipants[k] = new Map();
@@ -224,8 +253,8 @@ module.exports = function setupSockets(io) {
 
         const currentList = getParticipantsList(primaryKey);
         const currentLeaderboard = getLeaderboard(primaryKey);
+        const currentResponders = getQuestionResponders(primaryKey);
 
-        // Broadcast to all related room keys
         uniqueKeys.forEach(k => {
           io.to(k).emit('participant_joined', {
             participant: participantData,
@@ -233,40 +262,29 @@ module.exports = function setupSockets(io) {
           });
           io.to(k).emit('participants_updated', currentList);
           io.to(k).emit('leaderboard_updated', { rankings: currentLeaderboard });
+          io.to(k).emit('question_responders_updated', currentResponders);
         });
       } else {
-        // Organizer or host joining: send them the current participants list & leaderboard
         const currentList = getParticipantsList(primaryKey);
         const currentLeaderboard = getLeaderboard(primaryKey);
+        const currentResponders = getQuestionResponders(primaryKey);
         socket.emit('participants_updated', currentList);
         socket.emit('leaderboard_updated', { rankings: currentLeaderboard });
+        socket.emit('question_responders_updated', currentResponders);
       }
 
-      // Send current session settings (e.g. negative marking)
-      const settings = sessionSettings[primaryKey] || { negativeMarking: false };
-      socket.emit('settings_updated', settings);
-
-      // Send current quiz state to joining socket if active
+      // ONLY send question if host has an ACTIVE pushed question
+      let foundActiveState = false;
       for (const k of uniqueKeys) {
-        if (activeSessions[k]) {
+        if (activeSessions[k] && activeSessions[k].status === 'active' && activeSessions[k].currentQuestion) {
           socket.emit('session_state_changed', activeSessions[k]);
+          foundActiveState = true;
           break;
         }
       }
-    });
-
-    // Handle Negative Marking Toggle from Host
-    socket.on('organizer:toggle_negative_marking', ({ sessionId, pin, negativeMarking }) => {
-      const primaryKey = sessionId || pin;
-      if (!primaryKey) return;
-      const allKeys = Array.from(new Set([...getRelatedRoomKeys(primaryKey), ...(pin ? getRelatedRoomKeys(pin) : [])]));
-
-      console.log(`[Socket] Negative marking set to ${negativeMarking} for rooms: [${allKeys.join(', ')}]`);
-
-      allKeys.forEach(k => {
-        sessionSettings[k] = { negativeMarking: !!negativeMarking };
-        io.to(k).emit('settings_updated', { negativeMarking: !!negativeMarking });
-      });
+      if (!foundActiveState) {
+        socket.emit('session_state_changed', { status: 'waiting', currentQuestion: null });
+      }
     });
 
     // Handle answer submission
@@ -289,7 +307,7 @@ module.exports = function setupSockets(io) {
 
       console.log(`[Socket] Answer submitted for Q:${questionId}, opt:${optionId} by ${participantName} (${userKey})`);
 
-      // Find full question to check correctness
+      // Find full question to accurately check correctness
       let fullQ = null;
       for (const k of allKeys) {
         if (sessionCurrentQuestionFull[k]) {
@@ -300,27 +318,33 @@ module.exports = function setupSockets(io) {
 
       let isCorrect = false;
       if (fullQ && fullQ.options) {
-        const matchingOpt = fullQ.options.find(o => (o.id || o.text) === optionId || String(o.id) === String(optionId));
-        if (matchingOpt && matchingOpt.isCorrect) {
+        const matchingOpt = fullQ.options.find(o => 
+          (o.id && (o.id === optionId || String(o.id) === String(optionId))) ||
+          (o.text && (o.text === optionId || o.text?.trim().toLowerCase() === String(optionId).trim().toLowerCase()))
+        );
+        if (matchingOpt && (matchingOpt.isCorrect === true || matchingOpt.isCorrect === 'true')) {
           isCorrect = true;
         }
       }
 
-      // Record submitted answer for this question under normalized userKey
+      // Record submitted answer with timestamp
+      const answerRecord = {
+        userKey,
+        username: participantName,
+        questionId,
+        optionId,
+        isCorrect,
+        timestamp: Date.now()
+      };
+
       allKeys.forEach(k => {
         if (!sessionSubmittedAnswers[k]) {
           sessionSubmittedAnswers[k] = new Map();
         }
-        sessionSubmittedAnswers[k].set(userKey, {
-          questionId,
-          optionId,
-          isCorrect,
-          username: participantName,
-          timestamp: Date.now()
-        });
+        sessionSubmittedAnswers[k].set(userKey, answerRecord);
       });
 
-      // Find active question in any related room to increment vote count
+      // Update question vote count tally
       let activeQ = null;
       for (const k of allKeys) {
         if (activeSessions[k]?.currentQuestion) {
@@ -330,12 +354,14 @@ module.exports = function setupSockets(io) {
       }
 
       if (activeQ && activeQ.options) {
-        const opt = activeQ.options.find(o => (o.id || o.text) === optionId || String(o.id) === String(optionId));
+        const opt = activeQ.options.find(o => 
+          (o.id && (o.id === optionId || String(o.id) === String(optionId))) ||
+          (o.text && (o.text === optionId || o.text?.trim().toLowerCase() === String(optionId).trim().toLowerCase()))
+        );
         if (opt) {
           opt.count = (opt.count || 0) + 1;
         }
 
-        // Broadcast updated answer tally to all related room keys
         allKeys.forEach(k => {
           io.to(k).emit('answer_tally', {
             questionId,
@@ -344,7 +370,13 @@ module.exports = function setupSockets(io) {
         });
       }
 
-      // Send lock acknowledgment to the answering participant
+      // Broadcast updated top 3 responders to all rooms
+      const respondersData = getQuestionResponders(candidateKey);
+      allKeys.forEach(k => {
+        io.to(k).emit('question_responders_updated', respondersData);
+      });
+
+      // Lock acknowledgment to answering socket
       socket.emit('answer_submitted_ack', {
         isLocked: true,
         questionId,
@@ -366,7 +398,6 @@ module.exports = function setupSockets(io) {
         });
       }
 
-      // Find full question
       let fullQ = null;
       for (const k of allKeys) {
         if (sessionCurrentQuestionFull[k]) {
@@ -384,10 +415,12 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      const correctOpt = (fullQ?.options || []).find(o => o.isCorrect) || (fullQ?.options && fullQ.options[0]);
+      // Accurately locate the true correct option
+      const correctOpt = (fullQ?.options || []).find(o => o.isCorrect === true || o.isCorrect === 'true') || (fullQ?.options && fullQ.options[0]);
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
+      const correctOptionText = correctOpt ? correctOpt.text : '';
 
-      // Score calculation: only award +2 marks for correct answers (0 for incorrect)
+      // Score calculation: +2 for correct, 0 for incorrect (NO negative marks)
       let answersMap = new Map();
       for (const k of allKeys) {
         if (sessionSubmittedAnswers[k]) {
@@ -397,7 +430,6 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      // Update scores for all who answered
       answersMap.forEach((ans, uKey) => {
         allKeys.forEach(k => {
           if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
@@ -407,21 +439,20 @@ module.exports = function setupSockets(io) {
           }
 
           if (ans.isCorrect) {
-            pScore.score += 2; // +2 marks for correct answer
+            pScore.score += 2; // +2 marks only on correct
             pScore.correctCount += 1;
           } else {
-            pScore.wrongCount += 1; // 0 marks for wrong answer (no negative marks)
+            pScore.wrongCount += 1; // 0 marks on wrong
           }
 
           sessionPlayerScores[k].set(uKey, pScore);
         });
       });
 
-      // Update active state with revealed flag and correct answer details
       const revealPayload = {
         questionId: fullQ?.id || 'q_active',
         correctOptionId,
-        correctOptionText: correctOpt ? correctOpt.text : '',
+        correctOptionText,
         optionsWithCorrectness: fullQ?.options || []
       };
 
@@ -429,18 +460,21 @@ module.exports = function setupSockets(io) {
         if (activeSessions[k]) {
           activeSessions[k].revealed = true;
           activeSessions[k].correctOptionId = correctOptionId;
+          activeSessions[k].correctOptionText = correctOptionText;
         }
       });
 
       const updatedLeaderboard = getLeaderboard(primaryKey);
+      const respondersData = getQuestionResponders(primaryKey);
 
-      // Broadcast answer_revealed and updated leaderboard
       allKeys.forEach(k => {
         io.to(k).emit('answer_revealed', {
           ...revealPayload,
-          leaderboard: updatedLeaderboard
+          leaderboard: updatedLeaderboard,
+          responders: respondersData
         });
         io.to(k).emit('leaderboard_updated', { rankings: updatedLeaderboard });
+        io.to(k).emit('question_responders_updated', respondersData);
       });
     });
 
@@ -483,7 +517,6 @@ module.exports = function setupSockets(io) {
         startedAt: Date.now()
       };
       
-      // Save state on all related keys
       uniqueKeys.forEach(k => {
         activeSessions[k] = newState;
       });
@@ -491,6 +524,7 @@ module.exports = function setupSockets(io) {
       // Broadcast state change to all related rooms
       uniqueKeys.forEach(k => {
         io.to(k).emit('session_state_changed', newState);
+        io.to(k).emit('question_responders_updated', { top3: [], others: [], totalAnswered: 0 });
       });
     });
 
@@ -515,7 +549,6 @@ module.exports = function setupSockets(io) {
     socket.on('disconnect', () => {
       console.log(`[Socket] User disconnected: ${socket.id}`);
 
-      // Remove from any active session rooms and notify
       for (const [sessId, pMap] of Object.entries(sessionParticipants)) {
         if (pMap.has(socket.id)) {
           const leavingUser = pMap.get(socket.id);

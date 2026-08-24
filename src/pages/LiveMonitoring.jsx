@@ -64,6 +64,7 @@ const LiveMonitoring = () => {
   const [copied, setCopied] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [recentJoinNotice, setRecentJoinNotice] = useState(null);
+  const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
 
   // Fetch session details, question bank, and connect socket
   useEffect(() => {
@@ -98,10 +99,10 @@ const LiveMonitoring = () => {
     };
     loadSessionDetails();
 
-    // 3. Fetch question bank
+    // 3. Fetch organizer's saved question bank
     const fetchBank = async () => {
       try {
-        const res = await questionAPI.getSavedQuestions();
+        const res = await questionAPI.getQuestionBank();
         if (res.questions && res.questions.length > 0) {
           const parsed = res.questions.reduce((acc, q) => {
             try {
@@ -163,6 +164,12 @@ const LiveMonitoring = () => {
       }
     };
 
+    const handleResponders = (data) => {
+      if (data && (Array.isArray(data.top3) || Array.isArray(data.others))) {
+        setResponders(data);
+      }
+    };
+
     const handleSettings = (data) => {
       if (data?.negativeMarking !== undefined) {
         setNegativeMarking(data.negativeMarking);
@@ -174,6 +181,7 @@ const LiveMonitoring = () => {
     socketManager.on('participant_left', handleParticipantLeft);
     socketManager.on('answer_tally', handleAnswerTally);
     socketManager.on('leaderboard_updated', handleLeaderboard);
+    socketManager.on('question_responders_updated', handleResponders);
     socketManager.on('settings_updated', handleSettings);
 
     return () => {
@@ -182,6 +190,7 @@ const LiveMonitoring = () => {
       socketManager.off('participant_left', handleParticipantLeft);
       socketManager.off('answer_tally', handleAnswerTally);
       socketManager.off('leaderboard_updated', handleLeaderboard);
+      socketManager.off('question_responders_updated', handleResponders);
       socketManager.off('settings_updated', handleSettings);
       socketManager.disconnect();
     };
@@ -562,6 +571,64 @@ const LiveMonitoring = () => {
                   );
                 })}
               </div>
+
+              {/* Top 3 Highlighted Question Responders & Others */}
+              {(responders.top3.length > 0 || responders.others.length > 0) && (
+                <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-secondary text-sm">bolt</span>
+                      <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
+                        Fastest Responders ({responders.totalAnswered})
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase">Top 3 Highlighted</span>
+                  </div>
+
+                  {/* Top 3 Highlighted Badges */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
+                    {responders.top3.map((player) => (
+                      <div
+                        key={player.username}
+                        className={`p-2.5 rounded-xl border-2 flex items-center justify-between shadow-sm ${
+                          player.rank === 1
+                            ? 'bg-amber-500/10 border-amber-500/60 ring-2 ring-amber-400/30'
+                            : player.rank === 2
+                              ? 'bg-slate-300/10 border-slate-400/60 ring-2 ring-slate-300/30'
+                              : 'bg-orange-600/10 border-orange-500/60 ring-2 ring-orange-400/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="text-base">
+                            {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : '🥉'}
+                          </span>
+                          <span className="text-xs font-bold text-primary truncate max-w-[100px]">
+                            {player.username}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold text-secondary">
+                          {player.rank === 1 ? 'Fastest' : `#${player.rank}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Other non-highlighted responders */}
+                  {responders.others.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-outline-variant/20">
+                      <span className="text-[10px] uppercase font-bold text-on-surface-variant mr-1">Others:</span>
+                      {responders.others.map((otherP) => (
+                        <span
+                          key={otherP.username}
+                          className="px-2 py-0.5 rounded-full bg-surface-container-highest text-[11px] text-on-surface-variant font-medium"
+                        >
+                          {otherP.username}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Primary Host Actions Bar */}
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-5 border-t border-outline-variant/20">
