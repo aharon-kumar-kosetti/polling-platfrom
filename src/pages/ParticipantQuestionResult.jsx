@@ -7,7 +7,7 @@ const ParticipantQuestionResult = () => {
   const navigate = useNavigate();
 
   const isCorrect = searchParams.get('correct') !== 'false';
-  const score = searchParams.get('score') || '0';
+  const score = searchParams.get('score') || localStorage.getItem('participant_score') || '0';
   const pin = searchParams.get('pin') || localStorage.getItem('participant_pin') || 'TECH-88';
   const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
   const sessionId = searchParams.get('sessionId') || localStorage.getItem('participant_sessionId') || pin;
@@ -52,8 +52,13 @@ const ParticipantQuestionResult = () => {
           </div>
           <span className="font-label-md text-xs font-bold">{username}</span>
         </div>
-        <div className="font-mono text-xs text-on-surface-variant font-bold">
-          ROOM: {pin}
+        <div className="flex items-center gap-2">
+          <div className="font-mono text-xs text-on-surface-variant font-bold">
+            ROOM: {pin}
+          </div>
+          <div className="px-3 py-1 bg-secondary text-on-secondary rounded-full font-mono text-xs font-bold">
+            {score} pts
+          </div>
         </div>
       </header>
 
@@ -91,14 +96,9 @@ const ParticipantQuestionResult = () => {
           </div>
 
           <div className="flex justify-center gap-4 text-xs font-label-md">
-            <span className="px-3 py-1 bg-surface-container-highest rounded-full text-secondary font-bold">
-              {isCorrect ? '+850 Base' : '+0 pts'}
+            <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-bold">
+              {isCorrect ? '+2 Marks' : '+0 Marks'}
             </span>
-            {isCorrect && (
-              <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-bold">
-                + Speed Bonus
-              </span>
-            )}
           </div>
         </div>
 

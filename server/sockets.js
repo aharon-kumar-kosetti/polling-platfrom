@@ -11,11 +11,11 @@ const roomAliases = new Map();
 
 // Session Settings: roomKey -> { negativeMarking: boolean }
 const sessionSettings = {};
-// Real-time Player Cumulative Scores: roomKey -> Map(participantId -> { id, username, score, correctCount, wrongCount })
+// Real-time Player Cumulative Scores: roomKey -> Map(userKey -> { id, username, score, correctCount, wrongCount })
 const sessionPlayerScores = {};
 // Current Full Question with isCorrect: roomKey -> question
 const sessionCurrentQuestionFull = {};
-// Submitted answers for current question: roomKey -> Map(participantId -> { optionId, isCorrect, timestamp, username })
+// Submitted answers for current question: roomKey -> Map(userKey -> { optionId, isCorrect, timestamp, username })
 const sessionSubmittedAnswers = {};
 
 function registerAlias(sessionId, pin) {
@@ -55,7 +55,8 @@ function getParticipantsList(sessionIdOrPin) {
   for (const k of relatedKeys) {
     if (sessionParticipants[k]) {
       for (const [sId, pData] of sessionParticipants[k].entries()) {
-        mergedMap.set(pData.id || sId, pData);
+        const uKey = (pData.username || pData.id || sId).trim().toLowerCase();
+        mergedMap.set(uKey, pData);
       }
     }
   }
@@ -68,8 +69,8 @@ function getLeaderboard(sessionIdOrPin) {
 
   for (const k of relatedKeys) {
     if (sessionPlayerScores[k]) {
-      for (const [pId, pScore] of sessionPlayerScores[k].entries()) {
-        mergedMap.set(pId, pScore);
+      for (const [userKey, pScore] of sessionPlayerScores[k].entries()) {
+        mergedMap.set(userKey, pScore);
       }
     }
   }
@@ -77,9 +78,10 @@ function getLeaderboard(sessionIdOrPin) {
   // Also ensure all connected participants exist in leaderboard even with 0 points
   const participants = getParticipantsList(sessionIdOrPin);
   participants.forEach(p => {
-    if (!mergedMap.has(p.id)) {
-      mergedMap.set(p.id, {
-        id: p.id,
+    const userKey = (p.username || p.id).trim().toLowerCase();
+    if (!mergedMap.has(userKey)) {
+      mergedMap.set(userKey, {
+        id: userKey,
         username: p.username,
         score: 0,
         correctCount: 0,
@@ -190,9 +192,10 @@ module.exports = function setupSockets(io) {
       if (isParticipant) {
         const participantId = socket.user?.participantId || socket.id;
         const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
+        const userKey = participantName.trim().toLowerCase();
 
         const participantData = {
-          id: participantId,
+          id: userKey,
           socketId: socket.id,
           username: participantName,
           joinedAt: Date.now(),
@@ -208,9 +211,9 @@ module.exports = function setupSockets(io) {
           if (!sessionPlayerScores[k]) {
             sessionPlayerScores[k] = new Map();
           }
-          if (!sessionPlayerScores[k].has(participantId)) {
-            sessionPlayerScores[k].set(participantId, {
-              id: participantId,
+          if (!sessionPlayerScores[k].has(userKey)) {
+            sessionPlayerScores[k].set(userKey, {
+              id: userKey,
               username: participantName,
               score: 0,
               correctCount: 0,
@@ -281,10 +284,10 @@ module.exports = function setupSockets(io) {
 
       if (!candidateKey) return;
       const allKeys = getRelatedRoomKeys(candidateKey);
-      const participantId = socket.user?.participantId || socket.id;
       const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
+      const userKey = participantName.trim().toLowerCase();
 
-      console.log(`[Socket] Answer submitted for Q:${questionId}, opt:${optionId} by ${participantName} (${participantId})`);
+      console.log(`[Socket] Answer submitted for Q:${questionId}, opt:${optionId} by ${participantName} (${userKey})`);
 
       // Find full question to check correctness
       let fullQ = null;
@@ -303,12 +306,12 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      // Record submitted answer for this question
+      // Record submitted answer for this question under normalized userKey
       allKeys.forEach(k => {
         if (!sessionSubmittedAnswers[k]) {
           sessionSubmittedAnswers[k] = new Map();
         }
-        sessionSubmittedAnswers[k].set(participantId, {
+        sessionSubmittedAnswers[k].set(userKey, {
           questionId,
           optionId,
           isCorrect,
@@ -389,19 +392,19 @@ module.exports = function setupSockets(io) {
       let answersMap = new Map();
       for (const k of allKeys) {
         if (sessionSubmittedAnswers[k]) {
-          for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
-            answersMap.set(pId, ans);
+          for (const [uKey, ans] of sessionSubmittedAnswers[k].entries()) {
+            answersMap.set(uKey, ans);
           }
         }
       }
 
       // Update scores for all who answered
-      answersMap.forEach((ans, pId) => {
+      answersMap.forEach((ans, uKey) => {
         allKeys.forEach(k => {
           if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
-          let pScore = sessionPlayerScores[k].get(pId);
+          let pScore = sessionPlayerScores[k].get(uKey);
           if (!pScore) {
-            pScore = { id: pId, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
+            pScore = { id: uKey, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
           }
 
           if (ans.isCorrect) {
@@ -414,16 +417,16 @@ module.exports = function setupSockets(io) {
             pScore.wrongCount += 1;
           }
 
-          sessionPlayerScores[k].set(pId, pScore);
+          sessionPlayerScores[k].set(uKey, pScore);
         });
       });
 
       // Update active state with revealed flag and correct answer details
       const revealPayload = {
-        questionId: fullQ.id,
+        questionId: fullQ?.id || 'q_active',
         correctOptionId,
         correctOptionText: correctOpt ? correctOpt.text : '',
-        optionsWithCorrectness: fullQ.options || [],
+        optionsWithCorrectness: fullQ?.options || [],
         negativeMarking: isNegativeMarking
       };
 

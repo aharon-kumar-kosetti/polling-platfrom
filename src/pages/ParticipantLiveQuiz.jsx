@@ -17,9 +17,19 @@ const ParticipantLiveQuiz = () => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
   const [revealedInfo, setRevealedInfo] = useState(null);
-  const [score, setScore] = useState(parseInt(searchParams.get('score') || '0', 10));
+  
+  // Persistent score initialization from localStorage / URL
+  const [score, setScore] = useState(() => {
+    const saved = localStorage.getItem('participant_score');
+    if (saved !== null && !isNaN(parseInt(saved, 10))) {
+      return parseInt(saved, 10);
+    }
+    return parseInt(searchParams.get('score') || '0', 10);
+  });
+
   const [rank, setRank] = useState(null);
   const [negativeMarking, setNegativeMarking] = useState(false);
+  const [scoreDelta, setScoreDelta] = useState(null);
   const currentQIdRef = useRef(null);
 
   // Connect and listen to question state & answer reveals
@@ -43,6 +53,7 @@ const ParticipantLiveQuiz = () => {
           setSelectedOption(null);
           setIsLocked(false);
           setRevealedInfo(null);
+          setScoreDelta(null);
           const timeLimit = incoming.timeLimitSeconds || 30;
           setTimeLeft(timeLimit);
           setInitialTime(timeLimit);
@@ -61,22 +72,55 @@ const ParticipantLiveQuiz = () => {
         setNegativeMarking(data.negativeMarking);
       }
 
-      // Update current player's score from leaderboard if present
+      const normalizedMyName = username.trim().toLowerCase();
+      let matchedScore = null;
+
+      // Update from leaderboard if present
       if (Array.isArray(data?.leaderboard)) {
-        const myEntry = data.leaderboard.find(p => p.username === username || p.id === socketManager.getSocket()?.id);
+        const myEntry = data.leaderboard.find(p => 
+          p.username?.trim().toLowerCase() === normalizedMyName || 
+          p.id?.toLowerCase() === normalizedMyName ||
+          p.id === socketManager.getSocket()?.id
+        );
         if (myEntry) {
+          matchedScore = myEntry.score;
           setScore(myEntry.score);
           setRank(myEntry.rank);
+          localStorage.setItem('participant_score', String(myEntry.score));
+        }
+      }
+
+      // Calculate score delta for feedback animation
+      if (selectedOption) {
+        const isCorrect = (
+          selectedOption === data.correctOptionId || 
+          String(selectedOption).toLowerCase() === String(data.correctOptionId).toLowerCase()
+        );
+        const delta = isCorrect ? 2 : (data.negativeMarking ? -1 : 0);
+        setScoreDelta(delta);
+
+        if (matchedScore === null) {
+          setScore(prev => {
+            const next = prev + delta;
+            localStorage.setItem('participant_score', String(next));
+            return next;
+          });
         }
       }
     };
 
     const handleLeaderboard = (data) => {
       if (Array.isArray(data?.rankings)) {
-        const myEntry = data.rankings.find(p => p.username === username || p.id === socketManager.getSocket()?.id);
+        const normalizedMyName = username.trim().toLowerCase();
+        const myEntry = data.rankings.find(p => 
+          p.username?.trim().toLowerCase() === normalizedMyName || 
+          p.id?.toLowerCase() === normalizedMyName ||
+          p.id === socketManager.getSocket()?.id
+        );
         if (myEntry) {
           setScore(myEntry.score);
           setRank(myEntry.rank);
+          localStorage.setItem('participant_score', String(myEntry.score));
         }
       }
     };
@@ -98,7 +142,7 @@ const ParticipantLiveQuiz = () => {
       socketManager.off('leaderboard_updated', handleLeaderboard);
       socketManager.off('settings_updated', handleSettings);
     };
-  }, [navigate, pin, username, sessionId, score]);
+  }, [navigate, pin, username, sessionId, score, selectedOption]);
 
   // Circular timer calculation
   const strokeDashoffset = initialTime > 0 ? 251 - (251 * timeLeft) / initialTime : 0;
@@ -135,7 +179,7 @@ const ParticipantLiveQuiz = () => {
     setIsLocked(true);
   };
 
-  // 1. NO ACTIVE QUESTION SCREEN: Tell user to wait for host to launch next question
+  // 1. NO ACTIVE QUESTION SCREEN: Tell user to wait for host
   if (!question) {
     return (
       <div className="bg-background text-on-background min-h-screen flex flex-col items-center justify-between p-6 antialiased">
@@ -144,12 +188,13 @@ const ParticipantLiveQuiz = () => {
             <span className="material-symbols-outlined text-secondary">token</span>
             <span className="text-black">QuizCore</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-mono font-bold bg-surface-container-high px-3 py-1 rounded-full text-primary">
+          <div className="flex items-center gap-3">
+            <div className="text-xs font-mono font-bold bg-surface-container-high px-3 py-1.5 rounded-full text-primary border border-outline-variant/40">
               PIN: {pin}
             </div>
-            <div className="text-xs font-mono font-bold bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full">
-              {score} pts
+            <div className="flex items-center gap-1.5 px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-sm">
+              <span className="material-symbols-outlined text-sm">stars</span>
+              <span className="font-mono text-sm font-extrabold">{score} pts</span>
             </div>
           </div>
         </header>
@@ -168,18 +213,25 @@ const ParticipantLiveQuiz = () => {
               Get Ready for the Next Question!
             </h2>
             <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">
-              The host will launch the next question shortly. It will appear on your screen automatically!
+              Questions and live points will appear on your screen automatically when the host launches them.
             </p>
           </div>
 
-          <div className="w-full pt-4 border-t border-outline-variant/20 flex items-center justify-between text-xs font-label-md text-on-surface-variant">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-[10px]">
+          {/* Current Player Live Score Card */}
+          <div className="w-full bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
                 {username.charAt(0).toUpperCase()}
               </div>
-              <span className="font-bold text-primary">{username} (You)</span>
+              <div className="text-left">
+                <div className="font-bold text-xs text-primary">{username} (You)</div>
+                <div className="text-[10px] text-on-surface-variant">{rank ? `Current Rank: #${rank}` : 'Live Arena'}</div>
+              </div>
             </div>
-            {rank && <span className="font-bold text-secondary">Rank #{rank}</span>}
+            <div className="text-right">
+              <div className="text-[10px] uppercase font-bold text-on-surface-variant">Your Points</div>
+              <div className="font-mono text-lg font-extrabold text-secondary">{score} pts</div>
+            </div>
           </div>
         </div>
 
@@ -203,10 +255,10 @@ const ParticipantLiveQuiz = () => {
       <div className="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-surface-variant/30 blur-3xl pointer-events-none -z-10"></div>
 
-      {/* Top Participant Status Bar */}
-      <header className="px-6 py-4 md:px-12 flex items-center justify-between z-10 border-b border-outline-variant/20 bg-surface-container-lowest/70 backdrop-blur-md">
+      {/* Top Participant Status Bar with Prominent Score */}
+      <header className="px-6 py-4 md:px-12 flex items-center justify-between z-10 border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs">
+          <div className="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs shadow-inner">
             {username.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -218,16 +270,28 @@ const ParticipantLiveQuiz = () => {
           </div>
         </div>
 
-        {/* Score & Ranking */}
-        <div className="flex items-center gap-3">
+        {/* Score & Ranking Pill */}
+        <div className="flex items-center gap-2">
           {rank && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold text-primary">
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-surface-container-high rounded-full text-xs font-bold text-primary border border-outline-variant/40">
               <span>🏆</span>
               <span>#{rank}</span>
             </div>
           )}
-          <div className="flex items-center gap-1 px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold font-mono text-primary">
-            <span>{score} pts</span>
+
+          {/* DYNAMIC SCORE BADGE */}
+          <div className="relative flex items-center gap-1.5 px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-md transition-all">
+            <span className="material-symbols-outlined text-base">stars</span>
+            <span className="font-mono text-sm md:text-base font-black tracking-wide">{score} pts</span>
+
+            {/* Floating Score Delta Badge */}
+            {scoreDelta !== null && (
+              <span className={`absolute -bottom-6 right-0 text-xs font-black px-2 py-0.5 rounded-full shadow-md animate-bounce ${
+                scoreDelta > 0 ? 'bg-secondary text-on-secondary' : scoreDelta < 0 ? 'bg-error text-on-error' : 'bg-surface-container-highest text-primary'
+              }`}>
+                {scoreDelta > 0 ? `+${scoreDelta} pts` : scoreDelta < 0 ? `${scoreDelta} pts` : '+0 pts'}
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -394,14 +458,14 @@ const ParticipantLiveQuiz = () => {
                 </span>
                 <span>
                   {isCorrectChoice 
-                    ? 'Awesome! You got +2 Marks!' 
+                    ? '🎉 Correct! +2 Points Added to Your Score!' 
                     : selectedOption 
-                      ? (negativeMarking ? 'Wrong answer (-1 Mark deducted).' : 'Wrong answer (0 Marks gained).')
+                      ? (negativeMarking ? '❌ Wrong answer (-1 Mark deducted).' : '❌ Wrong answer (+0 Marks gained).')
                       : 'Time is up! You did not answer.'}
                 </span>
               </div>
               <span className="text-xs text-on-surface-variant font-normal">
-                Waiting for host to push the next question...
+                Total Score: <strong className="text-primary font-mono font-bold">{score} pts</strong> • Waiting for next question...
               </span>
             </div>
           ) : isLocked ? (
