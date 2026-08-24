@@ -287,7 +287,7 @@ module.exports = function setupSockets(io) {
       }
     });
 
-    // Handle answer submission
+    // Handle answer submission with LIVE score update
     socket.on('submit_answer', ({ questionId, optionId, username, sessionId, pin }) => {
       let candidateKey = sessionId || pin || socket.user?.sessionId;
 
@@ -344,6 +344,26 @@ module.exports = function setupSockets(io) {
         sessionSubmittedAnswers[k].set(userKey, answerRecord);
       });
 
+      // LIVE SCORE UPDATE: Immediately award +2 marks if answer is correct
+      let updatedPlayerScore = 0;
+      allKeys.forEach(k => {
+        if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
+        let pScore = sessionPlayerScores[k].get(userKey);
+        if (!pScore) {
+          pScore = { id: userKey, username: participantName, score: 0, correctCount: 0, wrongCount: 0 };
+        }
+
+        if (isCorrect) {
+          pScore.score += 2; // +2 live marks immediately
+          pScore.correctCount += 1;
+        } else {
+          pScore.wrongCount += 1;
+        }
+
+        sessionPlayerScores[k].set(userKey, pScore);
+        updatedPlayerScore = pScore.score;
+      });
+
       // Update question vote count tally
       let activeQ = null;
       for (const k of allKeys) {
@@ -370,17 +390,23 @@ module.exports = function setupSockets(io) {
         });
       }
 
-      // Broadcast updated top 3 responders to all rooms
+      // Broadcast updated top 3 responders & updated live leaderboard to all rooms
       const respondersData = getQuestionResponders(candidateKey);
+      const updatedLeaderboard = getLeaderboard(candidateKey);
+
       allKeys.forEach(k => {
         io.to(k).emit('question_responders_updated', respondersData);
+        io.to(k).emit('leaderboard_updated', { rankings: updatedLeaderboard });
       });
 
-      // Lock acknowledgment to answering socket
+      // Send live acknowledgment with newScore to answering socket
       socket.emit('answer_submitted_ack', {
         isLocked: true,
         questionId,
-        selectedOptionId: optionId
+        selectedOptionId: optionId,
+        isCorrect,
+        pointsEarned: isCorrect ? 2 : 0,
+        newScore: updatedPlayerScore
       });
     });
 
@@ -419,35 +445,6 @@ module.exports = function setupSockets(io) {
       const correctOpt = (fullQ?.options || []).find(o => o.isCorrect === true || o.isCorrect === 'true') || (fullQ?.options && fullQ.options[0]);
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
       const correctOptionText = correctOpt ? correctOpt.text : '';
-
-      // Score calculation: +2 for correct, 0 for incorrect (NO negative marks)
-      let answersMap = new Map();
-      for (const k of allKeys) {
-        if (sessionSubmittedAnswers[k]) {
-          for (const [uKey, ans] of sessionSubmittedAnswers[k].entries()) {
-            answersMap.set(uKey, ans);
-          }
-        }
-      }
-
-      answersMap.forEach((ans, uKey) => {
-        allKeys.forEach(k => {
-          if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
-          let pScore = sessionPlayerScores[k].get(uKey);
-          if (!pScore) {
-            pScore = { id: uKey, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
-          }
-
-          if (ans.isCorrect) {
-            pScore.score += 2; // +2 marks only on correct
-            pScore.correctCount += 1;
-          } else {
-            pScore.wrongCount += 1; // 0 marks on wrong
-          }
-
-          sessionPlayerScores[k].set(uKey, pScore);
-        });
-      });
 
       const revealPayload = {
         questionId: fullQ?.id || 'q_active',

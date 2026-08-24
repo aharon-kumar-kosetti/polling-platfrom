@@ -132,16 +132,30 @@ const ParticipantLiveQuiz = () => {
       }
     };
 
+    // Real-time live score feedback immediately upon answer submission
+    const handleAnswerAck = (ack) => {
+      console.log('[Socket] Answer submitted ack:', ack);
+      if (ack?.newScore !== undefined) {
+        setScore(ack.newScore);
+        localStorage.setItem('participant_score', String(ack.newScore));
+      }
+      if (ack?.pointsEarned && ack.pointsEarned > 0) {
+        setScoreDelta(ack.pointsEarned);
+      }
+    };
+
     socketManager.on('session_state_changed', handleState);
     socketManager.on('answer_revealed', handleAnswerRevealed);
     socketManager.on('leaderboard_updated', handleLeaderboard);
     socketManager.on('question_responders_updated', handleResponders);
+    socketManager.on('answer_submitted_ack', handleAnswerAck);
 
     return () => {
       socketManager.off('session_state_changed', handleState);
       socketManager.off('answer_revealed', handleAnswerRevealed);
       socketManager.off('leaderboard_updated', handleLeaderboard);
       socketManager.off('question_responders_updated', handleResponders);
+      socketManager.off('answer_submitted_ack', handleAnswerAck);
     };
   }, [navigate, pin, username, sessionId, score, selectedOption]);
 
