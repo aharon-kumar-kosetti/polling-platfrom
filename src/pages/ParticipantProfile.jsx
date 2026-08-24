@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const ParticipantProfile = () => {
-  const [username, setUsername] = useState(localStorage.getItem('participant_name') || 'PixelCrafter');
+  const [username, setUsername] = useState(() => {
+    const saved = localStorage.getItem('participant_name') || sessionStorage.getItem('participant_name') || '';
+    return saved === 'PixelCrafter' ? 'Player' : (saved || 'Player');
+  });
   const [editing, setEditing] = useState(false);
 
   const history = [

@@ -7,8 +7,10 @@ const FinalLeaderboard = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const pin = searchParams.get('pin') || sessionStorage.getItem('participant_pin') || localStorage.getItem('participant_pin') || 'TECH-88';
-  const username = searchParams.get('username') || sessionStorage.getItem('participant_name') || localStorage.getItem('participant_name') || 'PixelCrafter';
+  const pin = searchParams.get('pin') || sessionStorage.getItem('participant_pin') || localStorage.getItem('participant_pin') || '';
+  let rawName = searchParams.get('username') || sessionStorage.getItem('participant_name') || localStorage.getItem('participant_name') || '';
+  if (rawName === 'PixelCrafter') rawName = '';
+  const username = rawName || 'Player';
   const sessionId = searchParams.get('sessionId') || sessionStorage.getItem('participant_sessionId') || localStorage.getItem('participant_sessionId') || pin;
   const sessionTitle = searchParams.get('title') || 'Quizcore Live Session';
   const passedScore = parseInt(searchParams.get('score') || sessionStorage.getItem('participant_score') || '0', 10);

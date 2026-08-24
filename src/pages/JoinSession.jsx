@@ -9,7 +9,15 @@ const JoinSession = () => {
 
   // State
   const [pin, setPin] = useState(searchParams.get('pin') || '');
-  const [username, setUsername] = useState(localStorage.getItem('participant_name') || '');
+  const [username, setUsername] = useState(() => {
+    const saved = localStorage.getItem('participant_name') || sessionStorage.getItem('participant_name') || '';
+    if (saved === 'PixelCrafter') {
+      localStorage.removeItem('participant_name');
+      sessionStorage.removeItem('participant_name');
+      return '';
+    }
+    return saved;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -168,7 +176,7 @@ const JoinSession = () => {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. PixelCrafter"
+                  placeholder="e.g. Alex, Rahul, Sam"
                   className="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl px-5 py-3.5 font-body-md text-sm text-primary focus:border-primary focus:outline-none"
                   required
                   autoFocus

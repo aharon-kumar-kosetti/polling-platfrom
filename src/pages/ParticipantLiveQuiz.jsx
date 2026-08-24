@@ -7,8 +7,15 @@ const ParticipantLiveQuiz = () => {
   const { sessionId: paramSessionId } = useParams();
   const [searchParams] = useSearchParams();
   
-  const pin = searchParams.get('pin') || sessionStorage.getItem('participant_pin') || localStorage.getItem('participant_pin') || 'TECH-88';
-  const username = searchParams.get('username') || sessionStorage.getItem('participant_name') || localStorage.getItem('participant_name') || 'PixelCrafter';
+  const pin = searchParams.get('pin') || sessionStorage.getItem('participant_pin') || localStorage.getItem('participant_pin') || '';
+  
+  let rawUsername = searchParams.get('username') || sessionStorage.getItem('participant_name') || localStorage.getItem('participant_name') || '';
+  if (rawUsername === 'PixelCrafter') {
+    localStorage.removeItem('participant_name');
+    sessionStorage.removeItem('participant_name');
+    rawUsername = '';
+  }
+  const username = rawUsername || 'Player';
   const sessionId = paramSessionId || searchParams.get('sessionId') || sessionStorage.getItem('participant_sessionId') || localStorage.getItem('participant_sessionId') || pin;
   const participantId = searchParams.get('participantId') || sessionStorage.getItem('participant_id') || `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
@@ -73,7 +80,7 @@ const ParticipantLiveQuiz = () => {
           currentQIdRef.current = incoming.id;
           setSelectedOption(savedAnswer || null);
           setIsLocked(!!savedAnswer);
-          setRevealedInfo(data.revealed ? data : null);
+          setRevealedInfo(null); // Never reveal answer on a new question until host clicks reveal
           setScoreDelta(null);
           setResponders(data.responders || { top3: [], others: [], totalAnswered: 0 });
           const timeLimit = incoming.timeLimitSeconds || 30;
@@ -87,6 +94,7 @@ const ParticipantLiveQuiz = () => {
       } else {
         // No active question currently pushed by host
         setQuestion(null);
+        setRevealedInfo(null);
       }
     };
 
@@ -100,6 +108,7 @@ const ParticipantLiveQuiz = () => {
 
       const myId = participantIdRef.current;
       const myName = usernameRef.current;
+      let matchedScore = null;
 
       if (Array.isArray(data?.leaderboard)) {
         const myEntry = data.leaderboard.find(p => 
@@ -108,6 +117,7 @@ const ParticipantLiveQuiz = () => {
           (p.username && p.username.trim().toLowerCase() === myName.trim().toLowerCase())
         );
         if (myEntry) {
+          matchedScore = myEntry.score;
           setScore(myEntry.score);
           setRank(myEntry.rank);
           sessionStorage.setItem('participant_score', String(myEntry.score));
@@ -122,7 +132,16 @@ const ParticipantLiveQuiz = () => {
           String(myPick).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
           (data.correctOptionText && String(myPick).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
-        setScoreDelta(isCorrect ? 2 : 0);
+        const delta = isCorrect ? 2 : 0;
+        setScoreDelta(delta);
+
+        if (matchedScore === null && isCorrect) {
+          setScore(prev => {
+            const next = prev + 2;
+            sessionStorage.setItem('participant_score', String(next));
+            return next;
+          });
+        }
       }
     };
 
