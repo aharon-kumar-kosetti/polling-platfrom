@@ -313,25 +313,10 @@ const LiveMonitoring = () => {
             </button>
           )}
 
-          {/* Negative Marking Toggle */}
-          <div className="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/40">
-            <span className="text-xs font-label-md text-on-surface-variant hidden sm:inline">Scoring:</span>
-            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-              negativeMarking ? 'bg-error/20 text-error' : 'bg-secondary/20 text-secondary'
-            }`}>
-              {negativeMarking ? '+2 / -1 pt' : '+2 / 0 pts'}
-            </span>
-            <button
-              onClick={handleToggleNegativeMarking}
-              className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
-                negativeMarking ? 'bg-error' : 'bg-outline-variant'
-              }`}
-              title="Toggle Negative Marking (-1 for wrong answers)"
-            >
-              <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                negativeMarking ? 'translate-x-4' : 'translate-x-0'
-              }`} />
-            </button>
+          {/* Scoring Rule Badge */}
+          <div className="flex items-center gap-2 bg-surface-container-high px-3.5 py-1.5 rounded-full border border-outline-variant/40">
+            <span className="material-symbols-outlined text-xs text-secondary">verified</span>
+            <span className="text-xs font-bold text-secondary font-mono">+2 Marks / Correct</span>
           </div>
 
           {/* PIN Badge */}
@@ -405,9 +390,9 @@ const LiveMonitoring = () => {
 
             <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Rules</span>
-                <div className="text-xs font-bold text-primary mt-1">
-                  {negativeMarking ? '+2 Correct / -1 Wrong' : '+2 Correct / 0 Wrong'}
+                <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Scoring</span>
+                <div className="text-xs font-bold text-secondary mt-1">
+                  +2 Marks / Correct (0 Wrong)
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-surface-container-highest text-primary flex items-center justify-center">
@@ -626,7 +611,7 @@ const LiveMonitoring = () => {
             <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
-                  Live Player Scoreboard (+2 / {negativeMarking ? '-1' : '0'})
+                  Live Player Scoreboard (+2 Marks / Correct)
                 </span>
                 <span className="text-xs text-on-surface-variant">{leaderboard.length} ranked</span>
               </div>

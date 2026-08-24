@@ -386,9 +386,8 @@ module.exports = function setupSockets(io) {
 
       const correctOpt = (fullQ?.options || []).find(o => o.isCorrect) || (fullQ?.options && fullQ.options[0]);
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
-      const isNegativeMarking = allKeys.some(k => sessionSettings[k]?.negativeMarking);
 
-      // Score calculation: +2 for correct, -1 for wrong (if negative marking ON), 0 otherwise
+      // Score calculation: only award +2 marks for correct answers (0 for incorrect)
       let answersMap = new Map();
       for (const k of allKeys) {
         if (sessionSubmittedAnswers[k]) {
@@ -408,13 +407,10 @@ module.exports = function setupSockets(io) {
           }
 
           if (ans.isCorrect) {
-            pScore.score += 2; // +2 marks
+            pScore.score += 2; // +2 marks for correct answer
             pScore.correctCount += 1;
           } else {
-            if (isNegativeMarking) {
-              pScore.score -= 1; // -1 mark
-            }
-            pScore.wrongCount += 1;
+            pScore.wrongCount += 1; // 0 marks for wrong answer (no negative marks)
           }
 
           sessionPlayerScores[k].set(uKey, pScore);
@@ -426,8 +422,7 @@ module.exports = function setupSockets(io) {
         questionId: fullQ?.id || 'q_active',
         correctOptionId,
         correctOptionText: correctOpt ? correctOpt.text : '',
-        optionsWithCorrectness: fullQ?.options || [],
-        negativeMarking: isNegativeMarking
+        optionsWithCorrectness: fullQ?.options || []
       };
 
       allKeys.forEach(k => {

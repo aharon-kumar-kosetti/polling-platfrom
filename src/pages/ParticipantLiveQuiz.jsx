@@ -90,13 +90,13 @@ const ParticipantLiveQuiz = () => {
         }
       }
 
-      // Calculate score delta for feedback animation
+      // Calculate score delta for feedback animation: only +2 for correct, 0 for incorrect
       if (selectedOption) {
         const isCorrect = (
           selectedOption === data.correctOptionId || 
           String(selectedOption).toLowerCase() === String(data.correctOptionId).toLowerCase()
         );
-        const delta = isCorrect ? 2 : (data.negativeMarking ? -1 : 0);
+        const delta = isCorrect ? 2 : 0;
         setScoreDelta(delta);
 
         if (matchedScore === null) {
@@ -338,7 +338,7 @@ const ParticipantLiveQuiz = () => {
           <div className="flex items-center gap-2 text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
             <span>{question.type ? question.type.replace('_', ' ') : 'Live Question'}</span>
             <span>•</span>
-            <span className="text-secondary font-bold">+2 Correct {negativeMarking ? '/ -1 Wrong' : ''}</span>
+            <span className="text-secondary font-bold">+2 Marks per Correct Answer</span>
           </div>
         </div>
 
@@ -429,7 +429,7 @@ const ParticipantLiveQuiz = () => {
                     )}
                     {revealedInfo && isSelected && !isThisOptionCorrect && (
                       <div className="text-[11px] font-bold text-error mt-0.5">
-                        ✗ Your Pick ({negativeMarking ? '-1 Mark' : '0 Marks'})
+                        ✗ Your Pick (+0 Marks)
                       </div>
                     )}
                   </div>
@@ -460,7 +460,7 @@ const ParticipantLiveQuiz = () => {
                   {isCorrectChoice 
                     ? '🎉 Correct! +2 Points Added to Your Score!' 
                     : selectedOption 
-                      ? (negativeMarking ? '❌ Wrong answer (-1 Mark deducted).' : '❌ Wrong answer (+0 Marks gained).')
+                      ? '❌ Incorrect Answer (+0 Marks). Keep going!'
                       : 'Time is up! You did not answer.'}
                 </span>
               </div>
