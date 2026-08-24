@@ -102,7 +102,7 @@ const LiveMonitoring = () => {
     // 3. Fetch organizer's saved question bank
     const fetchBank = async () => {
       try {
-        const res = await questionAPI.getQuestionBank();
+        const res = await questionAPI.getSavedQuestions();
         if (res.questions && res.questions.length > 0) {
           const parsed = res.questions.reduce((acc, q) => {
             try {
