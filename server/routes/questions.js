@@ -13,8 +13,23 @@ const authenticateOrganizer = async (req, res, next) => {
   if (token) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-      return next();
+      
+      // Verify user actually exists in the database
+      const userExists = await prisma.user.findUnique({
+        where: { id: decoded.userId }
+      });
+
+      if (userExists) {
+        req.user = decoded;
+        return next();
+      } else {
+        console.warn(`[Questions Auth] User ${decoded.userId} not found in DB. Clearing stale cookie.`);
+        res.clearCookie('access_token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        });
+      }
     } catch (err) {
       console.warn(`[Questions Auth] Token decode failed: ${err.message}`);
     }
@@ -70,6 +85,14 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
       }
     }
 
+    const userId = req.user.userId;
+    if (!userId) {
+      console.error('[Questions] No userId found on req.user:', req.user);
+      return res.status(401).json({ message: 'User not authenticated properly - missing userId' });
+    }
+
+    console.log(`[Questions] Saving ${questions.length} question(s) for user ${userId}`);
+
     // Use a transaction so all questions succeed or none persist
     const createdQuestions = await prisma.$transaction(
       questions.map(q =>
@@ -78,18 +101,20 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
             type: q.type || 'single_choice',
             text: q.text.trim(),
             imageUrl: q.imageUrl || null,
-            options: JSON.stringify(q.options),
+            options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
             timeLimitSeconds: q.timeLimitSeconds || 30,
-            userId: req.user.userId,
+            userId: userId,
           }
         })
       )
     );
 
+    console.log(`[Questions] Successfully saved ${createdQuestions.length} question(s)`);
     res.status(201).json({ success: true, questions: createdQuestions });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error saving to question bank' });
+    console.error('[Questions] Error saving to bank:', error.message);
+    console.error('[Questions] Full error:', error);
+    res.status(500).json({ message: 'Server error saving to question bank', detail: error.message });
   }
 });
 

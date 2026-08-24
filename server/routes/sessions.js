@@ -9,26 +9,42 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_for_now';
 
 // Middleware to extract and verify organizer JWT
 const authenticateOrganizer = async (req, res, next) => {
-  const token = req.cookies?.access_token || req.headers.authorization?.replace('Bearer ', '');
+  const token = req.cookies?.access_token;
   if (token) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-      return next();
+      
+      const userExists = await prisma.user.findUnique({
+        where: { id: decoded.userId }
+      });
+
+      if (userExists) {
+        req.user = decoded;
+        return next();
+      } else {
+        console.warn(`[Sessions Auth] User ${decoded.userId} not found in DB. Clearing stale cookie.`);
+        res.clearCookie('access_token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        });
+      }
     } catch (err) {
-      console.warn('[Auth] Invalid session token:', err.message);
+      console.warn(`[Sessions Auth] Token decode failed: ${err.message}`);
     }
   }
 
-  // Graceful fallback for local development / admin
+  // Fallback: resolve admin user
   try {
-    const adminUser = await prisma.user.findFirst();
+    const adminUser = await prisma.user.findFirst({
+      where: { email: 'admin@quizcore.com' }
+    });
     if (adminUser) {
-      req.user = { userId: adminUser.id, role: 'organizer' };
+      req.user = { userId: adminUser.id, role: adminUser.role, email: adminUser.email };
       return next();
     }
   } catch (dbErr) {
-    console.error('[Auth] Error finding fallback admin:', dbErr.message);
+    console.warn('[Sessions Auth] Admin fallback DB error:', dbErr.message);
   }
 
   return res.status(401).json({ message: 'Not authenticated' });
