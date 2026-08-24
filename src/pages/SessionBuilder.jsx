@@ -26,6 +26,10 @@ const SessionBuilder = () => {
   const [activeTab, setActiveTab] = useState('drafts');
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankModalAction, setBankModalAction] = useState(null); // 'single' or 'bulk'
+  const [selectedBankName, setSelectedBankName] = useState('General');
+  const [newBankName, setNewBankName] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -160,99 +164,128 @@ const SessionBuilder = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveSession = async () => {
-    try {
-      setIsPublishing(true);
-      const validQuestions = questions.filter(q => q.text && q.text.trim() !== '');
-      if (validQuestions.length === 0) {
-        alert('Please write at least one question before saving.');
-        return;
-      }
-      
-      if (id) {
-        const sessionRes = await sessionAPI.updateSessionQuestions(id, validQuestions);
-        const bankRes = await questionAPI.saveToBank(validQuestions);
-        
-        if (sessionRes.questions) {
-          const updatedQs = sessionRes.questions.map(q => ({
-            ...q,
-            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
-          }));
-          setQuestions(updatedQs);
-        }
+  const handleDeleteDraftQuestion = (index) => {
+    if (questions.length <= 1) {
+      alert('You must have at least one question.');
+      return;
+    }
+    const updated = [...questions];
+    updated.splice(index, 1);
+    setQuestions(updated);
+    if (activeQuestionIndex >= updated.length) {
+      setActiveQuestionIndex(Math.max(0, updated.length - 1));
+    }
+  };
 
-        if (bankRes.questions) {
-          const newBankQs = bankRes.questions.map(q => ({
-            ...q,
-            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
-          }));
-          setBankQuestions(prev => {
-            const newBank = [...prev];
-            newBankQs.forEach(newQ => {
-              const idx = newBank.findIndex(bq => bq.id === newQ.id);
-              if (idx >= 0) newBank[idx] = newQ;
-              else newBank.push(newQ);
+  const handleSaveSession = async () => {
+    const validQuestions = questions.filter(q => q.text && q.text.trim() !== '');
+    if (validQuestions.length === 0) {
+      alert('Please write at least one question before saving.');
+      return;
+    }
+    setBankModalAction('bulk');
+    setShowBankModal(true);
+  };
+
+  const handleSaveSingleToBank = async (q) => {
+    if (!q.text || q.text.trim() === '') return alert('Question text is empty');
+    setBankModalAction('single');
+    setShowBankModal(true);
+  };
+
+  const executeSaveToBank = async () => {
+    const finalBankName = newBankName.trim() || selectedBankName;
+    if (!finalBankName) return alert('Please specify a bank name.');
+    
+    setShowBankModal(false);
+    setIsPublishing(true);
+
+    try {
+      if (bankModalAction === 'bulk') {
+        const validQuestions = questions.filter(q => q.text && q.text.trim() !== '');
+        // Apply bankName to all questions
+        const questionsWithBank = validQuestions.map(q => ({ ...q, bankName: finalBankName }));
+        
+        if (id) {
+          const sessionRes = await sessionAPI.updateSessionQuestions(id, validQuestions);
+          const bankRes = await questionAPI.saveToBank(questionsWithBank);
+          
+          if (sessionRes.questions) {
+            const updatedQs = sessionRes.questions.map(q => ({
+              ...q,
+              options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+            }));
+            setQuestions(updatedQs);
+          }
+
+          if (bankRes.questions) {
+            const newBankQs = bankRes.questions.map(q => ({
+              ...q,
+              options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+            }));
+            setBankQuestions(prev => {
+              const newBank = [...prev];
+              newBankQs.forEach(newQ => {
+                const idx = newBank.findIndex(bq => bq.id === newQ.id);
+                if (idx >= 0) newBank[idx] = newQ;
+                else newBank.push(newQ);
+              });
+              return newBank;
             });
-            return newBank;
-          });
+          }
+          alert('Successfully saved questions to this Session and your Question Bank!');
+        } else {
+          const res = await questionAPI.saveToBank(questionsWithBank);
+          if (res.questions) {
+            const updatedQs = res.questions.map(q => ({
+              ...q,
+              options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+            }));
+            setQuestions(updatedQs);
+            
+            setBankQuestions(prev => {
+              const newBank = [...prev];
+              updatedQs.forEach(newQ => {
+                const idx = newBank.findIndex(bq => bq.id === newQ.id);
+                if (idx >= 0) newBank[idx] = newQ;
+                else newBank.push(newQ);
+              });
+              return newBank;
+            });
+          }
+          alert('Successfully saved questions to your Question Bank!');
         }
-        alert('Successfully saved questions to this Session and your Question Bank!');
-      } else {
-        const res = await questionAPI.saveToBank(validQuestions);
-        if (res.questions) {
-          const updatedQs = res.questions.map(q => ({
-            ...q,
-            options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options
-          }));
-          setQuestions(updatedQs);
+      } else if (bankModalAction === 'single') {
+        const qToSave = { ...questions[activeQuestionIndex], bankName: finalBankName };
+        const res = await questionAPI.saveToBank([qToSave]);
+        if (res.questions && res.questions.length > 0) {
+          const newBankQ = { ...res.questions[0], options: typeof res.questions[0].options === 'string' ? JSON.parse(res.questions[0].options) : res.questions[0].options };
           
           setBankQuestions(prev => {
-            const newBank = [...prev];
-            updatedQs.forEach(newQ => {
-              const idx = newBank.findIndex(bq => bq.id === newQ.id);
-              if (idx >= 0) newBank[idx] = newQ;
-              else newBank.push(newQ);
-            });
-            return newBank;
+            const exists = prev.findIndex(bq => bq.id === newBankQ.id);
+            if (exists >= 0) {
+              const copy = [...prev];
+              copy[exists] = newBankQ;
+              return copy;
+            }
+            return [...prev, newBankQ];
           });
+
+          setQuestions(prev => {
+            const copy = [...prev];
+            const idx = copy.findIndex(activeQ => activeQ.id === qToSave.id);
+            if (idx >= 0) copy[idx] = newBankQ;
+            return copy;
+          });
+
+          alert('Saved to Question Bank!');
         }
-        alert('Successfully saved questions to your Question Bank!');
       }
     } catch (err) {
       alert('Error saving questions: ' + err.message);
     } finally {
       setIsPublishing(false);
-    }
-  };
-
-  const handleSaveSingleToBank = async (q) => {
-    if (!q.text || q.text.trim() === '') return alert('Question text is empty');
-    try {
-      const res = await questionAPI.saveToBank([q]);
-      if (res.questions && res.questions.length > 0) {
-        const newBankQ = { ...res.questions[0], options: typeof res.questions[0].options === 'string' ? JSON.parse(res.questions[0].options) : res.questions[0].options };
-        
-        setBankQuestions(prev => {
-          const exists = prev.findIndex(bq => bq.id === newBankQ.id);
-          if (exists >= 0) {
-            const copy = [...prev];
-            copy[exists] = newBankQ;
-            return copy;
-          }
-          return [...prev, newBankQ];
-        });
-
-        setQuestions(prev => {
-          const copy = [...prev];
-          const idx = copy.findIndex(activeQ => activeQ.id === q.id);
-          if (idx >= 0) copy[idx] = newBankQ;
-          return copy;
-        });
-
-        alert('Saved to Question Bank!');
-      }
-    } catch (e) {
-      alert('Failed to save to bank: ' + e.message);
+      setNewBankName('');
     }
   };
 
@@ -271,8 +304,16 @@ const SessionBuilder = () => {
     setActiveQuestionIndex(questions.length);
   };
 
+  const groupedBankQuestions = bankQuestions.reduce((acc, q) => {
+    const bank = q.bankName || 'General';
+    if (!acc[bank]) acc[bank] = [];
+    acc[bank].push(q);
+    return acc;
+  }, {});
+
   return (
     <div className="bg-surface-container-lowest text-on-surface antialiased flex h-screen overflow-hidden font-body-md text-body-md">
+
       
       {/* Side Navigation Bar */}
       <nav className="h-screen w-64 hidden md:flex flex-col py-6 bg-surface-container-low border-r border-outline-variant/30 shrink-0">
@@ -406,6 +447,13 @@ const SessionBuilder = () => {
                           </div>
                           <p className="text-xs text-primary font-medium truncate">{q.text || 'Untitled Question'}</p>
                         </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteDraftQuestion(idx); }} 
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-error-container text-error rounded transition-all shrink-0"
+                          title="Delete Question"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">delete</span>
+                        </button>
                       </div>
                     );
                   })}
@@ -418,22 +466,27 @@ const SessionBuilder = () => {
                   <span className="text-[10px] text-on-surface-variant">Saved globally. Click + to add to session.</span>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
-                  {bankQuestions.map((bq, i) => (
-                    <div key={bq.id} className="w-full text-left flex flex-col gap-1.5 rounded-xl px-4 py-3 transition-colors bg-surface-container-low border border-outline-variant/30 hover:border-primary/50 relative group">
-                      <span className="font-label-md text-[10px] opacity-70 uppercase tracking-widest">{bq.type.replace('_', ' ')}</span>
-                      <span className="text-xs font-medium line-clamp-2">{bq.text || 'Untitled'}</span>
-                      <div className="absolute top-2 right-2 flex opacity-0 group-hover:opacity-100 transition-opacity bg-surface-container-lowest shadow-sm rounded-md overflow-hidden border border-outline-variant/30">
-                        <button onClick={() => handleCopyFromBank(bq)} className="p-1.5 hover:bg-secondary-container hover:text-on-secondary-container transition-colors" title="Add to Session">
-                          <span className="material-symbols-outlined text-[14px]">add</span>
-                        </button>
-                        <button onClick={() => handleDeleteFromBank(bq.id)} className="p-1.5 hover:bg-error-container hover:text-error transition-colors" title="Delete from Bank">
-                          <span className="material-symbols-outlined text-[14px]">delete</span>
-                        </button>
-                      </div>
+                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-4 custom-scrollbar">
+                  {Object.entries(groupedBankQuestions).map(([bankName, qs]) => (
+                    <div key={bankName} className="flex flex-col gap-2">
+                      <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{bankName} ({qs.length})</h4>
+                      {qs.map((bq, i) => (
+                        <div key={bq.id} className="w-full text-left flex flex-col gap-1.5 rounded-xl px-4 py-3 transition-colors bg-surface-container-low border border-outline-variant/30 hover:border-primary/50 relative group">
+                          <span className="font-label-md text-[10px] opacity-70 uppercase tracking-widest">{bq.type.replace('_', ' ')}</span>
+                          <span className="text-xs font-medium line-clamp-2">{bq.text || 'Untitled'}</span>
+                          <div className="absolute top-2 right-2 flex opacity-0 group-hover:opacity-100 transition-opacity bg-surface-container-lowest shadow-sm rounded-md overflow-hidden border border-outline-variant/30">
+                            <button onClick={() => handleCopyFromBank(bq)} className="p-1.5 hover:bg-secondary-container hover:text-on-secondary-container transition-colors" title="Add to Session">
+                              <span className="material-symbols-outlined text-[14px]">add</span>
+                            </button>
+                            <button onClick={() => handleDeleteFromBank(bq.id)} className="p-1.5 hover:bg-error-container hover:text-error transition-colors" title="Delete from Bank">
+                              <span className="material-symbols-outlined text-[14px]">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
-                  {bankQuestions.length === 0 && (
+                  {Object.keys(groupedBankQuestions).length === 0 && (
                     <div className="p-6 text-center text-sm text-on-surface-variant opacity-70 flex flex-col items-center gap-2">
                       <span className="material-symbols-outlined text-3xl">inventory_2</span>
                       Your Question Bank is empty.
@@ -638,9 +691,68 @@ const SessionBuilder = () => {
             </div>
 
           </section>
-
         </div>
       </main>
+
+      {/* Bank Selection Modal */}
+      {showBankModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-8 max-w-md w-full shadow-lg border border-outline-variant/30">
+            <h3 className="text-xl font-bold text-on-surface mb-2">Save to Question Bank</h3>
+            <p className="text-sm text-on-surface-variant mb-6">Select a section or create a new one to organize your questions.</p>
+            
+            <div className="flex flex-col gap-4 mb-6">
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant mb-1">Select Existing Bank</label>
+                <select 
+                  className="w-full bg-surface-container border border-outline-variant/50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={selectedBankName}
+                  onChange={(e) => { setSelectedBankName(e.target.value); setNewBankName(''); }}
+                >
+                  <option value="General">General</option>
+                  {Object.keys(groupedBankQuestions).filter(b => b !== 'General').map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="h-px bg-outline-variant/30 flex-1"></div>
+                <span className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">OR</span>
+                <div className="h-px bg-outline-variant/30 flex-1"></div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant mb-1">Create New Bank</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Math Quiz 101"
+                  className="w-full bg-surface-container border border-outline-variant/50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={newBankName}
+                  onChange={(e) => { setNewBankName(e.target.value); if (e.target.value) setSelectedBankName(''); }}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowBankModal(false)}
+                className="px-5 py-2.5 rounded-full font-label-md text-sm hover:bg-surface-container transition-colors"
+                disabled={isPublishing}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeSaveToBank}
+                className="px-5 py-2.5 rounded-full font-label-md text-sm bg-primary text-on-primary hover:bg-primary-container transition-colors shadow-sm disabled:opacity-50"
+                disabled={isPublishing}
+              >
+                {isPublishing ? 'Saving...' : 'Save Questions'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

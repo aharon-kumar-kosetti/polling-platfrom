@@ -107,6 +107,7 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
             imageUrl: q.imageUrl || null,
             options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
             timeLimitSeconds: q.timeLimitSeconds || 30,
+            bankName: q.bankName || 'General',
             userId: userId,
           }
         });
@@ -121,6 +122,7 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
               imageUrl: q.imageUrl || null,
               options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
               timeLimitSeconds: q.timeLimitSeconds || 30,
+              bankName: q.bankName || 'General',
             }
           });
           results.push(updated);
@@ -134,6 +136,7 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
                 imageUrl: q.imageUrl || null,
                 options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
                 timeLimitSeconds: q.timeLimitSeconds || 30,
+                bankName: q.bankName || 'General',
                 userId: userId,
               }
             });
@@ -159,7 +162,7 @@ router.delete('/bank/:id', authenticateOrganizer, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await prisma.savedQuestion.deleteMany({
-      where: { id: parseInt(id) || id, userId: req.user.userId },
+      where: { id: String(id), userId: req.user.userId },
     });
 
     if (result.count === 0) {

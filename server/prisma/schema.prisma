@@ -97,6 +97,7 @@ model SavedQuestion {
   imageUrl         String?
   options          String   // JSON string of options
   timeLimitSeconds Int      @default(30)
+  bankName         String   @default("General")
   userId           String
   user             User     @relation(fields: [userId], references: [id])
   createdAt        DateTime @default(now())
