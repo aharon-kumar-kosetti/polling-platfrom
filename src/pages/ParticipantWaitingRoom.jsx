@@ -13,13 +13,18 @@ const ParticipantWaitingRoom = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const pin = searchParams.get('pin') || localStorage.getItem('participant_pin') || 'TECH-88';
-  const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
-  const sessionId = searchParams.get('sessionId') || localStorage.getItem('participant_sessionId');
+  const pin = searchParams.get('pin') || sessionStorage.getItem('participant_pin') || localStorage.getItem('participant_pin') || 'TECH-88';
+  const username = searchParams.get('username') || sessionStorage.getItem('participant_name') || localStorage.getItem('participant_name') || 'PixelCrafter';
+  const sessionId = searchParams.get('sessionId') || sessionStorage.getItem('participant_sessionId') || localStorage.getItem('participant_sessionId');
+  const participantId = searchParams.get('participantId') || sessionStorage.getItem('participant_id') || `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
   const [currentFact, setCurrentFact] = useState(0);
   const [playerCount, setPlayerCount] = useState(1);
   const [roomPlayers, setRoomPlayers] = useState([]);
+
+  useEffect(() => {
+    sessionStorage.setItem('participant_id', participantId);
+  }, [participantId]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -30,16 +35,16 @@ const ParticipantWaitingRoom = () => {
 
   // Listen to socket state change
   useEffect(() => {
-    const token = localStorage.getItem('participant_token');
+    const token = sessionStorage.getItem('participant_token') || localStorage.getItem('participant_token');
     const targetRoom = sessionId || pin;
     
     socketManager.connect(token);
     
-    socketManager.emit('join_room', { sessionId, pin, username });
+    socketManager.emit('join_room', { sessionId, pin, username, participantId });
     
     const handleState = (data) => {
       if (data?.status === 'active' || data?.currentQuestion) {
-        navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}&sessionId=${encodeURIComponent(targetRoom)}`);
+        navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}&participantId=${encodeURIComponent(participantId)}&sessionId=${encodeURIComponent(targetRoom)}`);
       }
     };
 

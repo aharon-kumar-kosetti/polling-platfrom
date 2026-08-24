@@ -7,9 +7,10 @@ const ParticipantLiveQuiz = () => {
   const { sessionId: paramSessionId } = useParams();
   const [searchParams] = useSearchParams();
   
-  const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
-  const pin = searchParams.get('pin') || localStorage.getItem('participant_pin') || 'TECH-88';
-  const sessionId = paramSessionId || searchParams.get('sessionId') || localStorage.getItem('participant_sessionId') || pin;
+  const pin = searchParams.get('pin') || sessionStorage.getItem('participant_pin') || localStorage.getItem('participant_pin') || 'TECH-88';
+  const username = searchParams.get('username') || sessionStorage.getItem('participant_name') || localStorage.getItem('participant_name') || 'PixelCrafter';
+  const sessionId = paramSessionId || searchParams.get('sessionId') || sessionStorage.getItem('participant_sessionId') || localStorage.getItem('participant_sessionId') || pin;
+  const participantId = searchParams.get('participantId') || sessionStorage.getItem('participant_id') || `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
   const [question, setQuestion] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -19,9 +20,9 @@ const ParticipantLiveQuiz = () => {
   const [revealedInfo, setRevealedInfo] = useState(null);
   const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
   
-  // Persistent score initialization from localStorage / URL
+  // Independent tab-isolated score initialization
   const [score, setScore] = useState(() => {
-    const saved = localStorage.getItem('participant_score');
+    const saved = sessionStorage.getItem('participant_score');
     if (saved !== null && !isNaN(parseInt(saved, 10))) {
       return parseInt(saved, 10);
     }
@@ -32,16 +33,20 @@ const ParticipantLiveQuiz = () => {
   const [scoreDelta, setScoreDelta] = useState(null);
   const currentQIdRef = useRef(null);
 
+  useEffect(() => {
+    sessionStorage.setItem('participant_id', participantId);
+  }, [participantId]);
+
   // Connect and listen to question state, answer reveals, and responders
   useEffect(() => {
-    const token = localStorage.getItem('participant_token');
+    const token = sessionStorage.getItem('participant_token') || localStorage.getItem('participant_token');
     
     socketManager.connect(token);
-    socketManager.emit('join_room', { sessionId, pin, username });
+    socketManager.emit('join_room', { sessionId, pin, username, participantId });
     
     const handleState = (data) => {
       if (data?.status === 'ended') {
-        navigate(`/leaderboard?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}`);
+        navigate(`/leaderboard?pin=${pin}&username=${encodeURIComponent(username)}&participantId=${encodeURIComponent(participantId)}&score=${score}`);
         return;
       }
 
@@ -73,18 +78,16 @@ const ParticipantLiveQuiz = () => {
         setResponders(data.responders);
       }
 
-      const normalizedMyName = username.trim().toLowerCase();
-
       if (Array.isArray(data?.leaderboard)) {
         const myEntry = data.leaderboard.find(p => 
-          p.username?.trim().toLowerCase() === normalizedMyName || 
-          p.id?.toLowerCase() === normalizedMyName ||
-          p.id === socketManager.getSocket()?.id
+          p.id === participantId || 
+          p.socketId === socketManager.getSocket()?.id ||
+          p.username?.trim().toLowerCase() === username.trim().toLowerCase()
         );
         if (myEntry) {
           setScore(myEntry.score);
           setRank(myEntry.rank);
-          localStorage.setItem('participant_score', String(myEntry.score));
+          sessionStorage.setItem('participant_score', String(myEntry.score));
         }
       }
 
@@ -101,16 +104,15 @@ const ParticipantLiveQuiz = () => {
 
     const handleLeaderboard = (data) => {
       if (Array.isArray(data?.rankings)) {
-        const normalizedMyName = username.trim().toLowerCase();
         const myEntry = data.rankings.find(p => 
-          p.username?.trim().toLowerCase() === normalizedMyName || 
-          p.id?.toLowerCase() === normalizedMyName ||
-          p.id === socketManager.getSocket()?.id
+          p.id === participantId || 
+          p.socketId === socketManager.getSocket()?.id ||
+          p.username?.trim().toLowerCase() === username.trim().toLowerCase()
         );
         if (myEntry) {
           setScore(myEntry.score);
           setRank(myEntry.rank);
-          localStorage.setItem('participant_score', String(myEntry.score));
+          sessionStorage.setItem('participant_score', String(myEntry.score));
         }
       }
     };
@@ -142,7 +144,7 @@ const ParticipantLiveQuiz = () => {
       socketManager.off('question_responders_updated', handleResponders);
       socketManager.off('answer_submitted_ack', handleAnswerAck);
     };
-  }, [navigate, pin, username, sessionId, score, selectedOption]);
+  }, [navigate, pin, username, sessionId, participantId, score, selectedOption]);
 
   // Circular timer calculation
   const strokeDashoffset = initialTime > 0 ? 251 - (251 * timeLeft) / initialTime : 0;
@@ -169,6 +171,7 @@ const ParticipantLiveQuiz = () => {
       questionId: question.id,
       optionId: optId,
       username,
+      participantId,
       sessionId,
       pin
     });

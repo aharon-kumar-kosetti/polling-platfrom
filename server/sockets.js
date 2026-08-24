@@ -9,13 +9,13 @@ const sessionParticipants = {};
 // Bidirectional mapping between sessionId <-> pin
 const roomAliases = new Map();
 
-// Real-time Player Cumulative Scores: roomKey -> Map(userKey -> { id, username, score, correctCount, wrongCount })
+// Real-time Player Cumulative Scores: roomKey -> Map(participantId -> { id, username, score, correctCount, wrongCount, socketId })
 const sessionPlayerScores = {};
 // Current Full Question with isCorrect: roomKey -> question
 const sessionCurrentQuestionFull = {};
 // Definitive correct answer for active question: roomKey -> { questionId, correctOptionId, correctOptionText }
 const sessionCorrectAnswer = {};
-// Submitted answers for current question: roomKey -> Map(userKey -> { userKey, username, questionId, optionId, isCorrect, timestamp })
+// Submitted answers for current question: roomKey -> Map(participantId -> { participantId, username, questionId, optionId, isCorrect, timestamp })
 const sessionSubmittedAnswers = {};
 
 function registerAlias(sessionId, pin) {
@@ -55,18 +55,17 @@ function getParticipantsList(sessionIdOrPin) {
   for (const k of relatedKeys) {
     if (sessionParticipants[k]) {
       for (const [sId, pData] of sessionParticipants[k].entries()) {
-        const uKey = (pData.username || pData.id || sId).trim().toLowerCase();
+        const pId = pData.id || sId;
         
-        // Attach player live score to participant object for host deck roster
         let pScore = 0;
         for (const rk of relatedKeys) {
-          if (sessionPlayerScores[rk] && sessionPlayerScores[rk].has(uKey)) {
-            pScore = sessionPlayerScores[rk].get(uKey).score;
+          if (sessionPlayerScores[rk] && sessionPlayerScores[rk].has(pId)) {
+            pScore = sessionPlayerScores[rk].get(pId).score;
             break;
           }
         }
 
-        mergedMap.set(uKey, { ...pData, score: pScore });
+        mergedMap.set(pId, { ...pData, score: pScore });
       }
     }
   }
@@ -79,8 +78,8 @@ function getLeaderboard(sessionIdOrPin) {
 
   for (const k of relatedKeys) {
     if (sessionPlayerScores[k]) {
-      for (const [userKey, pScore] of sessionPlayerScores[k].entries()) {
-        mergedMap.set(userKey, { ...pScore });
+      for (const [pId, pScore] of sessionPlayerScores[k].entries()) {
+        mergedMap.set(pId, { ...pScore });
       }
     }
   }
@@ -88,10 +87,10 @@ function getLeaderboard(sessionIdOrPin) {
   // Ensure all connected participants exist in leaderboard
   const participants = getParticipantsList(sessionIdOrPin);
   participants.forEach(p => {
-    const userKey = (p.username || p.id).trim().toLowerCase();
-    if (!mergedMap.has(userKey)) {
-      mergedMap.set(userKey, {
-        id: userKey,
+    const pId = p.id;
+    if (!mergedMap.has(pId)) {
+      mergedMap.set(pId, {
+        id: pId,
         username: p.username,
         score: p.score || 0,
         correctCount: 0,
@@ -113,8 +112,8 @@ function getQuestionResponders(sessionIdOrPin) {
 
   for (const k of relatedKeys) {
     if (sessionSubmittedAnswers[k]) {
-      for (const [uKey, ans] of sessionSubmittedAnswers[k].entries()) {
-        answersMap.set(uKey, ans);
+      for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
+        answersMap.set(pId, ans);
       }
     }
   }
@@ -124,12 +123,14 @@ function getQuestionResponders(sessionIdOrPin) {
 
   const top3 = sorted.slice(0, 3).map((a, idx) => ({
     rank: idx + 1,
+    id: a.participantId,
     username: a.username,
     optionId: a.optionId,
     isHighlighted: true
   }));
 
   const others = sorted.slice(3).map(a => ({
+    id: a.participantId,
     username: a.username,
     optionId: a.optionId,
     isHighlighted: false
@@ -207,8 +208,8 @@ module.exports = function setupSockets(io) {
   io.on('connection', (socket) => {
     console.log(`[Socket] User connected: ${socket.id} (role: ${socket.user?.role || 'anonymous'})`);
 
-    // Join a specific session room
-    socket.on('join_room', ({ sessionId, pin, username }) => {
+    // Join a specific session room with unique participantId
+    socket.on('join_room', ({ sessionId, pin, username, participantId: clientProvidedId }) => {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
 
@@ -224,21 +225,21 @@ module.exports = function setupSockets(io) {
       const uniqueKeys = Array.from(new Set(allKeys));
       uniqueKeys.forEach(k => socket.join(k));
 
-      console.log(`[Socket] ${socket.id} joined rooms [${uniqueKeys.join(', ')}] as ${username || socket.user?.username || socket.user?.role || 'user'}`);
-
       const isParticipant = socket.user?.role === 'participant' || (username && !username.toLowerCase().includes('host'));
 
       if (isParticipant) {
-        const participantId = socket.user?.participantId || socket.id;
+        // Guarantee completely unique participantId per device/tab
+        const participantId = clientProvidedId || socket.user?.participantId || `p_${socket.id.slice(0, 8)}`;
         const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
-        const userKey = participantName.trim().toLowerCase();
 
         const participantData = {
-          id: userKey,
+          id: participantId,
           socketId: socket.id,
           username: participantName,
           joinedAt: Date.now(),
         };
+
+        console.log(`[Socket] Player joined: ${participantName} (ID: ${participantId}, Socket: ${socket.id}) in rooms [${uniqueKeys.join(', ')}]`);
 
         uniqueKeys.forEach(k => {
           if (!sessionParticipants[k]) {
@@ -249,14 +250,20 @@ module.exports = function setupSockets(io) {
           if (!sessionPlayerScores[k]) {
             sessionPlayerScores[k] = new Map();
           }
-          if (!sessionPlayerScores[k].has(userKey)) {
-            sessionPlayerScores[k].set(userKey, {
-              id: userKey,
+          if (!sessionPlayerScores[k].has(participantId)) {
+            sessionPlayerScores[k].set(participantId, {
+              id: participantId,
+              socketId: socket.id,
               username: participantName,
               score: 0,
               correctCount: 0,
               wrongCount: 0
             });
+          } else {
+            // Update existing record's socket ID and username
+            const existing = sessionPlayerScores[k].get(participantId);
+            existing.socketId = socket.id;
+            existing.username = participantName;
           }
         });
 
@@ -282,7 +289,7 @@ module.exports = function setupSockets(io) {
         socket.emit('question_responders_updated', currentResponders);
       }
 
-      // ONLY send question if host has an ACTIVE pushed question
+      // Send active question state only if currently live
       let foundActiveState = false;
       for (const k of uniqueKeys) {
         if (activeSessions[k] && activeSessions[k].status === 'active' && activeSessions[k].currentQuestion) {
@@ -296,8 +303,8 @@ module.exports = function setupSockets(io) {
       }
     });
 
-    // Handle answer submission: Locks answer WITHOUT awarding points yet (points awarded on reveal only!)
-    socket.on('submit_answer', ({ questionId, optionId, username, sessionId, pin }) => {
+    // Handle answer submission: Locks answer independently per participantId
+    socket.on('submit_answer', ({ questionId, optionId, username, participantId: clientProvidedId, sessionId, pin }) => {
       let candidateKey = sessionId || pin || socket.user?.sessionId;
 
       if (!candidateKey) {
@@ -311,14 +318,28 @@ module.exports = function setupSockets(io) {
 
       if (!candidateKey) return;
       const allKeys = getRelatedRoomKeys(candidateKey);
-      const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
-      const userKey = participantName.trim().toLowerCase();
+      
+      // Resolve unique participant ID
+      let participantId = clientProvidedId || socket.user?.participantId;
+      if (!participantId) {
+        for (const k of allKeys) {
+          if (sessionParticipants[k]?.has(socket.id)) {
+            participantId = sessionParticipants[k].get(socket.id).id;
+            break;
+          }
+        }
+      }
+      if (!participantId) {
+        participantId = `p_${socket.id.slice(0, 8)}`;
+      }
 
-      // Prevent duplicate submissions for the same question
+      const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
+
+      // Prevent duplicate submissions per individual participant
       let alreadyAnswered = false;
       for (const k of allKeys) {
-        if (sessionSubmittedAnswers[k] && sessionSubmittedAnswers[k].has(userKey)) {
-          const prev = sessionSubmittedAnswers[k].get(userKey);
+        if (sessionSubmittedAnswers[k] && sessionSubmittedAnswers[k].has(participantId)) {
+          const prev = sessionSubmittedAnswers[k].get(participantId);
           if (prev && String(prev.questionId) === String(questionId)) {
             alreadyAnswered = true;
             break;
@@ -327,7 +348,7 @@ module.exports = function setupSockets(io) {
       }
 
       if (alreadyAnswered) {
-        console.log(`[Socket] Duplicate answer submission ignored for ${participantName} on Q:${questionId}`);
+        console.log(`[Socket] Duplicate answer submission ignored for participant ${participantId} (${participantName}) on Q:${questionId}`);
         return;
       }
 
@@ -372,11 +393,11 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      console.log(`[Socket] Answer locked for Q:${questionId}, opt:${optionId} by ${participantName} (${userKey})`);
+      console.log(`[Socket] Answer locked for Q:${questionId}, opt:${optionId} by ${participantName} (ID: ${participantId}) => isCorrect: ${isCorrect}`);
 
-      // Record submitted answer with timestamp (points will be awarded when host reveals!)
+      // Record submitted answer under unique participantId
       const answerRecord = {
-        userKey,
+        participantId,
         username: participantName,
         questionId,
         optionId,
@@ -388,7 +409,7 @@ module.exports = function setupSockets(io) {
         if (!sessionSubmittedAnswers[k]) {
           sessionSubmittedAnswers[k] = new Map();
         }
-        sessionSubmittedAnswers[k].set(userKey, answerRecord);
+        sessionSubmittedAnswers[k].set(participantId, answerRecord);
       });
 
       // Update question vote count tally
@@ -423,7 +444,7 @@ module.exports = function setupSockets(io) {
         io.to(k).emit('question_responders_updated', respondersData);
       });
 
-      // Lock acknowledgment to answering socket without revealing score yet
+      // Lock acknowledgment to answering socket without prematurely revealing score
       socket.emit('answer_submitted_ack', {
         isLocked: true,
         questionId,
@@ -431,7 +452,7 @@ module.exports = function setupSockets(io) {
       });
     });
 
-    // Organizer reveals the correct answer -> Points ARE AWARDED HERE ONLY!
+    // Organizer reveals the correct answer -> Scores computed individually per participantId
     socket.on('organizer:reveal_answer', ({ sessionId, pin, question }) => {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
@@ -475,32 +496,32 @@ module.exports = function setupSockets(io) {
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
       const correctOptionText = correctOpt ? correctOpt.text : '';
 
-      // Score calculation on REVEAL: Award +2 marks for correct answers, 0 for wrong
+      // Score calculation on REVEAL: Award +2 marks only for participants who answered correctly
       let answersMap = new Map();
       for (const k of allKeys) {
         if (sessionSubmittedAnswers[k]) {
-          for (const [uKey, ans] of sessionSubmittedAnswers[k].entries()) {
-            answersMap.set(uKey, ans);
+          for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
+            answersMap.set(pId, ans);
           }
         }
       }
 
-      answersMap.forEach((ans, uKey) => {
+      answersMap.forEach((ans, pId) => {
         allKeys.forEach(k => {
           if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
-          let pScore = sessionPlayerScores[k].get(uKey);
+          let pScore = sessionPlayerScores[k].get(pId);
           if (!pScore) {
-            pScore = { id: uKey, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
+            pScore = { id: pId, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
           }
 
           if (ans.isCorrect) {
-            pScore.score += 2; // +2 marks awarded on reveal
+            pScore.score += 2; // +2 marks awarded to this specific participant
             pScore.correctCount += 1;
           } else {
             pScore.wrongCount += 1; // 0 marks on wrong answer
           }
 
-          sessionPlayerScores[k].set(uKey, pScore);
+          sessionPlayerScores[k].set(pId, pScore);
         });
       });
 
