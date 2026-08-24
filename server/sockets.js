@@ -9,13 +9,13 @@ const sessionParticipants = {};
 // Bidirectional mapping between sessionId <-> pin
 const roomAliases = new Map();
 
-// Real-time Player Cumulative Scores: roomKey -> Map(participantId -> { id, username, score, correctCount, wrongCount, socketId })
+// Real-time Player Cumulative Scores: roomKey -> Map(participantKey -> { id, username, score, correctCount, wrongCount, socketId })
 const sessionPlayerScores = {};
 // Current Full Question with isCorrect: roomKey -> question
 const sessionCurrentQuestionFull = {};
 // Definitive correct answer for active question: roomKey -> { questionId, correctOptionId, correctOptionText }
 const sessionCorrectAnswer = {};
-// Submitted answers for current question: roomKey -> Map(participantId -> { participantId, username, questionId, optionId, isCorrect, timestamp })
+// Submitted answers for current question: roomKey -> Map(participantKey -> { participantId, username, questionId, optionId, isCorrect, timestamp })
 const sessionSubmittedAnswers = {};
 
 function registerAlias(sessionId, pin) {
@@ -40,7 +40,6 @@ function getRelatedRoomKeys(key) {
     if (secondary) keys.add(String(secondary));
   }
 
-  // Also include upper/lowercase variations for PINs
   const upper = strKey.toUpperCase();
   if (upper !== strKey) keys.add(upper);
   const aliasUpper = roomAliases.get(upper);
@@ -51,35 +50,44 @@ function getRelatedRoomKeys(key) {
 
 function getParticipantsList(sessionIdOrPin) {
   const relatedKeys = getRelatedRoomKeys(sessionIdOrPin);
-  const mergedMap = new Map();
+  const userMap = new Map(); // usernameKey -> participantData
+
   for (const k of relatedKeys) {
     if (sessionParticipants[k]) {
       for (const [sId, pData] of sessionParticipants[k].entries()) {
-        const pId = pData.id || sId;
+        const uKey = (pData.username || pData.id || sId).trim().toLowerCase();
         
         let pScore = 0;
         for (const rk of relatedKeys) {
-          if (sessionPlayerScores[rk] && sessionPlayerScores[rk].has(pId)) {
-            pScore = sessionPlayerScores[rk].get(pId).score;
-            break;
+          if (sessionPlayerScores[rk]) {
+            for (const [scoreId, scoreRec] of sessionPlayerScores[rk].entries()) {
+              if (scoreRec.username?.trim().toLowerCase() === uKey || scoreId === pData.id) {
+                if (scoreRec.score > pScore) pScore = scoreRec.score;
+              }
+            }
           }
         }
 
-        mergedMap.set(pId, { ...pData, score: pScore });
+        if (!userMap.has(uKey) || pScore > (userMap.get(uKey).score || 0)) {
+          userMap.set(uKey, { ...pData, score: pScore });
+        }
       }
     }
   }
-  return Array.from(mergedMap.values());
+  return Array.from(userMap.values());
 }
 
 function getLeaderboard(sessionIdOrPin) {
   const relatedKeys = getRelatedRoomKeys(sessionIdOrPin);
-  const mergedMap = new Map();
+  const userMap = new Map(); // usernameKey -> playerRecord
 
   for (const k of relatedKeys) {
     if (sessionPlayerScores[k]) {
       for (const [pId, pScore] of sessionPlayerScores[k].entries()) {
-        mergedMap.set(pId, { ...pScore });
+        const uKey = (pScore.username || pId).trim().toLowerCase();
+        if (!userMap.has(uKey) || pScore.score > userMap.get(uKey).score) {
+          userMap.set(uKey, { ...pScore });
+        }
       }
     }
   }
@@ -87,10 +95,10 @@ function getLeaderboard(sessionIdOrPin) {
   // Ensure all connected participants exist in leaderboard
   const participants = getParticipantsList(sessionIdOrPin);
   participants.forEach(p => {
-    const pId = p.id;
-    if (!mergedMap.has(pId)) {
-      mergedMap.set(pId, {
-        id: pId,
+    const uKey = (p.username || p.id).trim().toLowerCase();
+    if (!userMap.has(uKey)) {
+      userMap.set(uKey, {
+        id: p.id,
         username: p.username,
         score: p.score || 0,
         correctCount: 0,
@@ -99,7 +107,7 @@ function getLeaderboard(sessionIdOrPin) {
     }
   });
 
-  const sorted = Array.from(mergedMap.values()).sort((a, b) => b.score - a.score);
+  const sorted = Array.from(userMap.values()).sort((a, b) => b.score - a.score);
   return sorted.map((p, idx) => ({
     rank: idx + 1,
     ...p
@@ -108,18 +116,21 @@ function getLeaderboard(sessionIdOrPin) {
 
 function getQuestionResponders(sessionIdOrPin) {
   const relatedKeys = getRelatedRoomKeys(sessionIdOrPin);
-  const answersMap = new Map();
+  const userMap = new Map(); // usernameKey -> answerRecord
 
   for (const k of relatedKeys) {
     if (sessionSubmittedAnswers[k]) {
       for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
-        answersMap.set(pId, ans);
+        const uKey = (ans.username || pId).trim().toLowerCase();
+        if (!userMap.has(uKey) || ans.timestamp < userMap.get(uKey).timestamp) {
+          userMap.set(uKey, ans);
+        }
       }
     }
   }
 
   // Sort by submission timestamp (fastest first)
-  const sorted = Array.from(answersMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+  const sorted = Array.from(userMap.values()).sort((a, b) => a.timestamp - b.timestamp);
 
   const top3 = sorted.slice(0, 3).map((a, idx) => ({
     rank: idx + 1,
@@ -208,7 +219,7 @@ module.exports = function setupSockets(io) {
   io.on('connection', (socket) => {
     console.log(`[Socket] User connected: ${socket.id} (role: ${socket.user?.role || 'anonymous'})`);
 
-    // Join a specific session room with unique participantId
+    // Join a specific session room with unique participantId & deduplicated player record
     socket.on('join_room', ({ sessionId, pin, username, participantId: clientProvidedId }) => {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
@@ -230,6 +241,7 @@ module.exports = function setupSockets(io) {
       if (isParticipant) {
         const participantId = clientProvidedId || socket.user?.participantId || `p_${socket.id.slice(0, 8)}`;
         const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
+        const userKey = participantName.trim().toLowerCase();
 
         const participantData = {
           id: participantId,
@@ -244,12 +256,37 @@ module.exports = function setupSockets(io) {
           if (!sessionParticipants[k]) {
             sessionParticipants[k] = new Map();
           }
+          
+          // Remove any stale sockets for this same userKey
+          for (const [oldSId, p] of sessionParticipants[k].entries()) {
+            if (p.username?.trim().toLowerCase() === userKey && oldSId !== socket.id) {
+              sessionParticipants[k].delete(oldSId);
+            }
+          }
           sessionParticipants[k].set(socket.id, participantData);
 
           if (!sessionPlayerScores[k]) {
             sessionPlayerScores[k] = new Map();
           }
-          if (!sessionPlayerScores[k].has(participantId)) {
+
+          // Check if player already had score under userKey or participantId
+          let existingScore = null;
+          if (sessionPlayerScores[k].has(participantId)) {
+            existingScore = sessionPlayerScores[k].get(participantId);
+          } else {
+            for (const [sId, rec] of sessionPlayerScores[k].entries()) {
+              if (rec.username?.trim().toLowerCase() === userKey) {
+                existingScore = rec;
+                break;
+              }
+            }
+          }
+
+          if (existingScore) {
+            existingScore.socketId = socket.id;
+            existingScore.username = participantName;
+            sessionPlayerScores[k].set(participantId, existingScore);
+          } else {
             sessionPlayerScores[k].set(participantId, {
               id: participantId,
               socketId: socket.id,
@@ -258,10 +295,6 @@ module.exports = function setupSockets(io) {
               correctCount: 0,
               wrongCount: 0
             });
-          } else {
-            const existing = sessionPlayerScores[k].get(participantId);
-            existing.socketId = socket.id;
-            existing.username = participantName;
           }
         });
 
@@ -283,7 +316,16 @@ module.exports = function setupSockets(io) {
         let foundActiveState = false;
         for (const k of uniqueKeys) {
           if (activeSessions[k] && activeSessions[k].status === 'active' && activeSessions[k].currentQuestion) {
-            const userSub = sessionSubmittedAnswers[k]?.get(participantId);
+            let userSub = sessionSubmittedAnswers[k]?.get(participantId);
+            if (!userSub) {
+              for (const [pId, ans] of (sessionSubmittedAnswers[k]?.entries() || [])) {
+                if (ans.username?.trim().toLowerCase() === userKey) {
+                  userSub = ans;
+                  break;
+                }
+              }
+            }
+
             socket.emit('session_state_changed', {
               ...activeSessions[k],
               userSubmission: userSub ? {
@@ -315,7 +357,7 @@ module.exports = function setupSockets(io) {
       }
     });
 
-    // Handle answer submission: Locks answer independently per participantId
+    // Handle answer submission: Locks answer independently per participantId / username
     socket.on('submit_answer', ({ questionId, optionId, username, participantId: clientProvidedId, sessionId, pin }) => {
       let candidateKey = sessionId || pin || socket.user?.sessionId;
 
@@ -345,15 +387,24 @@ module.exports = function setupSockets(io) {
       }
 
       const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
+      const userKey = participantName.trim().toLowerCase();
 
       // Prevent duplicate submissions per individual participant
       let alreadyAnswered = false;
       for (const k of allKeys) {
-        if (sessionSubmittedAnswers[k] && sessionSubmittedAnswers[k].has(participantId)) {
-          const prev = sessionSubmittedAnswers[k].get(participantId);
-          if (prev && String(prev.questionId) === String(questionId)) {
-            alreadyAnswered = true;
-            break;
+        if (sessionSubmittedAnswers[k]) {
+          if (sessionSubmittedAnswers[k].has(participantId)) {
+            const prev = sessionSubmittedAnswers[k].get(participantId);
+            if (prev && String(prev.questionId) === String(questionId)) {
+              alreadyAnswered = true;
+              break;
+            }
+          }
+          for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
+            if (ans.username?.trim().toLowerCase() === userKey && String(ans.questionId) === String(questionId)) {
+              alreadyAnswered = true;
+              break;
+            }
           }
         }
       }
@@ -463,7 +514,7 @@ module.exports = function setupSockets(io) {
       });
     });
 
-    // Organizer reveals the correct answer -> Scores computed individually per participantId
+    // Organizer reveals the correct answer -> Scores computed individually per participant
     socket.on('organizer:reveal_answer', ({ sessionId, pin, question }) => {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
@@ -507,22 +558,40 @@ module.exports = function setupSockets(io) {
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
       const correctOptionText = correctOpt ? correctOpt.text : '';
 
-      // Score calculation on REVEAL: Award +2 marks only for participants who answered correctly
+      // Score calculation on REVEAL: Award +2 marks for correct answers
       let answersMap = new Map();
       for (const k of allKeys) {
         if (sessionSubmittedAnswers[k]) {
           for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
-            answersMap.set(pId, ans);
+            const uKey = (ans.username || pId).trim().toLowerCase();
+            if (!answersMap.has(uKey)) {
+              answersMap.set(uKey, ans);
+            }
           }
         }
       }
 
-      answersMap.forEach((ans, pId) => {
+      answersMap.forEach((ans, uKey) => {
         allKeys.forEach(k => {
           if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
-          let pScore = sessionPlayerScores[k].get(pId);
+          
+          let pScore = null;
+          let matchedKey = ans.participantId;
+          if (sessionPlayerScores[k].has(ans.participantId)) {
+            pScore = sessionPlayerScores[k].get(ans.participantId);
+          } else {
+            for (const [scoreId, rec] of sessionPlayerScores[k].entries()) {
+              if (rec.username?.trim().toLowerCase() === uKey) {
+                pScore = rec;
+                matchedKey = scoreId;
+                break;
+              }
+            }
+          }
+
           if (!pScore) {
-            pScore = { id: pId, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
+            pScore = { id: ans.participantId, username: ans.username, score: 0, correctCount: 0, wrongCount: 0 };
+            matchedKey = ans.participantId;
           }
 
           if (ans.isCorrect) {
@@ -532,7 +601,7 @@ module.exports = function setupSockets(io) {
             pScore.wrongCount += 1; // 0 marks on wrong answer
           }
 
-          sessionPlayerScores[k].set(pId, pScore);
+          sessionPlayerScores[k].set(matchedKey, pScore);
         });
       });
 

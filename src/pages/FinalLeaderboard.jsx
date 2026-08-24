@@ -7,16 +7,16 @@ const FinalLeaderboard = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const pin = searchParams.get('pin') || localStorage.getItem('participant_pin') || 'TECH-88';
-  const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
-  const sessionId = searchParams.get('sessionId') || localStorage.getItem('participant_sessionId') || pin;
+  const pin = searchParams.get('pin') || sessionStorage.getItem('participant_pin') || localStorage.getItem('participant_pin') || 'TECH-88';
+  const username = searchParams.get('username') || sessionStorage.getItem('participant_name') || localStorage.getItem('participant_name') || 'PixelCrafter';
+  const sessionId = searchParams.get('sessionId') || sessionStorage.getItem('participant_sessionId') || localStorage.getItem('participant_sessionId') || pin;
   const sessionTitle = searchParams.get('title') || 'Quizcore Live Session';
-  const passedScore = parseInt(searchParams.get('score') || '0', 10);
+  const passedScore = parseInt(searchParams.get('score') || sessionStorage.getItem('participant_score') || '0', 10);
 
   const [players, setPlayers] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('participant_token');
+    const token = sessionStorage.getItem('participant_token') || localStorage.getItem('participant_token');
     socketManager.connect(token);
     socketManager.emit('join_room', { sessionId, pin, username });
 
@@ -35,7 +35,7 @@ const FinalLeaderboard = () => {
     socketManager.on('leaderboard_updated', handleLeaderboard);
     socketManager.on('session_state_changed', handleState);
 
-    // Also fetch DB participants if available
+    // Fetch DB participants if available, deduplicating by username
     const loadSession = async () => {
       if (!sessionId) return;
       try {
@@ -43,12 +43,20 @@ const FinalLeaderboard = () => {
         if (res.session?.participants && res.session.participants.length > 0) {
           setPlayers(prev => {
             if (prev.length > 0) return prev;
-            return res.session.participants.map((p, idx) => ({
-              rank: idx + 1,
-              id: p.id,
-              username: p.username,
-              score: p.score || 0
-            }));
+            const uMap = new Map();
+            res.session.participants.forEach((p) => {
+              const uKey = (p.username || '').trim().toLowerCase();
+              if (!uKey) return;
+              const pScore = p.score || 0;
+              if (!uMap.has(uKey) || pScore > (uMap.get(uKey).score || 0)) {
+                uMap.set(uKey, {
+                  id: p.id,
+                  username: p.username,
+                  score: pScore
+                });
+              }
+            });
+            return Array.from(uMap.values());
           });
         }
       } catch (e) {}
@@ -61,18 +69,35 @@ const FinalLeaderboard = () => {
     };
   }, [sessionId, pin, username]);
 
-  // Compute final rankings list
-  let displayRankings = [...players];
-  if (displayRankings.length === 0) {
-    // If no players array received yet, construct from current user
-    displayRankings = [
-      { rank: 1, id: 'curr', username, score: passedScore }
-    ];
-  } else {
-    // Ensure ranks are sequentially sorted
-    displayRankings.sort((a, b) => b.score - a.score);
-    displayRankings = displayRankings.map((p, i) => ({ ...p, rank: i + 1 }));
+  // Compute strictly deduplicated final rankings list
+  const uniqueRankingsMap = new Map();
+  players.forEach(p => {
+    const uKey = (p.username || p.id || '').trim().toLowerCase();
+    if (!uKey) return;
+    const scoreVal = typeof p.score === 'number' ? p.score : 0;
+    if (!uniqueRankingsMap.has(uKey) || scoreVal > (uniqueRankingsMap.get(uKey).score || 0)) {
+      uniqueRankingsMap.set(uKey, {
+        id: p.id || uKey,
+        username: p.username || uKey,
+        score: scoreVal
+      });
+    }
+  });
+
+  // Ensure current user is present with their valid achieved score
+  const myKey = (username || '').trim().toLowerCase();
+  if (myKey) {
+    const currentScore = Math.max(passedScore, uniqueRankingsMap.get(myKey)?.score || 0);
+    uniqueRankingsMap.set(myKey, {
+      id: uniqueRankingsMap.get(myKey)?.id || 'curr',
+      username,
+      score: currentScore
+    });
   }
+
+  let displayRankings = Array.from(uniqueRankingsMap.values());
+  displayRankings.sort((a, b) => b.score - a.score);
+  displayRankings = displayRankings.map((p, i) => ({ ...p, rank: i + 1 }));
 
   const firstPlace = displayRankings[0] || null;
   const secondPlace = displayRankings[1] || null;
