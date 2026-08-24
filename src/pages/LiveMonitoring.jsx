@@ -188,11 +188,7 @@ const LiveMonitoring = () => {
   }, [sessionId, pin]);
 
   const currentQ = questions[currentQuestionIndex] || null;
-  const displayQ = currentQ || { 
-    text: 'Waiting for Host to push a question...', 
-    options: [] 
-  };
-  const totalResponses = displayQ.options.reduce((acc, opt) => acc + (opt.count || 0), 0);
+  const totalResponses = currentQ ? (currentQ.options || []).reduce((acc, opt) => acc + (opt.count || 0), 0) : 0;
 
   // Timer countdown
   useEffect(() => {
@@ -230,11 +226,23 @@ const LiveMonitoring = () => {
   };
 
   const handleRevealAnswer = () => {
+    if (!currentQ) return;
     setIsAnswerRevealed(true);
     socketManager.emit('organizer:reveal_answer', {
       sessionId,
-      pin
+      pin,
+      question: currentQ
     });
+  };
+
+  const handleNextQuestion = () => {
+    const nextIdx = currentQuestionIndex + 1;
+    if (nextIdx < bankQuestions.length) {
+      handlePushFromBank(bankQuestions[nextIdx]);
+    } else if (bankQuestions.length > 0) {
+      // Loop back or push first question
+      handlePushFromBank(bankQuestions[0]);
+    }
   };
 
   const handleToggleNegativeMarking = () => {
@@ -287,6 +295,24 @@ const LiveMonitoring = () => {
         {/* Action Controls & Settings */}
         <div className="flex items-center gap-3">
           
+          {/* Quick Reveal Button in Header */}
+          {currentQ && (
+            <button
+              onClick={handleRevealAnswer}
+              disabled={isAnswerRevealed}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold font-label-md transition-all flex items-center gap-1.5 shadow-md ${
+                isAnswerRevealed 
+                  ? 'bg-secondary-container text-on-secondary-container border border-secondary/40' 
+                  : 'bg-secondary text-on-secondary hover:opacity-90 active:scale-95 animate-pulse'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                {isAnswerRevealed ? 'task_alt' : 'visibility'}
+              </span>
+              <span>{isAnswerRevealed ? 'Answer Revealed' : 'Reveal Answer'}</span>
+            </button>
+          )}
+
           {/* Negative Marking Toggle */}
           <div className="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/40">
             <span className="text-xs font-label-md text-on-surface-variant hidden sm:inline">Scoring:</span>
@@ -322,14 +348,14 @@ const LiveMonitoring = () => {
             className="px-3.5 py-1.5 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-variant flex items-center gap-1 transition-colors"
           >
             <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
-            Share QR
+            QR
           </button>
 
           <button 
             onClick={handleEndQuiz}
             className="px-4 py-1.5 rounded-full bg-error/10 text-error hover:bg-error hover:text-on-error transition-colors text-xs font-label-md"
           >
-            End Quiz
+            End
           </button>
         </div>
       </header>
@@ -444,125 +470,156 @@ const LiveMonitoring = () => {
           </div>
 
           {/* Live Question Presentation Deck */}
-          <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-8 border border-outline-variant/30 shadow-editorial flex-1 flex flex-col">
-            
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-              <span className="px-3.5 py-1 bg-surface-container-high rounded-full font-label-sm text-xs font-bold uppercase tracking-wider">
-                {questions.length > 0 ? `Active Question ${currentQuestionIndex + 1} of ${questions.length}` : 'No Active Question'}
-              </span>
-              
-              <div className="flex items-center gap-2">
-                
-                {/* Reveal Answer Button */}
+          {!currentQ ? (
+            /* Stage Starter State (when no question is pushed yet) */
+            <div className="bg-surface-container-lowest rounded-3xl p-8 md:p-12 border-2 border-dashed border-secondary/40 shadow-editorial flex-1 flex flex-col items-center justify-center text-center gap-5 animate-fadeIn">
+              <div className="w-16 h-16 rounded-full bg-secondary-container/50 flex items-center justify-center text-secondary">
+                <span className="material-symbols-outlined text-3xl">play_circle</span>
+              </div>
+
+              <div className="max-w-md">
+                <h2 className="font-display-sm text-2xl font-bold text-primary mb-2">
+                  Host Stage Ready
+                </h2>
+                <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed">
+                  Launch the first question to start the live quiz and broadcast it to all connected participants.
+                </p>
+              </div>
+
+              {bankQuestions.length > 0 && (
                 <button
-                  onClick={handleRevealAnswer}
-                  disabled={isAnswerRevealed || questions.length === 0}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold font-label-md transition-all flex items-center gap-1.5 shadow-sm ${
-                    isAnswerRevealed 
-                      ? 'bg-secondary-container text-on-secondary-container border border-secondary/40' 
-                      : questions.length === 0
-                        ? 'opacity-40 bg-surface-container border border-outline-variant/40'
-                        : 'bg-secondary text-on-secondary hover:opacity-90 active:scale-95'
-                  }`}
+                  onClick={() => handlePushFromBank(bankQuestions[0])}
+                  className="px-8 py-3.5 rounded-full bg-secondary text-on-secondary font-label-md text-sm font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    {isAnswerRevealed ? 'task_alt' : 'visibility'}
-                  </span>
-                  <span>{isAnswerRevealed ? 'Answer Revealed' : 'Reveal Correct Answer'}</span>
+                  <span className="material-symbols-outlined text-lg">rocket_launch</span>
+                  <span>Push Question 1 to Stage Now</span>
                 </button>
-
-                <button 
-                  onClick={() => setIsTimerRunning(!isTimerRunning)} 
-                  disabled={timeLeft === 0}
-                  className="px-3 py-1.5 rounded-lg border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container disabled:opacity-50"
-                >
-                  {isTimerRunning ? 'Pause' : 'Resume'}
-                </button>
-              </div>
+              )}
             </div>
-
-            <h2 className="font-headline-lg text-xl md:text-2xl text-primary font-bold mb-6">
-              {displayQ.text}
-            </h2>
-
-            {displayQ.imageUrl && (
-              <div className="mb-6 rounded-2xl overflow-hidden border border-outline-variant/30 max-h-56 flex justify-center bg-surface-container-low">
-                <img src={displayQ.imageUrl} alt="Question Attachment" className="max-h-56 object-contain" />
-              </div>
-            )}
-
-            {/* Response Bars / Option Breakdown */}
-            <div className="flex flex-col gap-3 mb-6 flex-1">
-              {displayQ.options.map((opt, idx) => {
-                const percentage = totalResponses > 0 ? Math.round(((opt.count || 0) / totalResponses) * 100) : 0;
-                const isOptionCorrect = opt.isCorrect;
-                return (
-                  <div 
-                    key={opt.id || idx}
-                    className={`p-3.5 rounded-2xl border transition-all relative overflow-hidden ${
-                      isAnswerRevealed && isOptionCorrect
-                        ? 'border-secondary bg-secondary-container/20 ring-2 ring-secondary'
-                        : isOptionCorrect
-                          ? 'border-secondary/60 bg-secondary-container/10'
-                          : 'border-outline-variant/40 bg-surface-container-low'
-                    }`}
+          ) : (
+            /* Active Live Question Card */
+            <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-8 border border-outline-variant/30 shadow-editorial flex-1 flex flex-col">
+              
+              <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+                <span className="px-3.5 py-1 bg-surface-container-high rounded-full font-label-sm text-xs font-bold uppercase tracking-wider">
+                  Active Question {currentQuestionIndex + 1} of {questions.length}
+                </span>
+                
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsTimerRunning(!isTimerRunning)} 
+                    disabled={timeLeft === 0}
+                    className="px-3 py-1.5 rounded-lg border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container disabled:opacity-50"
                   >
-                    {/* Progress Fill Indicator */}
+                    {isTimerRunning ? 'Pause Timer' : 'Resume Timer'}
+                  </button>
+                </div>
+              </div>
+
+              <h2 className="font-headline-lg text-xl md:text-2xl text-primary font-bold mb-6">
+                {currentQ.text}
+              </h2>
+
+              {currentQ.imageUrl && (
+                <div className="mb-6 rounded-2xl overflow-hidden border border-outline-variant/30 max-h-56 flex justify-center bg-surface-container-low">
+                  <img src={currentQ.imageUrl} alt="Question Attachment" className="max-h-56 object-contain" />
+                </div>
+              )}
+
+              {/* Response Bars / Option Breakdown */}
+              <div className="flex flex-col gap-3 mb-6 flex-1">
+                {currentQ.options.map((opt, idx) => {
+                  const percentage = totalResponses > 0 ? Math.round(((opt.count || 0) / totalResponses) * 100) : 0;
+                  const isOptionCorrect = opt.isCorrect;
+                  return (
                     <div 
-                      className={`absolute left-0 top-0 bottom-0 opacity-20 transition-all duration-500 ${
-                        isOptionCorrect ? 'bg-secondary' : 'bg-outline-variant'
+                      key={opt.id || idx}
+                      className={`p-3.5 rounded-2xl border transition-all relative overflow-hidden ${
+                        isAnswerRevealed && isOptionCorrect
+                          ? 'border-secondary bg-secondary-container/20 ring-2 ring-secondary'
+                          : isOptionCorrect
+                            ? 'border-secondary/60 bg-secondary-container/10'
+                            : 'border-outline-variant/40 bg-surface-container-low'
                       }`}
-                      style={{ width: `${percentage}%` }}
-                    ></div>
+                    >
+                      {/* Progress Fill Indicator */}
+                      <div 
+                        className={`absolute left-0 top-0 bottom-0 opacity-20 transition-all duration-500 ${
+                          isOptionCorrect ? 'bg-secondary' : 'bg-outline-variant'
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      ></div>
 
-                    <div className="relative z-10 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs uppercase ${
-                          isOptionCorrect ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
-                        }`}>
-                          {opt.id || String.fromCharCode(97 + idx)}
-                        </span>
-                        <span className="font-medium text-primary text-sm">{opt.text}</span>
-                        {isOptionCorrect && (
-                          <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full">
-                            Correct (+2)
+                      <div className="relative z-10 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs uppercase ${
+                            isOptionCorrect ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
+                          }`}>
+                            {opt.id || String.fromCharCode(97 + idx)}
                           </span>
-                        )}
-                        {opt.imageUrl && (
-                          <img src={opt.imageUrl} alt="Option thumbnail" className="h-7 w-7 object-cover rounded-md border border-outline-variant/40" />
-                        )}
-                      </div>
+                          <span className="font-medium text-primary text-sm">{opt.text}</span>
+                          {isOptionCorrect && (
+                            <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full">
+                              Correct (+2)
+                            </span>
+                          )}
+                          {opt.imageUrl && (
+                            <img src={opt.imageUrl} alt="Option thumbnail" className="h-7 w-7 object-cover rounded-md border border-outline-variant/40" />
+                          )}
+                        </div>
 
-                      <div className="flex items-center gap-3 font-mono">
-                        <span className="text-xs font-bold text-on-surface-variant">{opt.count || 0} votes</span>
-                        <span className="font-bold text-sm text-primary">{percentage}%</span>
+                        <div className="flex items-center gap-3 font-mono">
+                          <span className="text-xs font-bold text-on-surface-variant">{opt.count || 0} votes</span>
+                          <span className="font-bold text-sm text-primary">{percentage}%</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Primary Host Actions Bar */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-5 border-t border-outline-variant/20">
+                
+                {/* PROMINENT REVEAL BUTTON */}
+                <button
+                  onClick={handleRevealAnswer}
+                  disabled={isAnswerRevealed}
+                  className={`w-full sm:w-auto px-6 py-3 rounded-full text-xs md:text-sm font-bold font-label-md transition-all shadow-md flex items-center justify-center gap-2 ${
+                    isAnswerRevealed 
+                      ? 'bg-secondary-container text-on-secondary-container border-2 border-secondary ring-2 ring-secondary/30' 
+                      : 'bg-secondary text-on-secondary hover:opacity-90 active:scale-95 shadow-secondary/30'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {isAnswerRevealed ? 'check_circle' : 'visibility'}
+                  </span>
+                  <span>{isAnswerRevealed ? '✓ Correct Answer Revealed to All Players' : 'Reveal Correct Answer to All Players'}</span>
+                </button>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  {/* Push Next Question Button */}
+                  <button
+                    onClick={handleNextQuestion}
+                    className="px-5 py-3 rounded-full bg-surface-container-highest hover:bg-outline-variant/30 text-primary font-label-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                  >
+                    <span>Next Question</span>
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </button>
+
+                  <button
+                    onClick={handleEndQuiz}
+                    className="px-5 py-3 rounded-full bg-primary text-on-primary font-label-md text-xs font-bold hover:bg-primary-container transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <span>Finish Quiz</span>
+                    <span className="material-symbols-outlined text-[16px]">flag</span>
+                  </button>
+                </div>
+
+              </div>
+
             </div>
-
-            {/* Controller Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-outline-variant/20">
-              <Link
-                to={`/leaderboard?pin=${pin}&title=${encodeURIComponent(sessionTitle)}`}
-                className="px-5 py-2.5 rounded-full border border-outline-variant/60 font-label-md text-xs hover:bg-surface-container transition-colors flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[16px]">leaderboard</span>
-                View Live Podium
-              </Link>
-
-              <button
-                onClick={handleEndQuiz}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:bg-primary-container transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
-              >
-                <span>Finish & Show Final Leaderboard</span>
-                <span className="material-symbols-outlined text-[16px]">flag</span>
-              </button>
-            </div>
-
-          </div>
+          )}
 
           {/* Live Scoreboard Table */}
           {leaderboard.length > 0 && (
@@ -609,11 +666,11 @@ const LiveMonitoring = () => {
                 Your bank is empty. <Link to="/builder" className="text-secondary hover:underline">Create questions in Builder</Link>
               </div>
             ) : (
-              bankQuestions.map((bankQ) => (
-                <div key={bankQ.id} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl p-4 flex flex-col gap-3 hover:border-outline transition-colors">
+              bankQuestions.map((bankQ, idx) => (
+                <div key={bankQ.id || idx} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl p-4 flex flex-col gap-3 hover:border-outline transition-colors">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container/20 px-2 py-0.5 rounded-full">
-                      {bankQ.type ? bankQ.type.replace('_', ' ') : 'Question'}
+                      Q{idx + 1} • {bankQ.type ? bankQ.type.replace('_', ' ') : 'Question'}
                     </span>
                     <span className="text-xs font-mono text-on-surface-variant">{bankQ.timeLimitSeconds || 30}s</span>
                   </div>

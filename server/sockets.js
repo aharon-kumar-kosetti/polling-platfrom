@@ -350,12 +350,18 @@ module.exports = function setupSockets(io) {
     });
 
     // Organizer reveals the correct answer
-    socket.on('organizer:reveal_answer', ({ sessionId, pin }) => {
+    socket.on('organizer:reveal_answer', ({ sessionId, pin, question }) => {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
       const allKeys = Array.from(new Set([...getRelatedRoomKeys(primaryKey), ...(pin ? getRelatedRoomKeys(pin) : [])]));
 
       console.log(`[Socket] Organizer revealing answer for rooms: [${allKeys.join(', ')}]`);
+
+      if (question) {
+        allKeys.forEach(k => {
+          sessionCurrentQuestionFull[k] = question;
+        });
+      }
 
       // Find full question
       let fullQ = null;
@@ -367,12 +373,16 @@ module.exports = function setupSockets(io) {
       }
 
       if (!fullQ) {
-        console.warn(`[Socket] No full question found to reveal in ${primaryKey}`);
-        return;
+        for (const k of allKeys) {
+          if (activeSessions[k]?.currentQuestion) {
+            fullQ = activeSessions[k].currentQuestion;
+            break;
+          }
+        }
       }
 
-      const correctOpt = (fullQ.options || []).find(o => o.isCorrect);
-      const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : null;
+      const correctOpt = (fullQ?.options || []).find(o => o.isCorrect) || (fullQ?.options && fullQ.options[0]);
+      const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
       const isNegativeMarking = allKeys.some(k => sessionSettings[k]?.negativeMarking);
 
       // Score calculation: +2 for correct, -1 for wrong (if negative marking ON), 0 otherwise
