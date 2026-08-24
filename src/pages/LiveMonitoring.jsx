@@ -52,6 +52,10 @@ const LiveMonitoring = () => {
   const [pin, setPin] = useState(urlPin);
   const [sessionTitle, setSessionTitle] = useState(urlTitle);
   const [players, setPlayers] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [negativeMarking, setNegativeMarking] = useState(false);
+  const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
+
   const [questions, setQuestions] = useState([]);
   const [bankQuestions, setBankQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -66,9 +70,7 @@ const LiveMonitoring = () => {
     // 1. Connect socket for organizer
     socketManager.connect();
     
-    if (sessionId) {
-      socketManager.emit('join_room', { sessionId, username: 'Host Organizer' });
-    }
+    socketManager.emit('join_room', { sessionId, pin, username: 'Host Organizer' });
 
     // 2. Fetch session info & participants from database
     const loadSessionDetails = async () => {
@@ -111,7 +113,6 @@ const LiveMonitoring = () => {
           }, []);
           setBankQuestions(parsed);
         } else {
-          // Fallback to starter questions so host can play immediately
           setBankQuestions(DEFAULT_STARTER_QUESTIONS);
         }
       } catch (err) {
@@ -121,7 +122,7 @@ const LiveMonitoring = () => {
     };
     fetchBank();
 
-    // 4. Socket Listeners for Players & Answers
+    // 4. Socket Listeners for Players, Answers, Settings, and Leaderboard
     const handleParticipantsUpdated = (list) => {
       if (Array.isArray(list)) {
         setPlayers(list);
@@ -156,22 +157,37 @@ const LiveMonitoring = () => {
       }));
     };
 
+    const handleLeaderboard = (data) => {
+      if (data?.rankings) {
+        setLeaderboard(data.rankings);
+      }
+    };
+
+    const handleSettings = (data) => {
+      if (data?.negativeMarking !== undefined) {
+        setNegativeMarking(data.negativeMarking);
+      }
+    };
+
     socketManager.on('participants_updated', handleParticipantsUpdated);
     socketManager.on('participant_joined', handleParticipantJoined);
     socketManager.on('participant_left', handleParticipantLeft);
     socketManager.on('answer_tally', handleAnswerTally);
+    socketManager.on('leaderboard_updated', handleLeaderboard);
+    socketManager.on('settings_updated', handleSettings);
 
     return () => {
       socketManager.off('participants_updated', handleParticipantsUpdated);
       socketManager.off('participant_joined', handleParticipantJoined);
       socketManager.off('participant_left', handleParticipantLeft);
       socketManager.off('answer_tally', handleAnswerTally);
+      socketManager.off('leaderboard_updated', handleLeaderboard);
+      socketManager.off('settings_updated', handleSettings);
       socketManager.disconnect();
     };
-  }, [sessionId]);
+  }, [sessionId, pin]);
 
   const currentQ = questions[currentQuestionIndex] || null;
-  // Fallback for UI if no active question
   const displayQ = currentQ || { 
     text: 'Waiting for Host to push a question...', 
     options: [] 
@@ -190,6 +206,8 @@ const LiveMonitoring = () => {
   }, [isTimerRunning, timeLeft]);
 
   const handlePushFromBank = (bankQ) => {
+    setIsAnswerRevealed(false);
+    
     // Add count:0 to options for tracking
     const newLiveQ = {
       ...bankQ,
@@ -204,23 +222,33 @@ const LiveMonitoring = () => {
     setTimeLeft(bankQ.timeLimitSeconds || 30);
     setIsTimerRunning(true);
 
-    const targetSession = sessionId || pin;
-    if (!targetSession) {
-      console.warn('Cannot push question: no sessionId or pin');
-      return;
-    }
-
     socketManager.emit('organizer:next_question', {
-      sessionId: targetSession,
+      sessionId,
+      pin,
       question: newLiveQ
     });
   };
 
+  const handleRevealAnswer = () => {
+    setIsAnswerRevealed(true);
+    socketManager.emit('organizer:reveal_answer', {
+      sessionId,
+      pin
+    });
+  };
+
+  const handleToggleNegativeMarking = () => {
+    const nextVal = !negativeMarking;
+    setNegativeMarking(nextVal);
+    socketManager.emit('organizer:toggle_negative_marking', {
+      sessionId,
+      pin,
+      negativeMarking: nextVal
+    });
+  };
+
   const handleEndQuiz = () => {
-    const targetSession = sessionId || pin;
-    if (targetSession) {
-      socketManager.emit('organizer:end_quiz', { sessionId: targetSession });
-    }
+    socketManager.emit('organizer:end_quiz', { sessionId, pin });
     navigate(`/leaderboard?pin=${pin}&title=${encodeURIComponent(sessionTitle)}`);
   };
 
@@ -252,14 +280,37 @@ const LiveMonitoring = () => {
               <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-ping"></span>
               <span className="text-[11px] font-label-md uppercase tracking-wider text-secondary font-bold">LIVE HOST DECK</span>
             </div>
-            <h1 className="font-display-sm text-lg md:text-xl font-bold text-primary truncate max-w-md">{sessionTitle}</h1>
+            <h1 className="font-display-sm text-lg md:text-xl font-bold text-primary truncate max-w-xs md:max-w-md">{sessionTitle}</h1>
           </div>
         </div>
 
-        {/* PIN Badge & QR Trigger */}
+        {/* Action Controls & Settings */}
         <div className="flex items-center gap-3">
+          
+          {/* Negative Marking Toggle */}
+          <div className="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/40">
+            <span className="text-xs font-label-md text-on-surface-variant hidden sm:inline">Scoring:</span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+              negativeMarking ? 'bg-error/20 text-error' : 'bg-secondary/20 text-secondary'
+            }`}>
+              {negativeMarking ? '+2 / -1 pt' : '+2 / 0 pts'}
+            </span>
+            <button
+              onClick={handleToggleNegativeMarking}
+              className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
+                negativeMarking ? 'bg-error' : 'bg-outline-variant'
+              }`}
+              title="Toggle Negative Marking (-1 for wrong answers)"
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                negativeMarking ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          {/* PIN Badge */}
           <div className="flex items-center gap-2 bg-surface-container-high px-4 py-1.5 rounded-full border border-outline-variant/40">
-            <span className="text-xs text-on-surface-variant font-label-md">JOIN PIN:</span>
+            <span className="text-xs text-on-surface-variant font-label-md">PIN:</span>
             <span className="font-mono font-extrabold text-sm text-primary tracking-wider">{pin}</span>
             <button onClick={handleCopy} className="text-xs text-primary hover:underline ml-1">
               {copied ? '✓' : <span className="material-symbols-outlined text-xs">content_copy</span>}
@@ -275,10 +326,10 @@ const LiveMonitoring = () => {
           </button>
 
           <button 
-            onClick={() => navigate(`/analytics?title=${encodeURIComponent(sessionTitle)}`)}
+            onClick={handleEndQuiz}
             className="px-4 py-1.5 rounded-full bg-error/10 text-error hover:bg-error hover:text-on-error transition-colors text-xs font-label-md"
           >
-            End Session
+            End Quiz
           </button>
         </div>
       </header>
@@ -290,48 +341,58 @@ const LiveMonitoring = () => {
         <section className="flex-1 p-6 md:p-8 overflow-y-auto flex flex-col gap-6">
           
           {/* Metric Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm flex items-center justify-between">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-xs font-label-md text-on-surface-variant uppercase tracking-wider">Connected Players</span>
-                <div className="font-display-sm text-3xl font-bold text-primary mt-1 flex items-center gap-2">
+                <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Connected</span>
+                <div className="font-display-sm text-2xl font-bold text-primary mt-0.5 flex items-center gap-2">
                   <span>{players.length}</span>
-                  {players.length > 0 && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
-                  )}
+                  {players.length > 0 && <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>}
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-secondary-container/50 text-on-secondary-container flex items-center justify-center">
-                <span className="material-symbols-outlined">group</span>
+              <div className="w-10 h-10 rounded-xl bg-secondary-container/50 text-on-secondary-container flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">group</span>
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm flex items-center justify-between">
+            <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-xs font-label-md text-on-surface-variant uppercase tracking-wider">Answers Submitted</span>
-                <div className="font-display-sm text-3xl font-bold text-primary mt-1">{totalResponses}</div>
+                <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Submitted</span>
+                <div className="font-display-sm text-2xl font-bold text-primary mt-0.5">{totalResponses}</div>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-surface-container-highest text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined">how_to_reg</span>
+              <div className="w-10 h-10 rounded-xl bg-surface-container-highest text-primary flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">how_to_reg</span>
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm flex items-center justify-between">
+            <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
               <div>
-                <span className="text-xs font-label-md text-on-surface-variant uppercase tracking-wider">Timer Remaining</span>
-                <div className={`font-display-sm text-3xl font-bold mt-1 ${timeLeft <= 5 && timeLeft > 0 ? 'text-error animate-pulse' : 'text-primary'}`}>
+                <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Time Left</span>
+                <div className={`font-display-sm text-2xl font-bold mt-0.5 ${timeLeft <= 5 && timeLeft > 0 ? 'text-error animate-pulse' : 'text-primary'}`}>
                   {timeLeft}s
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-surface-container-highest text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined">timer</span>
+              <div className="w-10 h-10 rounded-xl bg-surface-container-highest text-primary flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">timer</span>
+              </div>
+            </div>
+
+            <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Rules</span>
+                <div className="text-xs font-bold text-primary mt-1">
+                  {negativeMarking ? '+2 Correct / -1 Wrong' : '+2 Correct / 0 Wrong'}
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-surface-container-highest text-primary flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">rule</span>
               </div>
             </div>
           </div>
 
           {/* Connected Players Live Roster */}
-          <div className="bg-surface-container-lowest rounded-2xl p-4 md:p-5 border border-outline-variant/30 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
                 <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
@@ -344,10 +405,10 @@ const LiveMonitoring = () => {
             </div>
 
             {players.length === 0 ? (
-              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-surface-container-low rounded-xl border border-dashed border-outline-variant/60 gap-3 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 bg-surface-container-low rounded-xl border border-dashed border-outline-variant/60 gap-2 text-center sm:text-left">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
-                    <span className="material-symbols-outlined text-xl animate-spin">sync</span>
+                  <div className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+                    <span className="material-symbols-outlined text-base animate-spin">sync</span>
                   </div>
                   <div>
                     <div className="text-xs font-bold text-primary">Waiting for players to join...</div>
@@ -358,20 +419,20 @@ const LiveMonitoring = () => {
                 </div>
                 <button
                   onClick={() => setShowQRModal(true)}
-                  className="px-3 py-1.5 bg-primary text-on-primary rounded-full text-xs font-label-md hover:bg-primary-container transition-all flex items-center gap-1 shrink-0"
+                  className="px-3 py-1 bg-primary text-on-primary rounded-full text-xs font-label-md hover:bg-primary-container transition-all flex items-center gap-1 shrink-0"
                 >
-                  <span className="material-symbols-outlined text-sm">qr_code_2</span>
-                  Display QR Code
+                  <span className="material-symbols-outlined text-xs">qr_code_2</span>
+                  Display QR
                 </button>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2.5 max-h-36 overflow-y-auto py-1">
+              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto py-1">
                 {players.map((player, idx) => (
                   <div
                     key={player.id || player.socketId || idx}
-                    className="flex items-center gap-2 bg-surface-container-low border border-outline-variant/40 rounded-full px-3 py-1.5 shadow-sm animate-fadeIn hover:border-secondary transition-colors"
+                    className="flex items-center gap-2 bg-surface-container-low border border-outline-variant/40 rounded-full px-3 py-1 shadow-sm animate-fadeIn"
                   >
-                    <div className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[10px] font-bold">
+                    <div className="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[10px] font-bold">
                       {(player.username || 'P').charAt(0).toUpperCase()}
                     </div>
                     <span className="text-xs font-bold text-primary">{player.username}</span>
@@ -383,64 +444,92 @@ const LiveMonitoring = () => {
           </div>
 
           {/* Live Question Presentation Deck */}
-          <div className="bg-surface-container-lowest rounded-3xl p-8 md:p-10 border border-outline-variant/30 shadow-editorial flex-1 flex flex-col">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-8 border border-outline-variant/30 shadow-editorial flex-1 flex flex-col">
             
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
               <span className="px-3.5 py-1 bg-surface-container-high rounded-full font-label-sm text-xs font-bold uppercase tracking-wider">
                 {questions.length > 0 ? `Active Question ${currentQuestionIndex + 1} of ${questions.length}` : 'No Active Question'}
               </span>
+              
               <div className="flex items-center gap-2">
+                
+                {/* Reveal Answer Button */}
+                <button
+                  onClick={handleRevealAnswer}
+                  disabled={isAnswerRevealed || questions.length === 0}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold font-label-md transition-all flex items-center gap-1.5 shadow-sm ${
+                    isAnswerRevealed 
+                      ? 'bg-secondary-container text-on-secondary-container border border-secondary/40' 
+                      : questions.length === 0
+                        ? 'opacity-40 bg-surface-container border border-outline-variant/40'
+                        : 'bg-secondary text-on-secondary hover:opacity-90 active:scale-95'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {isAnswerRevealed ? 'task_alt' : 'visibility'}
+                  </span>
+                  <span>{isAnswerRevealed ? 'Answer Revealed' : 'Reveal Correct Answer'}</span>
+                </button>
+
                 <button 
                   onClick={() => setIsTimerRunning(!isTimerRunning)} 
                   disabled={timeLeft === 0}
-                  className="px-3 py-1 rounded-lg border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container disabled:opacity-50"
                 >
-                  {isTimerRunning ? 'Pause Timer' : 'Resume Timer'}
+                  {isTimerRunning ? 'Pause' : 'Resume'}
                 </button>
               </div>
             </div>
 
-            <h2 className="font-headline-lg text-2xl md:text-3xl text-primary font-bold mb-8">
+            <h2 className="font-headline-lg text-xl md:text-2xl text-primary font-bold mb-6">
               {displayQ.text}
             </h2>
 
             {displayQ.imageUrl && (
-              <div className="mb-6 rounded-2xl overflow-hidden border border-outline-variant/30 max-h-64 flex justify-center bg-surface-container-low">
-                <img src={displayQ.imageUrl} alt="Question Attachment" className="max-h-64 object-contain" />
+              <div className="mb-6 rounded-2xl overflow-hidden border border-outline-variant/30 max-h-56 flex justify-center bg-surface-container-low">
+                <img src={displayQ.imageUrl} alt="Question Attachment" className="max-h-56 object-contain" />
               </div>
             )}
 
             {/* Response Bars / Option Breakdown */}
-            <div className="flex flex-col gap-4 mb-8 flex-1">
+            <div className="flex flex-col gap-3 mb-6 flex-1">
               {displayQ.options.map((opt, idx) => {
                 const percentage = totalResponses > 0 ? Math.round(((opt.count || 0) / totalResponses) * 100) : 0;
+                const isOptionCorrect = opt.isCorrect;
                 return (
                   <div 
                     key={opt.id || idx}
-                    className={`p-4 rounded-2xl border transition-all relative overflow-hidden ${
-                      opt.isCorrect 
-                        ? 'border-secondary/60 bg-secondary-container/10' 
-                        : 'border-outline-variant/40 bg-surface-container-low'
+                    className={`p-3.5 rounded-2xl border transition-all relative overflow-hidden ${
+                      isAnswerRevealed && isOptionCorrect
+                        ? 'border-secondary bg-secondary-container/20 ring-2 ring-secondary'
+                        : isOptionCorrect
+                          ? 'border-secondary/60 bg-secondary-container/10'
+                          : 'border-outline-variant/40 bg-surface-container-low'
                     }`}
                   >
                     {/* Progress Fill Indicator */}
                     <div 
                       className={`absolute left-0 top-0 bottom-0 opacity-20 transition-all duration-500 ${
-                        opt.isCorrect ? 'bg-secondary' : 'bg-outline-variant'
+                        isOptionCorrect ? 'bg-secondary' : 'bg-outline-variant'
                       }`}
                       style={{ width: `${percentage}%` }}
                     ></div>
 
                     <div className="relative z-10 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs uppercase ${
-                          opt.isCorrect ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs uppercase ${
+                          isOptionCorrect ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
                         }`}>
                           {opt.id || String.fromCharCode(97 + idx)}
                         </span>
-                        <span className="font-medium text-primary text-sm md:text-base">{opt.text}</span>
+                        <span className="font-medium text-primary text-sm">{opt.text}</span>
+                        {isOptionCorrect && (
+                          <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full">
+                            Correct (+2)
+                          </span>
+                        )}
                         {opt.imageUrl && (
-                          <img src={opt.imageUrl} alt="Option thumbnail" className="h-8 w-8 object-cover rounded-md border border-outline-variant/40" />
+                          <img src={opt.imageUrl} alt="Option thumbnail" className="h-7 w-7 object-cover rounded-md border border-outline-variant/40" />
                         )}
                       </div>
 
@@ -455,25 +544,52 @@ const LiveMonitoring = () => {
             </div>
 
             {/* Controller Actions */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-outline-variant/20">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-outline-variant/20">
               <Link
                 to={`/leaderboard?pin=${pin}&title=${encodeURIComponent(sessionTitle)}`}
-                className="px-6 py-3 rounded-full border border-outline-variant/60 font-label-md text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
+                className="px-5 py-2.5 rounded-full border border-outline-variant/60 font-label-md text-xs hover:bg-surface-container transition-colors flex items-center gap-2"
               >
-                <span className="material-symbols-outlined text-[18px]">leaderboard</span>
+                <span className="material-symbols-outlined text-[16px]">leaderboard</span>
                 View Live Podium
               </Link>
 
               <button
                 onClick={handleEndQuiz}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:bg-primary-container transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
               >
                 <span>Finish & Show Final Leaderboard</span>
-                <span className="material-symbols-outlined text-[18px]">flag</span>
+                <span className="material-symbols-outlined text-[16px]">flag</span>
               </button>
             </div>
 
           </div>
+
+          {/* Live Scoreboard Table */}
+          {leaderboard.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
+                  Live Player Scoreboard (+2 / {negativeMarking ? '-1' : '0'})
+                </span>
+                <span className="text-xs text-on-surface-variant">{leaderboard.length} ranked</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {leaderboard.map((player) => (
+                  <div key={player.id} className="bg-surface-container-low rounded-xl p-2.5 border border-outline-variant/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        player.rank === 1 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
+                      }`}>
+                        #{player.rank}
+                      </span>
+                      <span className="text-xs font-bold text-primary truncate max-w-[120px]">{player.username}</span>
+                    </div>
+                    <span className="font-mono text-xs font-extrabold text-primary">{player.score} pts</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </section>
 

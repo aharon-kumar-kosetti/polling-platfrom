@@ -18,9 +18,7 @@ const ParticipantQuestionResult = () => {
     const targetRoom = sessionId || pin;
     
     socketManager.connect(token);
-    if (targetRoom) {
-      socketManager.emit('join_room', { sessionId: targetRoom, username });
-    }
+    socketManager.emit('join_room', { sessionId, pin, username });
 
     const handleState = (data) => {
       if (data?.status === 'ended') {
