@@ -74,7 +74,6 @@ const ParticipantLiveQuiz = () => {
       }
 
       const normalizedMyName = username.trim().toLowerCase();
-      let matchedScore = null;
 
       if (Array.isArray(data?.leaderboard)) {
         const myEntry = data.leaderboard.find(p => 
@@ -83,30 +82,20 @@ const ParticipantLiveQuiz = () => {
           p.id === socketManager.getSocket()?.id
         );
         if (myEntry) {
-          matchedScore = myEntry.score;
           setScore(myEntry.score);
           setRank(myEntry.rank);
           localStorage.setItem('participant_score', String(myEntry.score));
         }
       }
 
-      // Calculate score delta for feedback: only +2 on correct, 0 on incorrect
+      // Calculate score delta indicator strictly for visual feedback: +2 if correct, 0 if wrong
       if (selectedOption) {
         const isCorrect = (
           selectedOption === data.correctOptionId || 
           String(selectedOption).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
           (data.correctOptionText && String(selectedOption).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
-        const delta = isCorrect ? 2 : 0;
-        setScoreDelta(delta);
-
-        if (matchedScore === null) {
-          setScore(prev => {
-            const next = prev + delta;
-            localStorage.setItem('participant_score', String(next));
-            return next;
-          });
-        }
+        setScoreDelta(isCorrect ? 2 : 0);
       }
     };
 
@@ -135,12 +124,14 @@ const ParticipantLiveQuiz = () => {
     // Real-time live score feedback immediately upon answer submission
     const handleAnswerAck = (ack) => {
       console.log('[Socket] Answer submitted ack:', ack);
-      if (ack?.newScore !== undefined) {
+      if (ack && typeof ack.newScore === 'number') {
         setScore(ack.newScore);
         localStorage.setItem('participant_score', String(ack.newScore));
       }
-      if (ack?.pointsEarned && ack.pointsEarned > 0) {
+      if (ack?.isCorrect && ack?.pointsEarned > 0) {
         setScoreDelta(ack.pointsEarned);
+      } else {
+        setScoreDelta(0);
       }
     };
 

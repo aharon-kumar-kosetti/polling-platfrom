@@ -456,7 +456,9 @@ const LiveMonitoring = () => {
                       {(player.username || 'P').charAt(0).toUpperCase()}
                     </div>
                     <span className="text-xs font-bold text-primary">{player.username}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                    <span className="text-[11px] font-mono font-extrabold text-secondary bg-secondary-container/40 px-2 py-0.5 rounded-full">
+                      {player.score || 0} pts
+                    </span>
                   </div>
                 ))}
               </div>

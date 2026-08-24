@@ -13,6 +13,8 @@ const roomAliases = new Map();
 const sessionPlayerScores = {};
 // Current Full Question with isCorrect: roomKey -> question
 const sessionCurrentQuestionFull = {};
+// Definitive correct answer for active question: roomKey -> { questionId, correctOptionId, correctOptionText }
+const sessionCorrectAnswer = {};
 // Submitted answers for current question: roomKey -> Map(userKey -> { userKey, username, questionId, optionId, isCorrect, timestamp })
 const sessionSubmittedAnswers = {};
 
@@ -54,7 +56,17 @@ function getParticipantsList(sessionIdOrPin) {
     if (sessionParticipants[k]) {
       for (const [sId, pData] of sessionParticipants[k].entries()) {
         const uKey = (pData.username || pData.id || sId).trim().toLowerCase();
-        mergedMap.set(uKey, pData);
+        
+        // Attach player live score to participant object for host deck roster
+        let pScore = 0;
+        for (const rk of relatedKeys) {
+          if (sessionPlayerScores[rk] && sessionPlayerScores[rk].has(uKey)) {
+            pScore = sessionPlayerScores[rk].get(uKey).score;
+            break;
+          }
+        }
+
+        mergedMap.set(uKey, { ...pData, score: pScore });
       }
     }
   }
@@ -68,12 +80,12 @@ function getLeaderboard(sessionIdOrPin) {
   for (const k of relatedKeys) {
     if (sessionPlayerScores[k]) {
       for (const [userKey, pScore] of sessionPlayerScores[k].entries()) {
-        mergedMap.set(userKey, pScore);
+        mergedMap.set(userKey, { ...pScore });
       }
     }
   }
 
-  // Also ensure all connected participants exist in leaderboard even with 0 points
+  // Ensure all connected participants exist in leaderboard
   const participants = getParticipantsList(sessionIdOrPin);
   participants.forEach(p => {
     const userKey = (p.username || p.id).trim().toLowerCase();
@@ -81,7 +93,7 @@ function getLeaderboard(sessionIdOrPin) {
       mergedMap.set(userKey, {
         id: userKey,
         username: p.username,
-        score: 0,
+        score: p.score || 0,
         correctCount: 0,
         wrongCount: 0
       });
@@ -143,7 +155,6 @@ function parseCookies(rawStr) {
     }
   } catch (e) {}
 
-  // Zero-dependency fallback parser
   return String(rawStr)
     .split(';')
     .reduce((res, c) => {
@@ -287,7 +298,7 @@ module.exports = function setupSockets(io) {
       }
     });
 
-    // Handle answer submission with LIVE score update
+    // Handle answer submission with STRICT accuracy and LIVE score update
     socket.on('submit_answer', ({ questionId, optionId, username, sessionId, pin }) => {
       let candidateKey = sessionId || pin || socket.user?.sessionId;
 
@@ -305,9 +316,32 @@ module.exports = function setupSockets(io) {
       const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
       const userKey = participantName.trim().toLowerCase();
 
-      console.log(`[Socket] Answer submitted for Q:${questionId}, opt:${optionId} by ${participantName} (${userKey})`);
+      // Prevent duplicate submissions for the same question
+      let alreadyAnswered = false;
+      for (const k of allKeys) {
+        if (sessionSubmittedAnswers[k] && sessionSubmittedAnswers[k].has(userKey)) {
+          const prev = sessionSubmittedAnswers[k].get(userKey);
+          if (prev && String(prev.questionId) === String(questionId)) {
+            alreadyAnswered = true;
+            break;
+          }
+        }
+      }
 
-      // Find full question to accurately check correctness
+      if (alreadyAnswered) {
+        console.log(`[Socket] Duplicate answer submission ignored for ${participantName} on Q:${questionId}`);
+        return;
+      }
+
+      // Retrieve the definitive correct answer info for this question
+      let correctInfo = null;
+      for (const k of allKeys) {
+        if (sessionCorrectAnswer[k]) {
+          correctInfo = sessionCorrectAnswer[k];
+          break;
+        }
+      }
+
       let fullQ = null;
       for (const k of allKeys) {
         if (sessionCurrentQuestionFull[k]) {
@@ -316,16 +350,31 @@ module.exports = function setupSockets(io) {
         }
       }
 
+      // Check correctness strictly against full question options and correctInfo
       let isCorrect = false;
-      if (fullQ && fullQ.options) {
-        const matchingOpt = fullQ.options.find(o => 
-          (o.id && (o.id === optionId || String(o.id) === String(optionId))) ||
-          (o.text && (o.text === optionId || o.text?.trim().toLowerCase() === String(optionId).trim().toLowerCase()))
-        );
-        if (matchingOpt && (matchingOpt.isCorrect === true || matchingOpt.isCorrect === 'true')) {
+      if (correctInfo) {
+        const optStr = String(optionId).trim().toLowerCase();
+        const corrIdStr = correctInfo.correctOptionId ? String(correctInfo.correctOptionId).trim().toLowerCase() : null;
+        const corrTextStr = correctInfo.correctOptionText ? String(correctInfo.correctOptionText).trim().toLowerCase() : null;
+
+        if (corrIdStr && optStr === corrIdStr) {
+          isCorrect = true;
+        } else if (corrTextStr && optStr === corrTextStr) {
           isCorrect = true;
         }
       }
+
+      if (!isCorrect && fullQ && Array.isArray(fullQ.options)) {
+        const opt = fullQ.options.find(o => 
+          (o.id && String(o.id).trim().toLowerCase() === String(optionId).trim().toLowerCase()) ||
+          (o.text && o.text.trim().toLowerCase() === String(optionId).trim().toLowerCase())
+        );
+        if (opt && (opt.isCorrect === true || opt.isCorrect === 'true')) {
+          isCorrect = true;
+        }
+      }
+
+      console.log(`[Socket] Submission for Q:${questionId}, opt:${optionId} by ${participantName} (${userKey}) => isCorrect: ${isCorrect}`);
 
       // Record submitted answer with timestamp
       const answerRecord = {
@@ -344,7 +393,7 @@ module.exports = function setupSockets(io) {
         sessionSubmittedAnswers[k].set(userKey, answerRecord);
       });
 
-      // LIVE SCORE UPDATE: Immediately award +2 marks if answer is correct
+      // LIVE SCORE UPDATE: Award +2 marks ONLY if isCorrect is strictly true
       let updatedPlayerScore = 0;
       allKeys.forEach(k => {
         if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
@@ -354,10 +403,10 @@ module.exports = function setupSockets(io) {
         }
 
         if (isCorrect) {
-          pScore.score += 2; // +2 live marks immediately
+          pScore.score += 2; // +2 marks only on verified correct answer
           pScore.correctCount += 1;
         } else {
-          pScore.wrongCount += 1;
+          pScore.wrongCount += 1; // 0 marks on wrong answer
         }
 
         sessionPlayerScores[k].set(userKey, pScore);
@@ -390,16 +439,18 @@ module.exports = function setupSockets(io) {
         });
       }
 
-      // Broadcast updated top 3 responders & updated live leaderboard to all rooms
+      // Broadcast updated top 3 responders & updated live leaderboard & participants list to ALL connected sockets
       const respondersData = getQuestionResponders(candidateKey);
       const updatedLeaderboard = getLeaderboard(candidateKey);
+      const currentList = getParticipantsList(candidateKey);
 
       allKeys.forEach(k => {
         io.to(k).emit('question_responders_updated', respondersData);
         io.to(k).emit('leaderboard_updated', { rankings: updatedLeaderboard });
+        io.to(k).emit('participants_updated', currentList);
       });
 
-      // Send live acknowledgment with newScore to answering socket
+      // Send live acknowledgment with verified score to the answering socket
       socket.emit('answer_submitted_ack', {
         isLocked: true,
         questionId,
@@ -441,8 +492,16 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      // Accurately locate the true correct option
-      const correctOpt = (fullQ?.options || []).find(o => o.isCorrect === true || o.isCorrect === 'true') || (fullQ?.options && fullQ.options[0]);
+      // Locate true correct option strictly from fullQ
+      let correctOpt = (fullQ?.options || []).find(o => o.isCorrect === true || o.isCorrect === 'true');
+      if (!correctOpt && sessionCorrectAnswer[primaryKey]) {
+        const corrId = sessionCorrectAnswer[primaryKey].correctOptionId;
+        correctOpt = (fullQ?.options || []).find(o => o.id === corrId || o.text === corrId);
+      }
+      if (!correctOpt && fullQ?.options) {
+        correctOpt = fullQ.options[0];
+      }
+
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
       const correctOptionText = correctOpt ? correctOpt.text : '';
 
@@ -463,6 +522,7 @@ module.exports = function setupSockets(io) {
 
       const updatedLeaderboard = getLeaderboard(primaryKey);
       const respondersData = getQuestionResponders(primaryKey);
+      const currentList = getParticipantsList(primaryKey);
 
       allKeys.forEach(k => {
         io.to(k).emit('answer_revealed', {
@@ -471,6 +531,7 @@ module.exports = function setupSockets(io) {
           responders: respondersData
         });
         io.to(k).emit('leaderboard_updated', { rankings: updatedLeaderboard });
+        io.to(k).emit('participants_updated', currentList);
         io.to(k).emit('question_responders_updated', respondersData);
       });
     });
@@ -492,9 +553,18 @@ module.exports = function setupSockets(io) {
 
       console.log(`[Socket] Organizer pushed new question to rooms [${uniqueKeys.join(', ')}]: "${question.text?.slice(0, 35)}..."`);
 
-      // Store full question with isCorrect on server
+      // Locate and record definitive correct answer info
+      const correctOpt = (question.options || []).find(o => o.isCorrect === true || o.isCorrect === 'true') || (question.options && question.options[0]);
+      const correctInfo = {
+        questionId: question.id,
+        correctOptionId: correctOpt ? (correctOpt.id || correctOpt.text) : 'a',
+        correctOptionText: correctOpt ? correctOpt.text : ''
+      };
+
+      // Store full question and correct answer on server for all room keys
       uniqueKeys.forEach(k => {
         sessionCurrentQuestionFull[k] = question;
+        sessionCorrectAnswer[k] = correctInfo;
         sessionSubmittedAnswers[k] = new Map(); // reset submitted answers for this new question
       });
 
