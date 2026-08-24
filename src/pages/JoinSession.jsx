@@ -60,12 +60,14 @@ const JoinSession = () => {
 
     try {
       localStorage.setItem('participant_name', username);
+      localStorage.setItem('participant_pin', pin.toUpperCase());
       const res = await sessionAPI.joinSession(pin.toUpperCase(), username);
       if (res.sessionToken) {
         localStorage.setItem('participant_token', res.sessionToken);
         localStorage.setItem('participant_sessionId', res.session.id);
       }
-      navigate(`/waiting-room?pin=${pin.toUpperCase()}&username=${encodeURIComponent(username)}`);
+      const sessId = res.session?.id ? `&sessionId=${encodeURIComponent(res.session.id)}` : '';
+      navigate(`/waiting-room?pin=${pin.toUpperCase()}&username=${encodeURIComponent(username)}${sessId}`);
     } catch (err) {
       console.warn('API Join notice:', err.message);
       // Fallback for prototype seamless join

@@ -85,6 +85,51 @@ router.post('/', authenticateOrganizer, async (req, res) => {
   }
 });
 
+// GET /api/sessions/pin/:pin - Get session by PIN (public for joining)
+router.get('/pin/:pin', async (req, res) => {
+  try {
+    const { pin } = req.params;
+    const session = await prisma.session.findUnique({
+      where: { pin: pin.toUpperCase() },
+      include: {
+        participants: true,
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    res.json({ success: true, session });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /api/sessions/:id - Get a single session details by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: {
+        participants: true,
+        questions: true,
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    res.json({ success: true, session });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // DELETE /api/sessions/:id - Delete a session
 router.delete('/:id', authenticateOrganizer, async (req, res) => {
   try {
@@ -113,7 +158,7 @@ router.post('/join', async (req, res) => {
     }
 
     // Find session by PIN
-    const session = await prisma.session.findUnique({ where: { pin } });
+    const session = await prisma.session.findUnique({ where: { pin: pin.toUpperCase() } });
     if (!session) {
       return res.status(404).json({ message: 'Session not found' });
     }
@@ -121,14 +166,14 @@ router.post('/join', async (req, res) => {
     // Add participant to the session
     const participant = await prisma.participant.create({
       data: {
-        username,
+        username: username.trim(),
         sessionId: session.id,
       }
     });
 
     // Generate a specific JWT for this participant (used for WebSockets auth)
     const token = jwt.sign(
-      { participantId: participant.id, sessionId: session.id, role: 'participant' },
+      { participantId: participant.id, username: participant.username, sessionId: session.id, role: 'participant' },
       JWT_SECRET,
       { expiresIn: '2h' }
     );
@@ -136,6 +181,7 @@ router.post('/join', async (req, res) => {
     res.json({
       success: true,
       sessionToken: token,
+      participant: { id: participant.id, username: participant.username },
       session: { id: session.id, name: session.name, pin: session.pin }
     });
 

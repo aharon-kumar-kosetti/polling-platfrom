@@ -5,17 +5,21 @@ import socketManager from '../sockets/socketManager';
 const facts = [
   'The concept of a "grid system" in graphic design was popularized by Swiss designers in the 1950s, forming the basis of modern UI layouts.',
   'Negative space, or "white space," isn\'t just empty—it actively guides the user\'s eye and reduces cognitive load by up to 20%.',
-  'The aesthetic-usability effect describes how users often perceive more visually appealing designs as intuitively easier to use.'
+  'The aesthetic-usability effect describes how users often perceive more visually appealing designs as intuitively easier to use.',
+  'Gamified learning and live quiz competition can boost retention rates by up to 40% compared to passive listening.'
 ];
 
 const ParticipantWaitingRoom = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const pin = searchParams.get('pin') || 'TECH-88';
+  const pin = searchParams.get('pin') || localStorage.getItem('participant_pin') || 'TECH-88';
   const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
+  const sessionId = searchParams.get('sessionId') || localStorage.getItem('participant_sessionId');
 
   const [currentFact, setCurrentFact] = useState(0);
+  const [playerCount, setPlayerCount] = useState(1);
+  const [roomPlayers, setRoomPlayers] = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -27,25 +31,43 @@ const ParticipantWaitingRoom = () => {
   // Listen to socket state change
   useEffect(() => {
     const token = localStorage.getItem('participant_token');
-    const sessionId = localStorage.getItem('participant_sessionId');
+    const targetRoom = sessionId || pin;
     
     socketManager.connect(token);
     
-    if (sessionId) {
-      socketManager.emit('join_room', { sessionId });
+    if (targetRoom) {
+      socketManager.emit('join_room', { sessionId: targetRoom, username });
     }
     
     const handleState = (data) => {
       if (data?.status === 'active' || data?.currentQuestion) {
-        navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}`);
+        navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}&sessionId=${encodeURIComponent(targetRoom)}`);
+      }
+    };
+
+    const handleParticipants = (list) => {
+      if (Array.isArray(list)) {
+        setRoomPlayers(list);
+        setPlayerCount(list.length);
+      }
+    };
+
+    const handleJoined = (data) => {
+      if (data?.totalCount) {
+        setPlayerCount(data.totalCount);
       }
     };
 
     socketManager.on('session_state_changed', handleState);
+    socketManager.on('participants_updated', handleParticipants);
+    socketManager.on('participant_joined', handleJoined);
+
     return () => {
       socketManager.off('session_state_changed', handleState);
+      socketManager.off('participants_updated', handleParticipants);
+      socketManager.off('participant_joined', handleJoined);
     };
-  }, [navigate, pin, username]);
+  }, [navigate, pin, username, sessionId]);
 
   return (
     <div className="bg-surface text-on-surface font-body-md antialiased min-h-screen flex flex-col justify-between selection:bg-secondary-container selection:text-on-secondary-container relative overflow-hidden p-6 md:p-12">
@@ -75,19 +97,45 @@ const ParticipantWaitingRoom = () => {
       <main className="max-w-xl mx-auto w-full flex flex-col items-center justify-center my-8 text-center z-10">
         
         {/* Pulsating Visual Anchor */}
-        <div className="relative w-40 h-40 md:w-48 md:h-48 flex items-center justify-center mb-8">
+        <div className="relative w-40 h-40 md:w-48 md:h-48 flex items-center justify-center mb-6">
           <div className="absolute inset-0 bg-secondary-container/60 rounded-full animate-ping opacity-30" style={{ animationDuration: '3s' }}></div>
           <div className="relative z-10 w-28 h-28 md:w-32 md:h-32 bg-surface-container-lowest rounded-full shadow-editorial border border-outline-variant/30 flex items-center justify-center">
             <span className="material-symbols-outlined text-secondary text-5xl animate-pulse">hourglass_top</span>
           </div>
         </div>
 
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-secondary-container/50 text-on-secondary-container text-xs font-bold font-label-md mb-3 border border-secondary/20">
+          <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+          <span>{playerCount} {playerCount === 1 ? 'player' : 'players'} connected</span>
+        </div>
+
         <h1 className="font-headline-lg text-2xl md:text-3xl text-primary font-bold mb-2">
-          Waiting for host to start...
+          You're in! Waiting for host to start...
         </h1>
-        <p className="font-body-md text-sm text-on-surface-variant max-w-md mb-8">
-          Settle in! The session will automatically launch as soon as the organizer pushes the first question.
+        <p className="font-body-md text-sm text-on-surface-variant max-w-md mb-6">
+          Get ready! Questions will appear automatically on your screen the moment the host launches them.
         </p>
+
+        {/* Mini player avatars row */}
+        {roomPlayers.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-md mb-6">
+            {roomPlayers.slice(0, 10).map((p, idx) => (
+              <span 
+                key={p.id || idx}
+                className={`text-xs px-3 py-1 rounded-full border shadow-sm font-label-md ${
+                  p.username === username 
+                    ? 'bg-secondary text-on-secondary border-secondary font-bold' 
+                    : 'bg-surface-container-lowest border-outline-variant/40 text-primary'
+                }`}
+              >
+                {p.username} {p.username === username && '(You)'}
+              </span>
+            ))}
+            {roomPlayers.length > 10 && (
+              <span className="text-xs text-on-surface-variant px-2">+{roomPlayers.length - 10} more</span>
+            )}
+          </div>
+        )}
 
       </main>
 

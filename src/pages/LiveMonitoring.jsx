@@ -2,16 +2,56 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import socketManager from '../sockets/socketManager';
 import { QRCodeSVG } from 'qrcode.react';
-import { questionAPI } from '../api/client';
+import { questionAPI, sessionAPI } from '../api/client';
+
+const DEFAULT_STARTER_QUESTIONS = [
+  {
+    id: 'starter_1',
+    text: 'What does CSS stand for in web development?',
+    type: 'single_choice',
+    timeLimitSeconds: 30,
+    options: [
+      { id: 'a', text: 'Cascading Style Sheets', isCorrect: true, count: 0 },
+      { id: 'b', text: 'Creative System Styling', isCorrect: false, count: 0 },
+      { id: 'c', text: 'Computer Style Syntax', isCorrect: false, count: 0 },
+      { id: 'd', text: 'Central Sheet Standard', isCorrect: false, count: 0 },
+    ]
+  },
+  {
+    id: 'starter_2',
+    text: 'Which HTTP response status code represents "Not Found"?',
+    type: 'single_choice',
+    timeLimitSeconds: 25,
+    options: [
+      { id: 'a', text: '200 OK', isCorrect: false, count: 0 },
+      { id: 'b', text: '403 Forbidden', isCorrect: false, count: 0 },
+      { id: 'c', text: '404 Not Found', isCorrect: true, count: 0 },
+      { id: 'd', text: '500 Server Error', isCorrect: false, count: 0 },
+    ]
+  },
+  {
+    id: 'starter_3',
+    text: 'True or False: JavaScript is a compiled language that only runs on servers.',
+    type: 'true_false',
+    timeLimitSeconds: 20,
+    options: [
+      { id: 'a', text: 'True', isCorrect: false, count: 0 },
+      { id: 'b', text: 'False', isCorrect: true, count: 0 },
+    ]
+  }
+];
 
 const LiveMonitoring = () => {
   const { sessionId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const pin = searchParams.get('pin') || 'TECH-88';
-  const sessionTitle = searchParams.get('title') || 'Interactive Quiz Masterclass';
+  const urlPin = searchParams.get('pin') || 'TECH-88';
+  const urlTitle = searchParams.get('title') || 'Interactive Quiz Masterclass';
 
+  const [pin, setPin] = useState(urlPin);
+  const [sessionTitle, setSessionTitle] = useState(urlTitle);
+  const [players, setPlayers] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [bankQuestions, setBankQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -19,20 +59,48 @@ const LiveMonitoring = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [recentJoinNotice, setRecentJoinNotice] = useState(null);
 
-  // Fetch question bank and connect socket
+  // Fetch session details, question bank, and connect socket
   useEffect(() => {
-    // Connect socket for organizer
+    // 1. Connect socket for organizer
     socketManager.connect();
+    
     if (sessionId) {
-      socketManager.emit('join_room', { sessionId });
+      socketManager.emit('join_room', { sessionId, username: 'Host Organizer' });
     }
 
+    // 2. Fetch session info & participants from database
+    const loadSessionDetails = async () => {
+      if (!sessionId) return;
+      try {
+        const res = await sessionAPI.getSession(sessionId);
+        if (res.session) {
+          if (res.session.pin) setPin(res.session.pin);
+          if (res.session.name) setSessionTitle(res.session.name);
+          if (res.session.participants && res.session.participants.length > 0) {
+            setPlayers(prev => {
+              const merged = [...prev];
+              res.session.participants.forEach(p => {
+                if (!merged.some(m => m.id === p.id || m.username === p.username)) {
+                  merged.push({ id: p.id, username: p.username, joinedAt: p.joinedAt });
+                }
+              });
+              return merged;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch DB session details:', err);
+      }
+    };
+    loadSessionDetails();
+
+    // 3. Fetch question bank
     const fetchBank = async () => {
       try {
         const res = await questionAPI.getSavedQuestions();
-        if (res.questions) {
-          // parse options safely per question
+        if (res.questions && res.questions.length > 0) {
           const parsed = res.questions.reduce((acc, q) => {
             try {
               acc.push({ ...q, options: JSON.parse(q.options) });
@@ -42,14 +110,62 @@ const LiveMonitoring = () => {
             return acc;
           }, []);
           setBankQuestions(parsed);
+        } else {
+          // Fallback to starter questions so host can play immediately
+          setBankQuestions(DEFAULT_STARTER_QUESTIONS);
         }
       } catch (err) {
-        console.error('Failed to load question bank', err);
+        console.error('Failed to load question bank, using default starters', err);
+        setBankQuestions(DEFAULT_STARTER_QUESTIONS);
       }
     };
     fetchBank();
 
+    // 4. Socket Listeners for Players & Answers
+    const handleParticipantsUpdated = (list) => {
+      if (Array.isArray(list)) {
+        setPlayers(list);
+      }
+    };
+
+    const handleParticipantJoined = (data) => {
+      if (data?.participant) {
+        setPlayers(prev => {
+          if (prev.some(p => p.id === data.participant.id || p.socketId === data.participant.socketId)) {
+            return prev;
+          }
+          return [...prev, data.participant];
+        });
+        setRecentJoinNotice(`${data.participant.username} joined!`);
+        setTimeout(() => setRecentJoinNotice(null), 3000);
+      }
+    };
+
+    const handleParticipantLeft = (data) => {
+      if (data?.participant) {
+        setPlayers(prev => prev.filter(p => p.id !== data.participant.id && p.socketId !== data.participant.socketId));
+      }
+    };
+
+    const handleAnswerTally = ({ questionId, options }) => {
+      setQuestions(prev => prev.map(q => {
+        if (q.id === questionId) {
+          return { ...q, options };
+        }
+        return q;
+      }));
+    };
+
+    socketManager.on('participants_updated', handleParticipantsUpdated);
+    socketManager.on('participant_joined', handleParticipantJoined);
+    socketManager.on('participant_left', handleParticipantLeft);
+    socketManager.on('answer_tally', handleAnswerTally);
+
     return () => {
+      socketManager.off('participants_updated', handleParticipantsUpdated);
+      socketManager.off('participant_joined', handleParticipantJoined);
+      socketManager.off('participant_left', handleParticipantLeft);
+      socketManager.off('answer_tally', handleAnswerTally);
       socketManager.disconnect();
     };
   }, [sessionId]);
@@ -88,17 +204,23 @@ const LiveMonitoring = () => {
     setTimeLeft(bankQ.timeLimitSeconds || 30);
     setIsTimerRunning(true);
 
-    if (!sessionId) {
-      console.warn('Cannot push question: no sessionId');
+    const targetSession = sessionId || pin;
+    if (!targetSession) {
+      console.warn('Cannot push question: no sessionId or pin');
       return;
     }
+
     socketManager.emit('organizer:next_question', {
-      sessionId,
+      sessionId: targetSession,
       question: newLiveQ
     });
   };
 
   const handleEndQuiz = () => {
+    const targetSession = sessionId || pin;
+    if (targetSession) {
+      socketManager.emit('organizer:end_quiz', { sessionId: targetSession });
+    }
     navigate(`/leaderboard?pin=${pin}&title=${encodeURIComponent(sessionTitle)}`);
   };
 
@@ -111,6 +233,14 @@ const LiveMonitoring = () => {
   return (
     <div className="bg-background text-on-background min-h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container h-screen overflow-hidden">
       
+      {/* Real-time Join Toast Banner */}
+      {recentJoinNotice && (
+        <div className="fixed top-24 right-8 z-50 bg-secondary text-on-secondary px-5 py-2.5 rounded-2xl shadow-xl font-label-md text-xs font-bold flex items-center gap-2 animate-bounce">
+          <span className="material-symbols-outlined text-sm">person_add</span>
+          <span>{recentJoinNotice}</span>
+        </div>
+      )}
+
       {/* Top Host Command Bar */}
       <header className="h-20 bg-surface-container-lowest border-b border-outline-variant/30 px-6 md:px-12 flex items-center justify-between sticky top-0 z-30 shadow-sm shrink-0">
         <div className="flex items-center gap-4">
@@ -164,7 +294,12 @@ const LiveMonitoring = () => {
             <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-xs font-label-md text-on-surface-variant uppercase tracking-wider">Connected Players</span>
-                <div className="font-display-sm text-3xl font-bold text-primary mt-1">0</div>
+                <div className="font-display-sm text-3xl font-bold text-primary mt-1 flex items-center gap-2">
+                  <span>{players.length}</span>
+                  {players.length > 0 && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+                  )}
+                </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-secondary-container/50 text-on-secondary-container flex items-center justify-center">
                 <span className="material-symbols-outlined">group</span>
@@ -192,6 +327,59 @@ const LiveMonitoring = () => {
                 <span className="material-symbols-outlined">timer</span>
               </div>
             </div>
+          </div>
+
+          {/* Connected Players Live Roster */}
+          <div className="bg-surface-container-lowest rounded-2xl p-4 md:p-5 border border-outline-variant/30 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
+                  Live Player Roster ({players.length})
+                </span>
+              </div>
+              <span className="text-xs text-on-surface-variant">
+                Join PIN: <strong className="font-mono text-primary font-bold">{pin}</strong>
+              </span>
+            </div>
+
+            {players.length === 0 ? (
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-surface-container-low rounded-xl border border-dashed border-outline-variant/60 gap-3 text-center sm:text-left">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+                    <span className="material-symbols-outlined text-xl animate-spin">sync</span>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-primary">Waiting for players to join...</div>
+                    <div className="text-[11px] text-on-surface-variant">
+                      Direct participants to <span className="font-mono font-bold text-primary">{window.location.origin}/join</span> with PIN <span className="font-mono font-bold text-primary">{pin}</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowQRModal(true)}
+                  className="px-3 py-1.5 bg-primary text-on-primary rounded-full text-xs font-label-md hover:bg-primary-container transition-all flex items-center gap-1 shrink-0"
+                >
+                  <span className="material-symbols-outlined text-sm">qr_code_2</span>
+                  Display QR Code
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2.5 max-h-36 overflow-y-auto py-1">
+                {players.map((player, idx) => (
+                  <div
+                    key={player.id || player.socketId || idx}
+                    className="flex items-center gap-2 bg-surface-container-low border border-outline-variant/40 rounded-full px-3 py-1.5 shadow-sm animate-fadeIn hover:border-secondary transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[10px] font-bold">
+                      {(player.username || 'P').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-xs font-bold text-primary">{player.username}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Live Question Presentation Deck */}
@@ -302,22 +490,22 @@ const LiveMonitoring = () => {
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
             {bankQuestions.length === 0 ? (
               <div className="text-center text-sm text-on-surface-variant py-8">
-                Your bank is empty. <Link to="/builder" className="text-secondary hover:underline">Create some questions</Link> in the builder first!
+                Your bank is empty. <Link to="/builder" className="text-secondary hover:underline">Create questions in Builder</Link>
               </div>
             ) : (
               bankQuestions.map((bankQ) => (
                 <div key={bankQ.id} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl p-4 flex flex-col gap-3 hover:border-outline transition-colors">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container/20 px-2 py-0.5 rounded-full">
-                      {bankQ.type.replace('_', ' ')}
+                      {bankQ.type ? bankQ.type.replace('_', ' ') : 'Question'}
                     </span>
-                    <span className="text-xs font-mono text-on-surface-variant">{bankQ.timeLimitSeconds}s</span>
+                    <span className="text-xs font-mono text-on-surface-variant">{bankQ.timeLimitSeconds || 30}s</span>
                   </div>
                   <p className="text-sm font-bold text-primary line-clamp-2">{bankQ.text}</p>
                   
                   <button 
                     onClick={() => handlePushFromBank(bankQ)}
-                    className="w-full bg-primary text-on-primary rounded-xl py-2 text-xs font-bold hover:bg-primary-container transition-colors flex justify-center items-center gap-1.5 mt-1"
+                    className="w-full bg-primary text-on-primary rounded-xl py-2 text-xs font-bold hover:bg-primary-container transition-colors flex justify-center items-center gap-1.5 mt-1 active:scale-95 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[14px]">send</span>
                     Push Live Now

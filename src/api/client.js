@@ -139,6 +139,28 @@ export const sessionAPI = {
     });
   },
 
+  getSession: async (id) => {
+    if (USE_MOCKS) {
+      await delay(300);
+      return {
+        success: true,
+        session: { id, name: 'Live Interactive Session', pin: 'QUIZ-1234', participants: [], questions: [] }
+      };
+    }
+    return fetchClient(`/sessions/${id}`, { method: 'GET' });
+  },
+
+  getSessionByPin: async (pin) => {
+    if (USE_MOCKS) {
+      await delay(300);
+      return {
+        success: true,
+        session: { id: 'sess_1', name: 'Live Interactive Session', pin, participants: [] }
+      };
+    }
+    return fetchClient(`/sessions/pin/${pin}`, { method: 'GET' });
+  },
+
   deleteSession: async (id) => {
     if (USE_MOCKS) {
       await delay(300);

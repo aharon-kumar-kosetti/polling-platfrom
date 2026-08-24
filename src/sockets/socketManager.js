@@ -1,7 +1,7 @@
 // socketManager.js
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
 class SocketManager {
   constructor() {
@@ -9,14 +9,19 @@ class SocketManager {
   }
 
   connect(token = null) {
-    if (this.socket) return;
+    if (this.socket) {
+      if (token && (!this.socket.auth || this.socket.auth.token !== token)) {
+        this.socket.auth = { token };
+        this.socket.disconnect().connect();
+      }
+      return;
+    }
 
-    // Connect with credentials (for HttpOnly cookies for organizers) 
-    // OR pass the token for participants.
     this.socket = io(SOCKET_URL, {
       auth: { token },
       withCredentials: true,
       autoConnect: true,
+      transports: ['websocket', 'polling'],
     });
 
     this.socket.on('connect', () => {
@@ -25,6 +30,10 @@ class SocketManager {
 
     this.socket.on('disconnect', () => {
       console.log('Disconnected from WebSocket server');
+    });
+
+    this.socket.on('connect_error', (err) => {
+      console.warn('Socket connect error:', err.message);
     });
   }
 

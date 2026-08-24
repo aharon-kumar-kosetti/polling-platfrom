@@ -1,38 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom';
 import socketManager from '../sockets/socketManager';
 
 const ParticipantLiveQuiz = () => {
   const navigate = useNavigate();
+  const { sessionId: paramSessionId } = useParams();
   const [searchParams] = useSearchParams();
   
   const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
-  const pin = searchParams.get('pin') || 'TECH-88';
+  const pin = searchParams.get('pin') || localStorage.getItem('participant_pin') || 'TECH-88';
+  const sessionId = paramSessionId || searchParams.get('sessionId') || localStorage.getItem('participant_sessionId') || pin;
 
   const [question, setQuestion] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [initialTime, setInitialTime] = useState(30);
   const [selectedOption, setSelectedOption] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
+  const [score, setScore] = useState(parseInt(searchParams.get('score') || '0', 10));
+  const [streak, setStreak] = useState(1);
   const currentQIdRef = useRef(null);
 
   // Connect and listen to question state
   useEffect(() => {
     const token = localStorage.getItem('participant_token');
-    const sessionId = localStorage.getItem('participant_sessionId');
+    const targetRoom = sessionId || pin;
     
     socketManager.connect(token);
     
-    if (sessionId) {
-      socketManager.emit('join_room', { sessionId });
+    if (targetRoom) {
+      socketManager.emit('join_room', { sessionId: targetRoom, username });
     }
     
     const handleState = (data) => {
+      if (data?.status === 'ended') {
+        navigate(`/leaderboard?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}`);
+        return;
+      }
+
       if (data?.currentQuestion) {
         const incoming = data.currentQuestion;
-        // Only update if it's a new question
+        // Only update if it's a new question or initial load
         if (!currentQIdRef.current || currentQIdRef.current !== incoming.id) {
           currentQIdRef.current = incoming.id;
           setSelectedOption(null);
@@ -49,13 +56,13 @@ const ParticipantLiveQuiz = () => {
     return () => {
       socketManager.off('session_state_changed', handleState);
     };
-  }, []);
+  }, [navigate, pin, username, sessionId, score]);
 
   // Circular timer calculation (circumference: 2 * pi * 40 = 251)
   const strokeDashoffset = initialTime > 0 ? 251 - (251 * timeLeft) / initialTime : 0;
 
   useEffect(() => {
-    if (!question) return;
+    if (!question || isLocked) return;
     
     if (timeLeft <= 0) {
       handleTimeUp();
@@ -65,40 +72,61 @@ const ParticipantLiveQuiz = () => {
       setTimeLeft(prev => prev - 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, question]);
+  }, [timeLeft, question, isLocked]);
 
   const handleSelectOption = (optId) => {
     if (isLocked || !question) return;
     setSelectedOption(optId);
     setIsLocked(true);
 
+    const gainedPoints = 850 + (timeLeft * 15);
+    const newScore = score + gainedPoints;
+    setScore(newScore);
+
     socketManager.emit('submit_answer', {
       questionId: question.id,
-      optionId: optId
+      optionId: optId,
+      username
     });
 
     // Short delay before showing result screen
-    // Note: correctness is determined server-side; navigate to waiting state
     setTimeout(() => {
-      navigate(`/result?score=${score}&pin=${pin}&username=${encodeURIComponent(username)}`);
-    }, 1500);
+      navigate(`/result?score=${newScore}&pin=${pin}&username=${encodeURIComponent(username)}&sessionId=${encodeURIComponent(sessionId)}`);
+    }, 1200);
   };
 
   const handleTimeUp = () => {
     if (isLocked) return;
     setIsLocked(true);
     setTimeout(() => {
-      navigate(`/result?correct=false&score=${score}&pin=${pin}&username=${encodeURIComponent(username)}`);
+      navigate(`/result?correct=false&score=${score}&pin=${pin}&username=${encodeURIComponent(username)}&sessionId=${encodeURIComponent(sessionId)}`);
     }, 1000);
   };
 
   if (!question) {
     return (
-      <div className="bg-background text-on-background min-h-screen flex items-center justify-center">
-        <div className="text-center flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-label-md text-on-surface-variant">Waiting for the host to push the question...</p>
+      <div className="bg-background text-on-background min-h-screen flex flex-col items-center justify-between p-6">
+        <header className="w-full max-w-4xl flex items-center justify-between py-4">
+          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary">token</span>
+            <span className="text-black">QuizCore</span>
+          </Link>
+          <div className="text-xs font-mono font-bold bg-surface-container px-3 py-1 rounded-full text-primary">
+            PIN: {pin}
+          </div>
+        </header>
+
+        <div className="text-center flex flex-col items-center gap-5 my-auto max-w-md">
+          <div className="w-16 h-16 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
+          <h2 className="font-headline-lg text-2xl font-bold text-primary">Connected to Host Room</h2>
+          <p className="font-body-md text-sm text-on-surface-variant">
+            Waiting for the host to launch a live question. It will appear on your screen automatically!
+          </p>
         </div>
+
+        <footer className="py-4 text-xs text-on-surface-variant font-label-md">
+          Player: <strong className="text-primary">{username}</strong>
+        </footer>
       </div>
     );
   }
@@ -170,7 +198,7 @@ const ParticipantLiveQuiz = () => {
           </div>
 
           <div className="flex items-center gap-2 text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
-            <span>{question.type ? question.type.replace('_', ' ') : 'Quiz Question'}</span>
+            <span>{question.type ? question.type.replace('_', ' ') : 'Live Question'}</span>
           </div>
         </div>
 
@@ -187,8 +215,8 @@ const ParticipantLiveQuiz = () => {
         {/* 4 Interactive Answer Option Grid */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
           {(question.options || []).map((opt, idx) => {
-            const isSelected = selectedOption === (opt.id || opt.text);
-            const choiceId = opt.id || opt.text; // fallback if id is missing
+            const isSelected = selectedOption === (opt.id || opt.text) || selectedOption === opt.id;
+            const choiceId = opt.id || opt.text;
             
             return (
               <button

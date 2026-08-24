@@ -1,14 +1,42 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import socketManager from '../sockets/socketManager';
 
 const ParticipantQuestionResult = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const isCorrect = searchParams.get('correct') === 'true';
-  const score = searchParams.get('score') || '2300';
-  const pin = searchParams.get('pin') || 'TECH-88';
-  const username = searchParams.get('username') || 'PixelCrafter';
+  const isCorrect = searchParams.get('correct') !== 'false';
+  const score = searchParams.get('score') || '0';
+  const pin = searchParams.get('pin') || localStorage.getItem('participant_pin') || 'TECH-88';
+  const username = searchParams.get('username') || localStorage.getItem('participant_name') || 'PixelCrafter';
+  const sessionId = searchParams.get('sessionId') || localStorage.getItem('participant_sessionId') || pin;
+
+  // Listen for host pushing next question or ending quiz
+  useEffect(() => {
+    const token = localStorage.getItem('participant_token');
+    const targetRoom = sessionId || pin;
+    
+    socketManager.connect(token);
+    if (targetRoom) {
+      socketManager.emit('join_room', { sessionId: targetRoom, username });
+    }
+
+    const handleState = (data) => {
+      if (data?.status === 'ended') {
+        navigate(`/leaderboard?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}`);
+        return;
+      }
+      if (data?.currentQuestion) {
+        navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}&sessionId=${encodeURIComponent(targetRoom)}`);
+      }
+    };
+
+    socketManager.on('session_state_changed', handleState);
+    return () => {
+      socketManager.off('session_state_changed', handleState);
+    };
+  }, [navigate, pin, username, sessionId, score]);
 
   return (
     <div className="bg-background text-on-background min-h-screen flex flex-col justify-between items-center antialiased selection:bg-secondary-container selection:text-on-secondary-container p-6 relative overflow-hidden">
@@ -32,7 +60,7 @@ const ParticipantQuestionResult = () => {
       </header>
 
       {/* Main Feedback Card */}
-      <main className="w-full max-w-lg bg-surface-container-lowest rounded-3xl p-8 md:p-10 border border-outline-variant/30 shadow-editorial text-center relative z-10 animate-fadeIn">
+      <main className="w-full max-w-lg bg-surface-container-lowest rounded-3xl p-8 md:p-10 border border-outline-variant/30 shadow-editorial text-center relative z-10 animate-fadeIn my-auto">
         
         {/* Status Icon */}
         <div className={`w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center shadow-md ${
@@ -47,12 +75,12 @@ const ParticipantQuestionResult = () => {
 
         {/* Status Headline */}
         <h1 className="font-display-lg text-3xl md:text-4xl font-bold text-primary mb-2">
-          {isCorrect ? 'Spot on! Correct.' : 'Nice try! Not quite.'}
+          {isCorrect ? 'Answer Recorded!' : 'Time Up!'}
         </h1>
         <p className="font-body-md text-sm text-on-surface-variant mb-8">
           {isCorrect 
-            ? 'You correctly identified that negative space reduces cognitive load.' 
-            : 'The correct answer was: "To reduce cognitive load and visual clutter".'}
+            ? 'Your response was submitted to the live host deck.' 
+            : 'Get ready for the next round!'}
         </p>
 
         {/* Score & Multiplier Block */}
@@ -70,10 +98,15 @@ const ParticipantQuestionResult = () => {
             </span>
             {isCorrect && (
               <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-bold">
-                +150 Speed Bonus
+                + Speed Bonus
               </span>
             )}
           </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-2 text-xs text-on-surface-variant py-2 mb-4 bg-surface-container-high rounded-full">
+          <span className="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+          <span>Waiting for host to push the next question...</span>
         </div>
 
         {/* Action Buttons */}
@@ -87,16 +120,17 @@ const ParticipantQuestionResult = () => {
           </Link>
 
           <button
-            onClick={() => navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}`)}
+            onClick={() => navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}&sessionId=${encodeURIComponent(sessionId)}`)}
             className="w-full py-3 rounded-full border border-outline-variant/60 font-label-md text-sm hover:bg-surface-container transition-colors"
           >
-            Next Question &rarr;
+            Go to Live Arena &rarr;
           </button>
         </div>
 
       </main>
 
-      <footer className="py-4 text-center text-xs text-outline font-label-md"><span className="text-black">QuizCore</span> • Round complete
+      <footer className="py-4 text-center text-xs text-outline font-label-md">
+        <span className="text-black font-bold">QuizCore</span> • Round complete
       </footer>
 
     </div>
