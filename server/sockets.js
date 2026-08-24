@@ -228,7 +228,6 @@ module.exports = function setupSockets(io) {
       const isParticipant = socket.user?.role === 'participant' || (username && !username.toLowerCase().includes('host'));
 
       if (isParticipant) {
-        // Guarantee completely unique participantId per device/tab
         const participantId = clientProvidedId || socket.user?.participantId || `p_${socket.id.slice(0, 8)}`;
         const participantName = username || socket.user?.username || `Player_${socket.id.slice(0, 4)}`;
 
@@ -260,7 +259,6 @@ module.exports = function setupSockets(io) {
               wrongCount: 0
             });
           } else {
-            // Update existing record's socket ID and username
             const existing = sessionPlayerScores[k].get(participantId);
             existing.socketId = socket.id;
             existing.username = participantName;
@@ -280,6 +278,26 @@ module.exports = function setupSockets(io) {
           io.to(k).emit('leaderboard_updated', { rankings: currentLeaderboard });
           io.to(k).emit('question_responders_updated', currentResponders);
         });
+
+        // If the active question was already answered by this participant, send back user submission state
+        let foundActiveState = false;
+        for (const k of uniqueKeys) {
+          if (activeSessions[k] && activeSessions[k].status === 'active' && activeSessions[k].currentQuestion) {
+            const userSub = sessionSubmittedAnswers[k]?.get(participantId);
+            socket.emit('session_state_changed', {
+              ...activeSessions[k],
+              userSubmission: userSub ? {
+                optionId: userSub.optionId,
+                isLocked: true
+              } : null
+            });
+            foundActiveState = true;
+            break;
+          }
+        }
+        if (!foundActiveState) {
+          socket.emit('session_state_changed', { status: 'waiting', currentQuestion: null });
+        }
       } else {
         const currentList = getParticipantsList(primaryKey);
         const currentLeaderboard = getLeaderboard(primaryKey);
@@ -287,19 +305,13 @@ module.exports = function setupSockets(io) {
         socket.emit('participants_updated', currentList);
         socket.emit('leaderboard_updated', { rankings: currentLeaderboard });
         socket.emit('question_responders_updated', currentResponders);
-      }
 
-      // Send active question state only if currently live
-      let foundActiveState = false;
-      for (const k of uniqueKeys) {
-        if (activeSessions[k] && activeSessions[k].status === 'active' && activeSessions[k].currentQuestion) {
-          socket.emit('session_state_changed', activeSessions[k]);
-          foundActiveState = true;
-          break;
+        for (const k of uniqueKeys) {
+          if (activeSessions[k] && activeSessions[k].status === 'active' && activeSessions[k].currentQuestion) {
+            socket.emit('session_state_changed', activeSessions[k]);
+            break;
+          }
         }
-      }
-      if (!foundActiveState) {
-        socket.emit('session_state_changed', { status: 'waiting', currentQuestion: null });
       }
     });
 
@@ -319,7 +331,6 @@ module.exports = function setupSockets(io) {
       if (!candidateKey) return;
       const allKeys = getRelatedRoomKeys(candidateKey);
       
-      // Resolve unique participant ID
       let participantId = clientProvidedId || socket.user?.participantId;
       if (!participantId) {
         for (const k of allKeys) {
@@ -352,7 +363,7 @@ module.exports = function setupSockets(io) {
         return;
       }
 
-      // Retrieve the definitive correct answer info for this question
+      // Retrieve definitive correct answer info for this question
       let correctInfo = null;
       for (const k of allKeys) {
         if (sessionCorrectAnswer[k]) {

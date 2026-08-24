@@ -33,36 +33,56 @@ const ParticipantLiveQuiz = () => {
   const [scoreDelta, setScoreDelta] = useState(null);
   const currentQIdRef = useRef(null);
 
+  // Stable references to prevent socket listener teardown on state changes
+  const participantIdRef = useRef(participantId);
+  participantIdRef.current = participantId;
+
+  const usernameRef = useRef(username);
+  usernameRef.current = username;
+
+  const selectedOptionRef = useRef(selectedOption);
+  selectedOptionRef.current = selectedOption;
+
+  const scoreRef = useRef(score);
+  scoreRef.current = score;
+
   useEffect(() => {
     sessionStorage.setItem('participant_id', participantId);
   }, [participantId]);
 
-  // Connect and listen to question state, answer reveals, and responders
+  // Connect and listen to question state, answer reveals, and responders (STABLE EFFECT)
   useEffect(() => {
     const token = sessionStorage.getItem('participant_token') || localStorage.getItem('participant_token');
+    const curPId = participantIdRef.current;
+    const curUName = usernameRef.current;
     
     socketManager.connect(token);
-    socketManager.emit('join_room', { sessionId, pin, username, participantId });
+    socketManager.emit('join_room', { sessionId, pin, username: curUName, participantId: curPId });
     
     const handleState = (data) => {
       if (data?.status === 'ended') {
-        navigate(`/leaderboard?pin=${pin}&username=${encodeURIComponent(username)}&participantId=${encodeURIComponent(participantId)}&score=${score}`);
+        navigate(`/leaderboard?pin=${pin}&username=${encodeURIComponent(curUName)}&participantId=${encodeURIComponent(curPId)}&score=${scoreRef.current}`);
         return;
       }
 
       if (data?.currentQuestion) {
         const incoming = data.currentQuestion;
+        const savedAnswer = sessionStorage.getItem(`answered_q_${incoming.id}`) || data.userSubmission?.optionId;
+
         if (!currentQIdRef.current || currentQIdRef.current !== incoming.id) {
           currentQIdRef.current = incoming.id;
-          setSelectedOption(null);
-          setIsLocked(false);
-          setRevealedInfo(null);
+          setSelectedOption(savedAnswer || null);
+          setIsLocked(!!savedAnswer);
+          setRevealedInfo(data.revealed ? data : null);
           setScoreDelta(null);
-          setResponders({ top3: [], others: [], totalAnswered: 0 });
+          setResponders(data.responders || { top3: [], others: [], totalAnswered: 0 });
           const timeLimit = incoming.timeLimitSeconds || 30;
           setTimeLeft(timeLimit);
           setInitialTime(timeLimit);
           setQuestion(incoming);
+        } else if (savedAnswer && !selectedOptionRef.current) {
+          setSelectedOption(savedAnswer);
+          setIsLocked(true);
         }
       } else {
         // No active question currently pushed by host
@@ -78,11 +98,14 @@ const ParticipantLiveQuiz = () => {
         setResponders(data.responders);
       }
 
+      const myId = participantIdRef.current;
+      const myName = usernameRef.current;
+
       if (Array.isArray(data?.leaderboard)) {
         const myEntry = data.leaderboard.find(p => 
-          p.id === participantId || 
+          p.id === myId || 
           p.socketId === socketManager.getSocket()?.id ||
-          p.username?.trim().toLowerCase() === username.trim().toLowerCase()
+          (p.username && p.username.trim().toLowerCase() === myName.trim().toLowerCase())
         );
         if (myEntry) {
           setScore(myEntry.score);
@@ -92,11 +115,12 @@ const ParticipantLiveQuiz = () => {
       }
 
       // Calculate score delta indicator strictly for visual feedback: +2 if correct, 0 if wrong
-      if (selectedOption) {
+      const myPick = selectedOptionRef.current;
+      if (myPick) {
         const isCorrect = (
-          selectedOption === data.correctOptionId || 
-          String(selectedOption).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
-          (data.correctOptionText && String(selectedOption).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
+          myPick === data.correctOptionId || 
+          String(myPick).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
+          (data.correctOptionText && String(myPick).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
         setScoreDelta(isCorrect ? 2 : 0);
       }
@@ -104,10 +128,13 @@ const ParticipantLiveQuiz = () => {
 
     const handleLeaderboard = (data) => {
       if (Array.isArray(data?.rankings)) {
+        const myId = participantIdRef.current;
+        const myName = usernameRef.current;
+
         const myEntry = data.rankings.find(p => 
-          p.id === participantId || 
+          p.id === myId || 
           p.socketId === socketManager.getSocket()?.id ||
-          p.username?.trim().toLowerCase() === username.trim().toLowerCase()
+          (p.username && p.username.trim().toLowerCase() === myName.trim().toLowerCase())
         );
         if (myEntry) {
           setScore(myEntry.score);
@@ -144,7 +171,7 @@ const ParticipantLiveQuiz = () => {
       socketManager.off('question_responders_updated', handleResponders);
       socketManager.off('answer_submitted_ack', handleAnswerAck);
     };
-  }, [navigate, pin, username, sessionId, participantId, score, selectedOption]);
+  }, [navigate, pin, sessionId, participantId, username]);
 
   // Circular timer calculation
   const strokeDashoffset = initialTime > 0 ? 251 - (251 * timeLeft) / initialTime : 0;
@@ -167,11 +194,14 @@ const ParticipantLiveQuiz = () => {
     setSelectedOption(optId);
     setIsLocked(true);
 
+    // Save locally to prevent re-answer upon reload
+    sessionStorage.setItem(`answered_q_${question.id}`, optId);
+
     socketManager.emit('submit_answer', {
       questionId: question.id,
       optionId: optId,
-      username,
-      participantId,
+      username: usernameRef.current,
+      participantId: participantIdRef.current,
       sessionId,
       pin
     });
@@ -508,7 +538,7 @@ const ParticipantLiveQuiz = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               {responders.top3.map((player) => (
                 <div
-                  key={player.username}
+                  key={player.id || player.username}
                   className={`p-3 rounded-2xl border-2 flex items-center justify-between shadow-md transition-all ${
                     player.rank === 1
                       ? 'bg-amber-500/10 border-amber-500/60 ring-2 ring-amber-400/30'
@@ -542,7 +572,7 @@ const ParticipantLiveQuiz = () => {
                 <div className="flex flex-wrap gap-1.5">
                   {responders.others.map((otherP) => (
                     <span
-                      key={otherP.username}
+                      key={otherP.id || otherP.username}
                       className="px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant/30 text-xs text-on-surface-variant font-medium"
                     >
                       {otherP.username}
