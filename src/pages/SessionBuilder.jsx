@@ -5,6 +5,7 @@ import Sidebar from '../components/ui/Sidebar';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Dropdown from '../components/ui/Dropdown';
+import ImportQuestionsModal from '../components/ImportQuestionsModal';
 import { useToast } from '../components/ui/Toast';
 
 const TYPE_OPTIONS = [
@@ -52,6 +53,7 @@ const SessionBuilder = () => {
 
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind: 'draft' | 'bank', index?, id?, title? }
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -395,6 +397,19 @@ const SessionBuilder = () => {
     toast('Question copied into your session draft.', 'info');
   };
 
+  const handleImported = (savedQuestions) => {
+    setBankQuestions(prev => {
+      const next = [...prev];
+      savedQuestions.forEach((sq) => {
+        const idx = next.findIndex(bq => bq.id === sq.id);
+        if (idx >= 0) next[idx] = sq;
+        else next.push(sq);
+      });
+      return next;
+    });
+    setActiveTab('bank');
+  };
+
   const groupedBankQuestions = bankQuestions.reduce((acc, q) => {
     const bank = q.bankName || 'General';
     if (!acc[bank]) acc[bank] = [];
@@ -551,8 +566,18 @@ const SessionBuilder = () => {
             ) : (
               <div key="bank-panel" className="animate-tabIn flex flex-col flex-1 overflow-hidden">
                 <div className="p-4 border-b border-outline-variant/20 flex flex-col gap-1">
-                  <span className="font-label-md text-xs font-bold text-primary uppercase tracking-wider">Question Bank</span>
-                  <span className="text-[10px] text-on-surface-variant">Saved globally. Hover a card to add or remove.</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-label-md text-xs font-bold text-primary uppercase tracking-wider">Question Bank</span>
+                    <button
+                      onClick={() => setShowImportModal(true)}
+                      className="px-2.5 py-1 rounded-full bg-primary text-on-primary text-[10px] font-label-md font-bold hover:bg-primary-container transition-all press-effect flex items-center gap-1"
+                      title="Bulk import questions from JSON"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">upload_file</span>
+                      Import JSON
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant">Saved globally. Hover a card to edit, add or remove.</span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-4 custom-scrollbar">
@@ -917,6 +942,14 @@ const SessionBuilder = () => {
           </div>
         </div>
       </Modal>
+
+      {/* JSON Import flow */}
+      <ImportQuestionsModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        bankQuestions={bankQuestions}
+        onImported={handleImported}
+      />
 
       {/* Unified delete confirmation dialog */}
       <ConfirmDialog
