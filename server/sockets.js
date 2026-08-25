@@ -368,7 +368,8 @@ module.exports = function setupSockets(io) {
     });
 
     // Handle answer submission: Locks answer independently per participantId / username
-    socket.on('submit_answer', ({ questionId, optionId, username, participantId: clientProvidedId, sessionId, pin }) => {
+    // Supports multi-select questions via `optionIds` (array). Single-select still uses `optionId`.
+    socket.on('submit_answer', ({ questionId, optionId, optionIds, username, participantId: clientProvidedId, sessionId, pin }) => {
       let candidateKey = sessionId || pin || socket.user?.sessionId;
 
       if (!candidateKey) {
@@ -441,12 +442,39 @@ module.exports = function setupSockets(io) {
         }
       }
 
+      const isMultiSelect = Array.isArray(optionIds) && optionIds.length > 0;
+
+      // Normalize every picked option id/text into a comparable lowercase string
+      const normalizeOpt = (v) => String(v).trim().toLowerCase();
+
+      const isOptionCorrect = (opt) => opt && (opt.isCorrect === true || opt.isCorrect === 'true');
+
       // Check correctness strictly against correctInfo / fullQ
       let isCorrect = false;
-      if (correctInfo) {
-        const optStr = String(optionId).trim().toLowerCase();
-        const corrIdStr = correctInfo.correctOptionId ? String(correctInfo.correctOptionId).trim().toLowerCase() : null;
-        const corrTextStr = correctInfo.correctOptionText ? String(correctInfo.correctOptionText).trim().toLowerCase() : null;
+      let pickedOptions = [];
+
+      if (isMultiSelect) {
+        // MULTIPLE CHOICE: all-or-nothing — every pick must be correct and cover all correct options
+        const pool = (fullQ && Array.isArray(fullQ.options)) ? fullQ.options : [];
+        pickedOptions = optionIds
+          .map(pick => pool.find(o =>
+            (o.id && normalizeOpt(o.id) === normalizeOpt(pick)) ||
+            (o.text && normalizeOpt(o.text) === normalizeOpt(pick))
+          ))
+          .filter(Boolean);
+
+        const correctPool = pool.filter(isOptionCorrect);
+        const pickedKeys = new Set(pickedOptions.map(o => normalizeOpt(o.id || o.text)));
+        const correctKeys = new Set(correctPool.map(o => normalizeOpt(o.id || o.text)));
+
+        isCorrect = pool.length > 0 &&
+          pickedOptions.length === optionIds.length &&
+          pickedKeys.size === correctKeys.size &&
+          [...correctKeys].every(k => pickedKeys.has(k));
+      } else if (correctInfo) {
+        const optStr = normalizeOpt(optionId);
+        const corrIdStr = correctInfo.correctOptionId ? normalizeOpt(correctInfo.correctOptionId) : null;
+        const corrTextStr = correctInfo.correctOptionText ? normalizeOpt(correctInfo.correctOptionText) : null;
 
         if (corrIdStr && optStr === corrIdStr) {
           isCorrect = true;
@@ -455,8 +483,8 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      if (!isCorrect && fullQ && Array.isArray(fullQ.options)) {
-        const opt = fullQ.options.find(o => 
+      if (!isCorrect && !isMultiSelect && fullQ && Array.isArray(fullQ.options)) {
+        const opt = fullQ.options.find(o =>
           (o.id && String(o.id).trim().toLowerCase() === String(optionId).trim().toLowerCase()) ||
           (o.text && o.text.trim().toLowerCase() === String(optionId).trim().toLowerCase())
         );
@@ -465,14 +493,15 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      console.log(`[Socket] Answer locked for Q:${questionId}, opt:${optionId} by ${participantName} (ID: ${participantId}) => isCorrect: ${isCorrect}`);
+      console.log(`[Socket] Answer locked for Q:${questionId}, ${isMultiSelect ? `opts:[${optionIds.join(',')}]` : `opt:${optionId}`} by ${participantName} (ID: ${participantId}) => isCorrect: ${isCorrect}`);
 
       // Record submitted answer under unique participantId
       const answerRecord = {
         participantId,
         username: participantName,
         questionId,
-        optionId,
+        optionId: isMultiSelect ? (optionIds[0] ?? null) : optionId,
+        optionIds: isMultiSelect ? optionIds : undefined,
         isCorrect,
         timestamp: Date.now()
       };
@@ -494,13 +523,17 @@ module.exports = function setupSockets(io) {
       }
 
       if (activeQ && activeQ.options) {
-        const opt = activeQ.options.find(o => 
-          (o.id && (o.id === optionId || String(o.id) === String(optionId))) ||
-          (o.text && (o.text === optionId || o.text?.trim().toLowerCase() === String(optionId).trim().toLowerCase()))
-        );
-        if (opt) {
-          opt.count = (opt.count || 0) + 1;
-        }
+        // Tally one vote per picked option (multi-select counts each pick)
+        const picks = isMultiSelect ? optionIds : [optionId];
+        picks.forEach(pick => {
+          const opt = activeQ.options.find(o =>
+            (o.id && (o.id === pick || String(o.id) === String(pick))) ||
+            (o.text && (o.text === pick || o.text?.trim().toLowerCase() === String(pick).trim().toLowerCase()))
+          );
+          if (opt) {
+            opt.count = (opt.count || 0) + 1;
+          }
+        });
 
         allKeys.forEach(k => {
           io.to(k).emit('answer_tally', {
@@ -520,7 +553,8 @@ module.exports = function setupSockets(io) {
       socket.emit('answer_submitted_ack', {
         isLocked: true,
         questionId,
-        selectedOptionId: optionId
+        selectedOptionId: isMultiSelect ? null : optionId,
+        selectedOptionIds: isMultiSelect ? optionIds : undefined
       });
     });
 
@@ -567,6 +601,9 @@ module.exports = function setupSockets(io) {
 
       const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
       const correctOptionText = correctOpt ? correctOpt.text : '';
+      const correctOptions = (fullQ?.options || []).filter(o => o.isCorrect === true || o.isCorrect === 'true');
+      const correctOptionIds = correctOptions.map(o => o.id || o.text);
+      const correctOptionTexts = correctOptions.map(o => o.text);
 
       // Score calculation on REVEAL: Award +2 marks for correct answers
       let answersMap = new Map();
@@ -631,6 +668,9 @@ module.exports = function setupSockets(io) {
         questionId: fullQ?.id || 'q_active',
         correctOptionId,
         correctOptionText,
+        correctOptionIds,
+        correctOptionTexts,
+        questionType: fullQ?.type || 'single_choice',
         optionsWithCorrectness: fullQ?.options || []
       };
 
@@ -639,6 +679,7 @@ module.exports = function setupSockets(io) {
           activeSessions[k].revealed = true;
           activeSessions[k].correctOptionId = correctOptionId;
           activeSessions[k].correctOptionText = correctOptionText;
+          activeSessions[k].correctOptionIds = correctOptionIds;
         }
       });
 
@@ -690,11 +731,14 @@ module.exports = function setupSockets(io) {
       console.log(`[Socket] Organizer pushed new question to rooms [${uniqueKeys.join(', ')}]: "${question.text?.slice(0, 35)}..."`);
 
       // Locate and record definitive correct answer info
-      const correctOpt = (question.options || []).find(o => o.isCorrect === true || o.isCorrect === 'true') || (question.options && question.options[0]);
+      const correctOpts = (question.options || []).filter(o => o.isCorrect === true || o.isCorrect === 'true');
+      const correctOpt = correctOpts[0] || (question.options && question.options[0]);
       const correctInfo = {
         questionId: question.id,
         correctOptionId: correctOpt ? (correctOpt.id || correctOpt.text) : 'a',
-        correctOptionText: correctOpt ? correctOpt.text : ''
+        correctOptionText: correctOpt ? correctOpt.text : '',
+        correctOptionIds: correctOpts.map(o => o.id || o.text),
+        questionType: question.type || 'single_choice'
       };
 
       // Store full question and correct answer on server for all room keys

@@ -23,6 +23,7 @@ const ParticipantLiveQuiz = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [initialTime, setInitialTime] = useState(30);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [selectedOptions, setSelectedOptions] = useState([]); // multi-select picks
   const [isLocked, setIsLocked] = useState(false);
   const [revealedInfo, setRevealedInfo] = useState(null);
   const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
@@ -49,6 +50,15 @@ const ParticipantLiveQuiz = () => {
 
   const selectedOptionRef = useRef(selectedOption);
   selectedOptionRef.current = selectedOption;
+
+  const selectedOptionsRef = useRef(selectedOptions);
+  selectedOptionsRef.current = selectedOptions;
+
+  const isLockedRef = useRef(isLocked);
+  isLockedRef.current = isLocked;
+
+  const questionRef = useRef(question);
+  questionRef.current = question;
 
   const scoreRef = useRef(score);
   scoreRef.current = score;
@@ -96,12 +106,25 @@ const ParticipantLiveQuiz = () => {
 
       if (data?.currentQuestion) {
         const incoming = data.currentQuestion;
-        const savedAnswer = sessionStorage.getItem(`answered_q_${incoming.id}`) || data.userSubmission?.optionId;
+        let savedAnswer = sessionStorage.getItem(`answered_q_${incoming.id}`) || data.userSubmission?.optionId;
+
+        // Restore multi-select answers stored as JSON arrays
+        let savedMulti = [];
+        if (savedAnswer && savedAnswer.startsWith('[')) {
+          try {
+            const parsed = JSON.parse(savedAnswer);
+            if (Array.isArray(parsed)) {
+              savedMulti = parsed;
+              savedAnswer = null;
+            }
+          } catch (e) { /* not a JSON array — treat as single */ }
+        }
 
         if (!currentQIdRef.current || currentQIdRef.current !== incoming.id) {
           currentQIdRef.current = incoming.id;
           setSelectedOption(savedAnswer || null);
-          setIsLocked(!!savedAnswer);
+          setSelectedOptions(savedMulti);
+          setIsLocked(!!savedAnswer || savedMulti.length > 0);
           setRevealedInfo(null); // Never reveal answer on a new question until host clicks reveal
           setScoreDelta(null);
           setResponders(data.responders || { top3: [], others: [], totalAnswered: 0 });
@@ -109,8 +132,9 @@ const ParticipantLiveQuiz = () => {
           setTimeLeft(timeLimit);
           setInitialTime(timeLimit);
           setQuestion(incoming);
-        } else if (savedAnswer && !selectedOptionRef.current) {
-          setSelectedOption(savedAnswer);
+        } else if ((savedAnswer || savedMulti.length > 0) && !selectedOptionRef.current && selectedOptionsRef.current.length === 0) {
+          setSelectedOption(savedAnswer || null);
+          setSelectedOptions(savedMulti);
           setIsLocked(true);
         }
       } else {
@@ -135,10 +159,37 @@ const ParticipantLiveQuiz = () => {
       }
 
       // Calculate score delta indicator strictly for visual feedback: +2 if correct, 0 if wrong
+      const isMultiReveal = Array.isArray(data?.correctOptionIds) && data.correctOptionIds.length > 1
+        || (Array.isArray(data?.optionsWithCorrectness) && data.optionsWithCorrectness.filter(o => o.isCorrect === true || o.isCorrect === 'true').length > 1);
+
+      if (isMultiReveal) {
+        // MULTIPLE CHOICE: all picked options must match the correct set exactly
+        const correctSet = (data?.correctOptionIds && data.correctOptionIds.length > 0
+          ? data.correctOptionIds
+          : (data?.optionsWithCorrectness || []).filter(o => o.isCorrect === true || o.isCorrect === 'true').map(o => o.id || o.text)
+        ).map(v => String(v).trim().toLowerCase());
+        const pickedSet = (selectedOptionsRef.current || []).map(v => String(v).trim().toLowerCase());
+        const isCorrect = correctSet.length > 0 &&
+          pickedSet.length === correctSet.length &&
+          correctSet.every(v => pickedSet.includes(v)) &&
+          pickedSet.every(v => correctSet.includes(v));
+        setScoreDelta(pickedSet.length > 0 ? (isCorrect ? 2 : 0) : null);
+
+        // Fallback local score bump if server didn't match us in the leaderboard
+        if (!myEntry && pickedSet.length > 0 && isCorrect) {
+          setScore(prev => {
+            const next = prev + 2;
+            sessionStorage.setItem('participant_score', String(next));
+            return next;
+          });
+        }
+        return;
+      }
+
       const myPick = selectedOptionRef.current;
       if (myPick) {
         const isCorrect = (
-          myPick === data.correctOptionId || 
+          myPick === data.correctOptionId ||
           String(myPick).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
           (data.correctOptionText && String(myPick).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
@@ -226,23 +277,60 @@ const ParticipantLiveQuiz = () => {
     return () => clearInterval(interval);
   }, [question?.id, revealedInfo]);
 
-  const handleSelectOption = (optId) => {
-    if (isLocked || !question || revealedInfo) return;
-    setSelectedOption(optId);
-    setIsLocked(true);
-
-    // Save locally to prevent re-answer upon reload
-    sessionStorage.setItem(`answered_q_${question.id}`, optId);
-
+  const emitSubmission = ({ optionId, optionIds }) => {
     socketManager.emit('submit_answer', {
-      questionId: question.id,
-      optionId: optId,
+      questionId: questionRef.current?.id,
+      optionId,
+      optionIds,
       username: usernameRef.current,
       participantId: participantIdRef.current,
       sessionId,
       pin
     });
   };
+
+  const handleSelectOption = (optId) => {
+    if (isLocked || !question || revealedInfo) return;
+
+    // MULTIPLE CHOICE: toggle selections freely — nothing locks until "Submit"
+    if (question.type === 'multiple_choice') {
+      setSelectedOptions((prev) => (
+        prev.includes(optId) ? prev.filter((id) => id !== optId) : [...prev, optId]
+      ));
+      return;
+    }
+
+    // SINGLE CHOICE / TRUE-FALSE: lock & submit immediately (existing behaviour)
+    setSelectedOption(optId);
+    setIsLocked(true);
+
+    // Save locally to prevent re-answer upon reload
+    sessionStorage.setItem(`answered_q_${question.id}`, optId);
+    emitSubmission({ optionId: optId });
+  };
+
+  const handleSubmitMulti = () => {
+    if (isLocked || !question || revealedInfo || selectedOptions.length === 0) return;
+    setIsLocked(true);
+
+    // Save locally to prevent re-answer upon reload
+    sessionStorage.setItem(`answered_q_${question.id}`, JSON.stringify(selectedOptions));
+    emitSubmission({ optionIds: selectedOptions });
+  };
+
+  // Auto-submit pending multi-selections when the timer runs out
+  useEffect(() => {
+    if (timeLeft === 0 && question && !revealedInfo && !isLockedRef.current) {
+      if (question.type === 'multiple_choice' && selectedOptionsRef.current.length > 0) {
+        setIsLocked(true);
+        sessionStorage.setItem(`answered_q_${question.id}`, JSON.stringify(selectedOptionsRef.current));
+        emitSubmission({ optionIds: selectedOptionsRef.current });
+      } else if (question.type !== 'multiple_choice') {
+        setIsLocked(true);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, question?.id, revealedInfo]);
 
   // 1. NO ACTIVE QUESTION SCREEN: Tell user to wait for host
   if (!question) {
@@ -308,10 +396,31 @@ const ParticipantLiveQuiz = () => {
   }
 
   // 2. LIVE QUESTION ARENA
-  const isCorrectChoice = revealedInfo && selectedOption && (
-    selectedOption === revealedInfo.correctOptionId ||
-    String(selectedOption).toLowerCase() === String(revealedInfo.correctOptionId).toLowerCase() ||
-    (revealedInfo.correctOptionText && String(selectedOption).trim().toLowerCase() === String(revealedInfo.correctOptionText).trim().toLowerCase())
+  const normCmp = (v) => String(v).trim().toLowerCase();
+  const isMultiQuestion = question.type === 'multiple_choice';
+  const revealedCorrectIds = revealedInfo
+    ? (Array.isArray(revealedInfo.correctOptionIds) && revealedInfo.correctOptionIds.length > 0
+        ? revealedInfo.correctOptionIds
+        : (revealedInfo.optionsWithCorrectness || [])
+            .filter((o) => o.isCorrect === true || o.isCorrect === 'true')
+            .map((o) => o.id || o.text))
+    : [];
+  const hasPicked = isMultiQuestion ? selectedOptions.length > 0 : !!selectedOption;
+
+  const isCorrectChoice = revealedInfo && (isMultiQuestion
+    ? (
+      revealedCorrectIds.length > 0 &&
+      selectedOptions.length === revealedCorrectIds.length &&
+      revealedCorrectIds.every((c) => selectedOptions.some((s) => normCmp(s) === normCmp(c))) &&
+      selectedOptions.every((s) => revealedCorrectIds.some((c) => normCmp(c) === normCmp(s)))
+    )
+    : (
+      selectedOption && (
+        selectedOption === revealedInfo.correctOptionId ||
+        normCmp(selectedOption) === normCmp(revealedInfo.correctOptionId || '') ||
+        (revealedInfo.correctOptionText && normCmp(selectedOption) === normCmp(revealedInfo.correctOptionText))
+      )
+    )
   );
 
   return (
@@ -404,7 +513,9 @@ const ParticipantLiveQuiz = () => {
           <div className="flex items-center gap-2 text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
             <span>{question.type ? question.type.replace('_', ' ') : 'Live Question'}</span>
             <span>•</span>
-            <span className="text-secondary font-bold">+2 Marks per Correct Answer</span>
+            <span className="text-secondary font-bold">
+              {isMultiQuestion ? 'Select ALL correct options' : '+2 Marks per Correct Answer'}
+            </span>
           </div>
         </div>
 
@@ -422,26 +533,42 @@ const ParticipantLiveQuiz = () => {
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-6">
           {(question.options || []).map((opt, idx) => {
             const choiceId = opt.id || opt.text;
-            const isSelected = selectedOption === choiceId || selectedOption === opt.id || selectedOption === opt.text;
-            
-            // Accurate correctness matching strictly when host revealed
-            const isThisOptionCorrect = revealedInfo && (
-              (revealedInfo.correctOptionId && (choiceId === revealedInfo.correctOptionId || opt.id === revealedInfo.correctOptionId)) ||
-              (revealedInfo.correctOptionText && opt.text?.trim().toLowerCase() === revealedInfo.correctOptionText?.trim().toLowerCase())
-            );
+            const norm = (v) => String(v).trim().toLowerCase();
+            const isMulti = question.type === 'multiple_choice';
 
-            let cardStyle = 'border-outline-variant/40 bg-surface-container-lowest hover:border-primary';
-            
+            // Selection state (single pick OR multi picks)
+            const isSelected = isMulti
+              ? selectedOptions.some((s) => norm(s) === norm(choiceId))
+              : (selectedOption === choiceId || selectedOption === opt.id || selectedOption === opt.text);
+
+            // Correctness matching strictly when host revealed (supports multiple correct options)
+            const correctIds = revealedInfo
+              ? (Array.isArray(revealedInfo.correctOptionIds) && revealedInfo.correctOptionIds.length > 0
+                  ? revealedInfo.correctOptionIds
+                  : (revealedInfo.optionsWithCorrectness || [])
+                      .filter((o) => o.isCorrect === true || o.isCorrect === 'true')
+                      .map((o) => o.id || o.text))
+              : [];
+            const isThisOptionCorrect = revealedInfo && correctIds.some((c) => norm(c) === norm(choiceId));
+
+            let cardStyle = 'border-outline-variant/40 bg-surface-container-lowest hover:border-primary hover:-translate-y-px cursor-pointer';
+
             if (revealedInfo) {
-              if (isThisOptionCorrect) {
+              if (isThisOptionCorrect && isSelected) {
                 cardStyle = 'border-secondary bg-secondary-container/30 text-on-secondary-container ring-2 ring-secondary shadow-lg';
+              } else if (isThisOptionCorrect) {
+                // Correct option the player missed — show it clearly but softer
+                cardStyle = 'border-secondary/50 bg-secondary-container/10 ring-1 ring-secondary/40';
               } else if (isSelected && !isThisOptionCorrect) {
                 cardStyle = 'border-error bg-error/10 text-error ring-2 ring-error shadow-lg';
               } else {
                 cardStyle = 'border-outline-variant/20 bg-surface-container-lowest opacity-40';
               }
+            } else if (isSelected && isMulti) {
+              // Multi-select: picked but NOT locked yet — player can still toggle
+              cardStyle = 'border-primary bg-primary/5 text-primary shadow-md ring-2 ring-primary/30';
             } else if (isSelected) {
-              // Selected / Locked before reveal (Amber/Indigo neutral lock style - NOT green!)
+              // Single: Selected / Locked before reveal (neutral lock style - NOT green!)
               cardStyle = 'border-primary bg-surface-container-high text-primary shadow-md scale-[0.98] ring-2 ring-primary/40';
             } else if (isLocked) {
               cardStyle = 'border-outline-variant/30 bg-surface-container-lowest opacity-60 cursor-not-allowed';
@@ -465,25 +592,29 @@ const ParticipantLiveQuiz = () => {
                       <span className="material-symbols-outlined text-[18px]">cancel</span>
                     </div>
                   ) : null
+                ) : isSelected && isMulti ? (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center animate-fadeIn shadow-md">
+                    <span className="material-symbols-outlined text-[18px]">check</span>
+                  </div>
                 ) : isSelected ? (
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full bg-primary text-on-primary flex items-center gap-1 text-[11px] font-bold animate-fadeIn">
                     <span className="material-symbols-outlined text-xs">lock</span>
                     <span>Locked</span>
                   </div>
                 ) : null}
-                
+
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors ${
-                  revealedInfo && isThisOptionCorrect 
-                    ? 'bg-secondary text-on-secondary' 
+                  revealedInfo && isThisOptionCorrect
+                    ? 'bg-secondary text-on-secondary'
                     : revealedInfo && isSelected && !isThisOptionCorrect
                       ? 'bg-error text-on-error'
-                      : isSelected 
-                        ? 'bg-primary text-on-primary' 
+                      : isSelected
+                        ? 'bg-primary text-on-primary'
                         : 'bg-surface-container-highest text-primary'
                 }`}>
                   {String.fromCharCode(97 + idx)}
                 </div>
-                
+
                 <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-1 pr-14">
                   <div>
                     <span className="font-bold text-base md:text-lg leading-tight text-primary">
@@ -492,7 +623,7 @@ const ParticipantLiveQuiz = () => {
                     {revealedInfo && isThisOptionCorrect && (
                       <div className="text-[11px] font-bold text-secondary mt-0.5 flex items-center gap-1">
                         <span className="material-symbols-outlined text-xs">check_circle</span>
-                        Correct Answer (+2 Marks)
+                        {isSelected ? 'Your Correct Pick (+2 Marks)' : 'Correct Answer'}
                       </div>
                     )}
                     {revealedInfo && isSelected && !isThisOptionCorrect && (
@@ -501,7 +632,12 @@ const ParticipantLiveQuiz = () => {
                         Your Pick (+0 Marks)
                       </div>
                     )}
-                    {!revealedInfo && isSelected && (
+                    {!revealedInfo && isSelected && isMulti && (
+                      <div className="text-[11px] font-bold text-primary/70 mt-0.5">
+                        Selected — tap again to deselect
+                      </div>
+                    )}
+                    {!revealedInfo && isSelected && !isMulti && (
                       <div className="text-[11px] font-bold text-primary/70 mt-0.5">
                         Your Submitted Choice (Locked)
                       </div>
@@ -520,21 +656,21 @@ const ParticipantLiveQuiz = () => {
         <div className="w-full max-w-xl text-center mb-6">
           {revealedInfo ? (
             <div className={`p-4 rounded-2xl border text-sm font-bold flex flex-col items-center gap-1.5 animate-fadeIn shadow-sm ${
-              isCorrectChoice 
-                ? 'bg-secondary-container/40 border-secondary text-secondary' 
-                : selectedOption 
+              isCorrectChoice
+                ? 'bg-secondary-container/40 border-secondary text-secondary'
+                : hasPicked
                   ? 'bg-error/10 border-error/40 text-error'
                   : 'bg-surface-container-high border-outline-variant/40 text-primary'
             }`}>
               <div className="flex items-center gap-2 text-base">
                 <span className="material-symbols-outlined">
-                  {isCorrectChoice ? 'celebration' : selectedOption ? 'sentiment_dissatisfied' : 'info'}
+                  {isCorrectChoice ? 'celebration' : hasPicked ? 'sentiment_dissatisfied' : 'info'}
                 </span>
                 <span>
                   {isCorrectChoice
-                    ? 'Correct! +2 Points Added to Your Score!'
-                    : selectedOption
-                      ? 'Incorrect Answer (+0 Marks). Keep going!'
+                    ? (isMultiQuestion ? 'All Correct Picks! +2 Points Added to Your Score!' : 'Correct! +2 Points Added to Your Score!')
+                    : hasPicked
+                      ? (isMultiQuestion ? 'Your picks didn\u2019t fully match (+0 Marks). Keep going!' : 'Incorrect Answer (+0 Marks). Keep going!')
                       : 'Time is up! You did not answer.'}
                 </span>
               </div>
@@ -545,8 +681,27 @@ const ParticipantLiveQuiz = () => {
           ) : isLocked ? (
             <div className="p-3.5 bg-surface-container-low rounded-2xl border border-outline-variant/40 text-xs font-bold text-primary flex items-center justify-center gap-2 animate-fadeIn">
               <span className="material-symbols-outlined text-secondary text-sm">lock</span>
-              <span>Answer Locked! Waiting for host to reveal the correct answer.</span>
+              <span>
+                {isMultiQuestion
+                  ? `${selectedOptions.length} option${selectedOptions.length > 1 ? 's' : ''} locked in! Waiting for host to reveal.`
+                  : 'Answer Locked! Waiting for host to reveal the correct answer.'}
+              </span>
             </div>
+          ) : isMultiQuestion ? (
+            <button
+              onClick={handleSubmitMulti}
+              disabled={selectedOptions.length === 0}
+              className={`w-full px-6 py-4 rounded-full font-label-md text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 press-effect ${
+                selectedOptions.length > 0
+                  ? 'bg-secondary text-on-secondary hover:brightness-110 animate-pulse'
+                  : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">lock</span>
+              {selectedOptions.length > 0
+                ? `Lock In Answer (${selectedOptions.length} selected)`
+                : 'Select all options that apply'}
+            </button>
           ) : (
             <div className="text-xs text-on-surface-variant font-label-md">
               Tap an option above to submit your answer
