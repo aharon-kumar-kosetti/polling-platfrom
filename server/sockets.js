@@ -567,8 +567,15 @@ module.exports = function setupSockets(io) {
       console.log(`[Socket] Organizer revealing answer and computing scores for rooms: [${allKeys.join(', ')}]`);
 
       if (question) {
+        // Only overwrite the stored full question when the incoming copy actually
+        // knows the correct answers — never let a stripped/sanitized copy erase them.
+        const incomingHasFlags = (question.options || []).some(o => o.isCorrect === true || o.isCorrect === 'true');
         allKeys.forEach(k => {
-          sessionCurrentQuestionFull[k] = question;
+          const existing = sessionCurrentQuestionFull[k];
+          const existingHasFlags = Array.isArray(existing?.options) && existing.options.some(o => o.isCorrect === true || o.isCorrect === 'true');
+          if (!existing || incomingHasFlags || !existingHasFlags) {
+            sessionCurrentQuestionFull[k] = question;
+          }
         });
       }
 
@@ -589,30 +596,34 @@ module.exports = function setupSockets(io) {
         }
       }
 
-      // Locate true correct option strictly from fullQ
+      // Locate true correct option strictly from fullQ.
+      // Never fall back to options[0] — if nothing is flagged correct, nothing is correct.
       let correctOpt = (fullQ?.options || []).find(o => o.isCorrect === true || o.isCorrect === 'true');
-      if (!correctOpt && sessionCorrectAnswer[primaryKey]) {
+      if (!correctOpt && sessionCorrectAnswer[primaryKey]?.correctOptionId) {
         const corrId = sessionCorrectAnswer[primaryKey].correctOptionId;
         correctOpt = (fullQ?.options || []).find(o => o.id === corrId || o.text === corrId);
       }
-      if (!correctOpt && fullQ?.options) {
-        correctOpt = fullQ.options[0];
-      }
 
-      const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : 'a';
+      const correctOptionId = correctOpt ? (correctOpt.id || correctOpt.text) : null;
       const correctOptionText = correctOpt ? correctOpt.text : '';
       const correctOptions = (fullQ?.options || []).filter(o => o.isCorrect === true || o.isCorrect === 'true');
       const correctOptionIds = correctOptions.map(o => o.id || o.text);
       const correctOptionTexts = correctOptions.map(o => o.text);
 
-      // Score calculation on REVEAL: Award +2 marks for correct answers
+      // GUARD: if this question was already revealed, do NOT re-run scoring.
+      // Re-clicking "Reveal" (or a duplicate event) must never award points twice.
+      const alreadyRevealed = allKeys.some(k => activeSessions[k]?.revealed === true);
+
+      // Score calculation on REVEAL: Award marks for correct answers (first reveal only)
       let answersMap = new Map();
-      for (const k of allKeys) {
-        if (sessionSubmittedAnswers[k]) {
-          for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
-            const uKey = (ans.username || pId).trim().toLowerCase();
-            if (!answersMap.has(uKey)) {
-              answersMap.set(uKey, ans);
+      if (!alreadyRevealed) {
+        for (const k of allKeys) {
+          if (sessionSubmittedAnswers[k]) {
+            for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
+              const uKey = (ans.username || pId).trim().toLowerCase();
+              if (!answersMap.has(uKey)) {
+                answersMap.set(uKey, ans);
+              }
             }
           }
         }
@@ -730,12 +741,13 @@ module.exports = function setupSockets(io) {
 
       console.log(`[Socket] Organizer pushed new question to rooms [${uniqueKeys.join(', ')}]: "${question.text?.slice(0, 35)}..."`);
 
-      // Locate and record definitive correct answer info
+      // Locate and record definitive correct answer info.
+      // If NO option is flagged correct, correctOptionId stays null — never guess option[0].
       const correctOpts = (question.options || []).filter(o => o.isCorrect === true || o.isCorrect === 'true');
-      const correctOpt = correctOpts[0] || (question.options && question.options[0]);
+      const correctOpt = correctOpts[0] || null;
       const correctInfo = {
         questionId: question.id,
-        correctOptionId: correctOpt ? (correctOpt.id || correctOpt.text) : 'a',
+        correctOptionId: correctOpt ? (correctOpt.id || correctOpt.text) : null,
         correctOptionText: correctOpt ? correctOpt.text : '',
         correctOptionIds: correctOpts.map(o => o.id || o.text),
         questionType: question.type || 'single_choice'
