@@ -186,6 +186,7 @@ router.put('/:id/questions', authenticateOrganizer, async (req, res) => {
             imageUrl: q.imageUrl || null,
             options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
             timeLimitSeconds: q.timeLimitSeconds || 30,
+            marks: Number(q.marks) > 0 ? Number(q.marks) : 1,
             order: index,
             sessionId: id
           }

@@ -99,46 +99,32 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
     const results = [];
     for (const q of questions) {
       const isNew = String(q.id).length !== 36;
+      const baseData = {
+        type: q.type || 'single_choice',
+        text: q.text.trim(),
+        imageUrl: q.imageUrl || null,
+        options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
+        timeLimitSeconds: q.timeLimitSeconds || 30,
+        bankName: q.bankName || 'General',
+        marks: Number(q.marks) > 0 ? Number(q.marks) : 1,
+      };
       if (isNew) {
         const created = await prisma.savedQuestion.create({
-          data: {
-            type: q.type || 'single_choice',
-            text: q.text.trim(),
-            imageUrl: q.imageUrl || null,
-            options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
-            timeLimitSeconds: q.timeLimitSeconds || 30,
-            bankName: q.bankName || 'General',
-            userId: userId,
-          }
+          data: { ...baseData, userId: userId }
         });
         results.push(created);
       } else {
         try {
           const updated = await prisma.savedQuestion.update({
             where: { id: String(q.id) },
-            data: {
-              type: q.type || 'single_choice',
-              text: q.text.trim(),
-              imageUrl: q.imageUrl || null,
-              options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
-              timeLimitSeconds: q.timeLimitSeconds || 30,
-              bankName: q.bankName || 'General',
-            }
+            data: baseData
           });
           results.push(updated);
         } catch (err) {
           // If the record doesn't exist (e.g., it was a Session Question UUID, or it was deleted), fallback to create
           if (err.code === 'P2025') {
             const created = await prisma.savedQuestion.create({
-              data: {
-                type: q.type || 'single_choice',
-                text: q.text.trim(),
-                imageUrl: q.imageUrl || null,
-                options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
-                timeLimitSeconds: q.timeLimitSeconds || 30,
-                bankName: q.bankName || 'General',
-                userId: userId,
-              }
+              data: { ...baseData, userId: userId }
             });
             results.push(created);
           } else {

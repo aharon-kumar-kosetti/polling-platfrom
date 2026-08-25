@@ -1,24 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { questionAPI, sessionAPI } from '../api/client';
 import Sidebar from '../components/ui/Sidebar';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Dropdown from '../components/ui/Dropdown';
 import { useToast } from '../components/ui/Toast';
+
+const TYPE_OPTIONS = [
+  { value: 'single_choice', label: 'Single Choice' },
+  { value: 'multiple_choice', label: 'Multiple Choice' },
+  { value: 'true_false', label: 'True / False' },
+];
+
+const MARKS_OPTIONS = [
+  { value: 1, label: '1 Mark' },
+  { value: 2, label: '2 Marks' },
+  { value: 3, label: '3 Marks' },
+  { value: 4, label: '4 Marks' },
+];
 
 const SessionBuilder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [sessionTitle, setSessionTitle] = useState('');
-  const [sessionType, setSessionType] = useState('quiz'); // quiz, poll, feedback
-  const [joinCode, setJoinCode] = useState('');
 
   const [questions, setQuestions] = useState([
     {
       id: 1,
       text: '',
       type: 'single_choice',
+      marks: 2,
       imageUrl: '',
       options: [
         { id: 'a', text: 'Option 1', isCorrect: true, imageUrl: '' },
@@ -33,6 +46,7 @@ const SessionBuilder = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [showBankModal, setShowBankModal] = useState(false);
   const [bankModalAction, setBankModalAction] = useState(null); // 'single' or 'bulk'
+  const [bankChoice, setBankChoice] = useState('existing'); // 'existing' | 'new'
   const [selectedBankName, setSelectedBankName] = useState('General');
   const [newBankName, setNewBankName] = useState('');
 
@@ -89,6 +103,7 @@ const SessionBuilder = () => {
       id: Date.now(),
       text: 'New Question Title',
       type: 'single_choice',
+      marks: 2,
       imageUrl: '',
       options: [
         { id: 'a', text: 'Option 1', isCorrect: true, imageUrl: '' },
@@ -220,14 +235,35 @@ const SessionBuilder = () => {
 
   /* ---------- Save flows ---------- */
 
+  // Suggests "Question Bank N" using the lowest unused number
+  const suggestBankName = () => {
+    const used = new Set();
+    bankQuestions.forEach((q) => {
+      const m = (q.bankName || '').match(/^question\s*bank\s*(\d+)$/i);
+      if (m) used.add(Number(m[1]));
+    });
+    let n = 1;
+    while (used.has(n)) n += 1;
+    return `Question Bank ${n}`;
+  };
+
+  const openBankModal = (action) => {
+    const bankNames = Object.keys(groupedBankQuestions);
+    const hasBanks = bankNames.length > 0;
+    setBankModalAction(action);
+    setBankChoice(hasBanks ? 'existing' : 'new');
+    setSelectedBankName(hasBanks ? bankNames[0] : '');
+    setNewBankName(suggestBankName());
+    setShowBankModal(true);
+  };
+
   const handleSaveSession = async () => {
     const validQuestions = questions.filter(q => q.text && q.text.trim() !== '');
     if (validQuestions.length === 0) {
       toast('Please write at least one question before saving.', 'error');
       return;
     }
-    setBankModalAction('bulk');
-    setShowBankModal(true);
+    openBankModal('bulk');
   };
 
   const handleSaveSingleToBank = async (q) => {
@@ -235,14 +271,15 @@ const SessionBuilder = () => {
       toast('Write the question prompt before saving it to the bank.', 'error');
       return;
     }
-    setBankModalAction('single');
-    setShowBankModal(true);
+    openBankModal('single');
   };
 
   const executeSaveToBank = async () => {
-    const finalBankName = newBankName.trim() || selectedBankName;
+    const finalBankName = bankChoice === 'new'
+      ? (newBankName.trim() || suggestBankName())
+      : selectedBankName;
     if (!finalBankName) {
-      toast('Please pick or name a bank first.', 'error');
+      toast('Pick a bank or name your new one first.', 'error');
       return;
     }
 
@@ -336,6 +373,18 @@ const SessionBuilder = () => {
       setIsPublishing(false);
       setNewBankName('');
     }
+  };
+
+  const handleEditBankQuestion = (bankQ) => {
+    setActiveTab('drafts');
+    const idx = questions.findIndex(q => q.id === bankQ.id);
+    if (idx >= 0) {
+      setActiveQuestionIndex(idx);
+    } else {
+      setQuestions([...questions, { ...bankQ }]);
+      setActiveQuestionIndex(questions.length);
+    }
+    toast('Editing bank question — use "Save to Bank" to update it in place.', 'info');
   };
 
   const handleCopyFromBank = (bankQ) => {
@@ -469,10 +518,13 @@ const SessionBuilder = () => {
                           <span className={isActive ? 'text-primary' : 'text-outline-variant'}>{idx + 1}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-1">
+                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                             <span className="material-symbols-outlined text-[14px] text-secondary">psychology_alt</span>
                             <span className="text-[10px] uppercase font-bold text-on-surface-variant">
                               {q.type === 'single_choice' ? 'Single Choice' : q.type === 'multiple_choice' ? 'Multiple Choice' : 'True/False'}
+                            </span>
+                            <span className="text-[10px] font-label-md font-bold text-on-secondary-container bg-secondary-container/50 px-1.5 rounded-full">
+                              {q.marks || 2}m
                             </span>
                           </div>
                           <p className="text-xs text-primary font-medium truncate">{q.text || 'Untitled Question'}</p>
@@ -510,18 +562,31 @@ const SessionBuilder = () => {
                       {qs.map((bq) => (
                         <div
                           key={bq.id}
-                          className="group relative w-full flex flex-col gap-1.5 rounded-xl pl-4 pr-16 py-3 transition-all duration-200 bg-surface-container-low border border-outline-variant/30 hover:border-primary/50 hover:-translate-y-px hover:shadow-sm"
+                          className="group relative w-full flex flex-col gap-1.5 rounded-xl pl-4 pr-24 py-3 transition-all duration-200 bg-surface-container-low border border-outline-variant/30 hover:border-primary/50 hover:-translate-y-px hover:shadow-sm"
                         >
-                          <span className="font-label-md text-[10px] opacity-70 uppercase tracking-widest">{bq.type.replace('_', ' ')}</span>
-                          <span className="text-xs font-medium line-clamp-2">{bq.text || 'Untitled'}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-label-md text-[10px] opacity-70 uppercase tracking-widest">{bq.type.replace('_', ' ')}</span>
+                            <span className="text-[10px] font-label-md font-bold text-on-secondary-container bg-secondary-container/50 border border-secondary/20 px-1.5 py-px rounded-full">
+                              {bq.marks || 1} {((bq.marks || 1) === 1) ? 'Mark' : 'Marks'}
+                            </span>
+                          </div>
+                          <span className="text-xs font-medium line-clamp-2 pr-1">{bq.text || 'Untitled'}</span>
 
-                          {/* Refined action cluster */}
+                          {/* Action cluster: edit / add / delete */}
                           <div className="absolute top-1/2 -translate-y-1/2 right-2 flex opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 bg-surface-container-lowest shadow-sm rounded-full overflow-hidden border border-outline-variant/30">
+                            <button
+                              onClick={() => handleEditBankQuestion(bq)}
+                              aria-label="Edit in builder"
+                              title="Edit this question"
+                              className="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors press-effect"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">edit</span>
+                            </button>
                             <button
                               onClick={() => handleCopyFromBank(bq)}
                               aria-label="Add to session"
-                              title="Add to Session"
-                              className="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-secondary-container hover:text-on-secondary-container transition-colors press-effect"
+                              title="Add a copy to Session"
+                              className="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-secondary-container hover:text-on-secondary-container transition-colors press-effect border-l border-outline-variant/30"
                             >
                               <span className="material-symbols-outlined text-[15px]">add</span>
                             </button>
@@ -560,17 +625,24 @@ const SessionBuilder = () => {
                   Question {activeQuestionIndex + 1} of {questions.length}
                 </span>
 
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-label-md text-on-surface-variant">Marks:</span>
+                  <Dropdown
+                    ariaLabel="Question marks"
+                    value={currentQ.marks ?? 2}
+                    onChange={(v) => handleUpdateQuestion('marks', v)}
+                    options={MARKS_OPTIONS}
+                    icon="stars"
+                  />
+
                   <span className="text-xs font-label-md text-on-surface-variant">Type:</span>
-                  <select
+                  <Dropdown
+                    ariaLabel="Question type"
                     value={currentQ.type}
-                    onChange={(e) => handleUpdateQuestion('type', e.target.value)}
-                    className="bg-surface-container border border-outline-variant/50 rounded-lg px-2 py-1 text-xs font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-shadow"
-                  >
-                    <option value="single_choice">Single Choice</option>
-                    <option value="multiple_choice">Multiple Choice</option>
-                    <option value="true_false">True / False</option>
-                  </select>
+                    onChange={(v) => handleUpdateQuestion('type', v)}
+                    options={TYPE_OPTIONS}
+                    icon="category"
+                  />
 
                   <div className="w-px h-4 bg-outline-variant/40 mx-1"></div>
 
@@ -747,46 +819,86 @@ const SessionBuilder = () => {
         </div>
       </main>
 
-      {/* Bank Selection Modal */}
+      {/* Bank Chooser Modal */}
       <Modal open={showBankModal} onClose={() => setShowBankModal(false)} maxWidth="max-w-md">
         <div className="p-6 md:p-8">
-          <h3 className="font-display-sm text-2xl font-bold text-on-surface mb-2">Save to Question Bank</h3>
-          <p className="text-sm text-on-surface-variant mb-6">Select a section or create a new one to organize your questions.</p>
-
-          <div className="flex flex-col gap-4 mb-6">
-            <div>
-              <label className="block text-xs font-bold text-on-surface-variant mb-1">Select Existing Bank</label>
-              <select
-                className="w-full bg-surface-container border border-outline-variant/50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition-shadow"
-                value={selectedBankName}
-                onChange={(e) => { setSelectedBankName(e.target.value); setNewBankName(''); }}
-              >
-                <option value="General">General</option>
-                {Object.keys(groupedBankQuestions).filter(b => b !== 'General').map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
+          <div className="flex items-start gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined">inventory_2</span>
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="h-px bg-outline-variant/30 flex-1"></div>
-              <span className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">OR</span>
-              <div className="h-px bg-outline-variant/30 flex-1"></div>
-            </div>
-
             <div>
-              <label className="block text-xs font-bold text-on-surface-variant mb-1">Create New Bank</label>
-              <input
-                type="text"
-                placeholder="e.g. Math Quiz 101"
-                className="w-full bg-surface-container border border-outline-variant/50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-shadow"
-                value={newBankName}
-                onChange={(e) => { setNewBankName(e.target.value); if (e.target.value) setSelectedBankName(''); }}
-              />
+              <h3 className="text-lg font-bold text-on-surface">Choose a Question Bank</h3>
+              <p className="text-sm text-on-surface-variant">
+                {bankModalAction === 'single' ? 'This question will be saved into the bank you pick.' : `Your ${questions.filter(q => q.text?.trim()).length} question(s) will be saved into the bank you pick.`}
+              </p>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          {/* Existing banks */}
+          <div className="mt-6 max-h-44 overflow-y-auto custom-scrollbar flex flex-col gap-2 pr-1">
+            {Object.entries(groupedBankQuestions).map(([bankName, qs]) => {
+              const selected = bankChoice === 'existing' && selectedBankName === bankName;
+              return (
+                <button
+                  key={bankName}
+                  type="button"
+                  onClick={() => { setBankChoice('existing'); setSelectedBankName(bankName); }}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
+                    selected
+                      ? 'border-primary bg-surface-container-low ring-1 ring-primary shadow-sm'
+                      : 'border-outline-variant/40 bg-surface-container-lowest hover:border-outline-variant'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${selected ? 'border-primary bg-primary' : 'border-outline-variant'}`}>
+                      {selected && <span className="w-1.5 h-1.5 rounded-full bg-on-primary" />}
+                    </span>
+                    <span className="text-sm font-label-md font-bold text-primary truncate">{bankName}</span>
+                  </span>
+                  <span className="text-[11px] font-label-md text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full shrink-0">
+                    {qs.length} Q
+                  </span>
+                </button>
+              );
+            })}
+            {Object.keys(groupedBankQuestions).length === 0 && (
+              <div className="text-center text-xs text-on-surface-variant py-4 flex flex-col items-center gap-1">
+                <span className="material-symbols-outlined text-2xl text-outline-variant">folder_open</span>
+                No banks yet — create your first one below.
+              </div>
+            )}
+          </div>
+
+          {/* OR divider */}
+          <div className="flex items-center gap-4 my-5">
+            <div className="h-px bg-outline-variant/30 flex-1"></div>
+            <span className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">or create new</span>
+            <div className="h-px bg-outline-variant/30 flex-1"></div>
+          </div>
+
+          {/* Create / rename new bank */}
+          <div
+            onClick={() => setBankChoice('new')}
+            className={`rounded-xl border p-1.5 flex items-center gap-2 transition-all duration-200 cursor-text ${
+              bankChoice === 'new'
+                ? 'border-primary bg-surface-container-low ring-1 ring-primary shadow-sm'
+                : 'border-outline-variant/40 bg-surface-container-lowest hover:border-outline-variant'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px] text-on-surface-variant pl-2">edit_note</span>
+            <input
+              type="text"
+              placeholder="e.g. Question Bank 1"
+              className="flex-1 bg-transparent border-none p-1.5 text-sm font-label-md text-primary focus:outline-none placeholder:text-outline min-w-0"
+              value={newBankName}
+              onChange={(e) => { setNewBankName(e.target.value); setBankChoice('new'); }}
+            />
+          </div>
+          <p className="text-[11px] text-on-surface-variant mt-2">
+            Tip: type a custom name to rename your new bank — questions will be grouped under it.
+          </p>
+
+          <div className="flex justify-end gap-3 mt-6">
             <button
               onClick={() => setShowBankModal(false)}
               className="px-5 py-2.5 rounded-full font-label-md text-sm border border-outline-variant/50 text-on-surface-variant hover:bg-surface-container transition-colors press-effect disabled:opacity-50"
@@ -800,7 +912,7 @@ const SessionBuilder = () => {
               disabled={isPublishing}
             >
               {isPublishing && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
-              {isPublishing ? 'Saving...' : 'Save Questions'}
+              {isPublishing ? 'Saving...' : `Save to ${(bankChoice === 'new' ? (newBankName.trim() || suggestBankName()) : selectedBankName) || 'Bank'}`}
             </button>
           </div>
         </div>
