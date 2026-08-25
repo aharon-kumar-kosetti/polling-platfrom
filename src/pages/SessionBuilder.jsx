@@ -457,7 +457,16 @@ const SessionBuilder = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-3 md:px-4 py-2.5 rounded-full border border-outline-variant/50 text-primary font-label-md text-sm hover:bg-surface-container hover:border-outline transition-all flex items-center gap-2 press-effect"
+              title="Bulk import questions from a JSON file"
+            >
+              <span className="material-symbols-outlined text-[18px]">upload_file</span>
+              <span className="hidden sm:inline">Import JSON</span>
+            </button>
+
             <button
               onClick={handleSaveSession}
               disabled={isPublishing}
