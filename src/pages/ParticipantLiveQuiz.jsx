@@ -41,6 +41,49 @@ const ParticipantLiveQuiz = () => {
   const [scoreDelta, setScoreDelta] = useState(null);
   const currentQIdRef = useRef(null);
 
+  // ---- Animated score display: number rolls up/down whenever score changes ----
+  const [displayScore, setDisplayScore] = useState(score);
+  const displayScoreRef = useRef(score);
+  displayScoreRef.current = displayScore;
+
+  useEffect(() => {
+    const from = displayScoreRef.current;
+    const to = score;
+    if (Math.abs(to - from) < 0.005) {
+      setDisplayScore(to);
+      return undefined;
+    }
+    const duration = 650;
+    const t0 = performance.now();
+    let raf;
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplayScore(Math.round((from + (to - from) * eased) * 100) / 100);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [score]);
+
+  // Gain flash: lime charge-bar under the header + pill glow whenever points arrive
+  const [gainFlash, setGainFlash] = useState(false);
+  useEffect(() => {
+    if (scoreDelta === null || scoreDelta <= 0) return undefined;
+    setGainFlash(true);
+    const t = setTimeout(() => setGainFlash(false), 1100);
+    return () => clearTimeout(t);
+  }, [scoreDelta]);
+
+  // Delta chip auto-dismisses exactly when its float-away animation ends
+  useEffect(() => {
+    if (scoreDelta === null) return undefined;
+    const t = setTimeout(() => setScoreDelta(null), 2600);
+    return () => clearTimeout(t);
+  }, [scoreDelta]);
+
+  const fmtNum = (v) => String(Math.round(v * 100) / 100);
+
   // Stable references to prevent socket listener teardown on state changes
   const participantIdRef = useRef(participantId);
   participantIdRef.current = participantId;
@@ -106,7 +149,9 @@ const ParticipantLiveQuiz = () => {
 
       if (data?.currentQuestion) {
         const incoming = data.currentQuestion;
-        let savedAnswer = sessionStorage.getItem(`answered_q_${incoming.id}`) || data.userSubmission?.optionId;
+        // Answer locks are scoped to THIS session (pin) — the same question bank
+        // reused in another session must never restore old locks.
+        let savedAnswer = sessionStorage.getItem(`answered_${pin}_${incoming.id}`) || data.userSubmission?.optionId;
 
         // Restore multi-select answers stored as JSON arrays
         let savedMulti = [];
@@ -158,31 +203,36 @@ const ParticipantLiveQuiz = () => {
         applyScore(myEntry);
       }
 
-      // Calculate score delta indicator strictly for visual feedback: +2 if correct, 0 if wrong
+      // Calculate score indicator from the question's marks (decimals allowed).
+      const qMarks = Number(questionRef.current?.marks) > 0 ? Number(questionRef.current.marks) : 2;
+
       const isMultiReveal = Array.isArray(data?.correctOptionIds) && data.correctOptionIds.length > 1
         || (Array.isArray(data?.optionsWithCorrectness) && data.optionsWithCorrectness.filter(o => o.isCorrect === true || o.isCorrect === 'true').length > 1);
 
       if (isMultiReveal) {
-        // MULTIPLE CHOICE: all picked options must match the correct set exactly
+        // MULTIPLE CHOICE — partial credit: each correct pick earns marks/totalCorrect.
+        // Any wrong pick voids the question (0 pts).
         const correctSet = (data?.correctOptionIds && data.correctOptionIds.length > 0
           ? data.correctOptionIds
           : (data?.optionsWithCorrectness || []).filter(o => o.isCorrect === true || o.isCorrect === 'true').map(o => o.id || o.text)
         ).map(v => String(v).trim().toLowerCase());
         const pickedSet = (selectedOptionsRef.current || []).map(v => String(v).trim().toLowerCase());
-        const isCorrect = correctSet.length > 0 &&
-          pickedSet.length === correctSet.length &&
-          correctSet.every(v => pickedSet.includes(v)) &&
-          pickedSet.every(v => correctSet.includes(v));
-        setScoreDelta(pickedSet.length > 0 ? (isCorrect ? 2 : 0) : null);
+        const wrongPick = pickedSet.some(v => !correctSet.includes(v));
+        const earned = (!wrongPick && pickedSet.length > 0 && correctSet.length > 0)
+          ? Math.round((qMarks * pickedSet.length / correctSet.length) * 100) / 100
+          : 0;
 
-        // Fallback local score bump if server didn't match us in the leaderboard
-        if (!myEntry && pickedSet.length > 0 && isCorrect) {
-          setScore(prev => {
-            const next = prev + 2;
-            sessionStorage.setItem('participant_score', String(next));
-            return next;
-          });
+        setScoreDelta(pickedSet.length > 0 ? earned : null);
+
+        // Server truth wins when we can find ourselves; optimistic local math otherwise
+        if (myEntry) {
+          applyScore(myEntry);
+        } else if (pickedSet.length > 0 && earned > 0) {
+          const next = Math.round((scoreRef.current + earned) * 100) / 100;
+          setScore(next);
+          sessionStorage.setItem('participant_score', String(next));
         }
+        console.log(`[Score] Multi reveal: ${pickedSet.length}/${correctSet.length} correct picks, ${wrongPick ? 'voided by wrong pick' : ''}, earned ${earned} of ${qMarks}`);
         return;
       }
 
@@ -193,15 +243,15 @@ const ParticipantLiveQuiz = () => {
           String(myPick).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
           (data.correctOptionText && String(myPick).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
-        setScoreDelta(isCorrect ? 2 : 0);
+        const earned = isCorrect ? qMarks : 0;
+        setScoreDelta(earned);
 
-        // Fallback local score bump if server didn't match us in the leaderboard
-        if (!myEntry && isCorrect) {
-          setScore(prev => {
-            const next = prev + 2;
-            sessionStorage.setItem('participant_score', String(next));
-            return next;
-          });
+        if (myEntry) {
+          applyScore(myEntry);
+        } else if (isCorrect) {
+          const next = Math.round((scoreRef.current + qMarks) * 100) / 100;
+          setScore(next);
+          sessionStorage.setItem('participant_score', String(next));
         }
       }
     };
@@ -304,8 +354,8 @@ const ParticipantLiveQuiz = () => {
     setSelectedOption(optId);
     setIsLocked(true);
 
-    // Save locally to prevent re-answer upon reload
-    sessionStorage.setItem(`answered_q_${question.id}`, optId);
+    // Save locally (session-scoped) to prevent re-answer upon reload
+    sessionStorage.setItem(`answered_${pin}_${question.id}`, optId);
     emitSubmission({ optionId: optId });
   };
 
@@ -313,8 +363,8 @@ const ParticipantLiveQuiz = () => {
     if (isLocked || !question || revealedInfo || selectedOptions.length === 0) return;
     setIsLocked(true);
 
-    // Save locally to prevent re-answer upon reload
-    sessionStorage.setItem(`answered_q_${question.id}`, JSON.stringify(selectedOptions));
+    // Save locally (session-scoped) to prevent re-answer upon reload
+    sessionStorage.setItem(`answered_${pin}_${question.id}`, JSON.stringify(selectedOptions));
     emitSubmission({ optionIds: selectedOptions });
   };
 
@@ -323,7 +373,7 @@ const ParticipantLiveQuiz = () => {
     if (timeLeft === 0 && question && !revealedInfo && !isLockedRef.current) {
       if (question.type === 'multiple_choice' && selectedOptionsRef.current.length > 0) {
         setIsLocked(true);
-        sessionStorage.setItem(`answered_q_${question.id}`, JSON.stringify(selectedOptionsRef.current));
+        sessionStorage.setItem(`answered_${pin}_${question.id}`, JSON.stringify(selectedOptionsRef.current));
         emitSubmission({ optionIds: selectedOptionsRef.current });
       } else if (question.type !== 'multiple_choice') {
         setIsLocked(true);
@@ -423,6 +473,15 @@ const ParticipantLiveQuiz = () => {
     )
   );
 
+  // Exact points earned this round — partial credit for multiple choice.
+  const qMarks = Number(question.marks) > 0 ? Number(question.marks) : 2;
+  const wrongPick = hasPicked && isMultiQuestion && selectedOptions.some((s) => !revealedCorrectIds.some((c) => normCmp(c) === normCmp(s)));
+  const earnedPoints = !revealedInfo ? 0
+    : !hasPicked ? 0
+    : isMultiQuestion
+      ? (wrongPick ? 0 : Math.round((qMarks * selectedOptions.length / Math.max(revealedCorrectIds.length, 1)) * 100) / 100)
+      : (isCorrectChoice ? qMarks : 0);
+
   return (
     <div className="bg-background text-on-background h-[100dvh] overflow-hidden flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container relative pt-safe pb-safe">
 
@@ -431,48 +490,63 @@ const ParticipantLiveQuiz = () => {
       <div className="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-surface-variant/30 blur-3xl pointer-events-none -z-10"></div>
 
       {/* Top Participant Status Bar — compact for mobile */}
-      <header className="shrink-0 px-4 py-2.5 md:px-12 md:py-4 flex items-center justify-between z-10 border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 shadow-sm">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs shadow-inner shrink-0">
-            {username.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <div className="font-label-md text-xs font-bold text-primary truncate">{username}</div>
-            <div className="text-[10px] text-on-surface-variant flex items-center gap-1 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse shrink-0"></span>
-              <span className="truncate">PIN: {pin}</span>
+      <header className="shrink-0 relative px-4 py-2.5 md:px-12 md:py-4 z-10 border-b border-outline-variant/20 bg-surface-container-lowest/90 backdrop-blur-md shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs shadow-inner ring-2 ring-secondary/30 shrink-0 select-none">
+              {username.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="font-label-md text-xs font-bold text-primary truncate select-none">{username}</div>
+              <div className="text-[10px] text-on-surface-variant flex items-center gap-1 font-mono">
+                <span className={`w-1.5 h-1.5 rounded-full bg-secondary shrink-0 ${revealedInfo ? '' : 'animate-pulse'}`}></span>
+                <span className="truncate">PIN: {pin}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Score & Ranking Pill */}
-        <div className="flex items-center gap-2 shrink-0">
-          {rank && (
-            <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-surface-container-high rounded-full text-xs font-bold text-primary border border-outline-variant/40">
-              <span className="material-symbols-outlined icon-fill text-sm text-secondary">emoji_events</span>
-              <span>#{rank}</span>
-            </div>
-          )}
-
-          {/* DYNAMIC SCORE BADGE */}
-          <div className="relative flex items-center gap-1.5 px-3 md:px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-md transition-all">
-            <span className="material-symbols-outlined text-base">stars</span>
-            <span className="font-mono text-sm md:text-base font-bold tracking-wide">{score} pts</span>
-
-            {/* Floating Score Delta Badge */}
-            {scoreDelta !== null && (
-              <span className={`absolute -bottom-5 right-0 text-xs font-bold px-2 py-0.5 rounded-full shadow-md animate-slideDown ${
-                scoreDelta > 0 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
-              }`}>
-                {scoreDelta > 0 ? `+${scoreDelta} pts` : '+0 pts'}
-              </span>
+          {/* Rank + Animated Score */}
+          <div className="flex items-center gap-2 shrink-0">
+            {rank && (
+              <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-surface-container-high rounded-full text-xs font-bold text-primary border border-outline-variant/40 select-none">
+                <span className="material-symbols-outlined icon-fill text-sm text-secondary">emoji_events</span>
+                <span>#{rank}</span>
+              </div>
             )}
+
+            <div
+              className={`relative flex items-center gap-1.5 px-3 md:px-4 py-1.5 rounded-full font-bold shadow-md transition-all duration-300 select-none bg-secondary-container text-on-secondary-container border-2 border-secondary/40 ${
+                gainFlash ? 'scale-105' : ''
+              }`}
+              aria-live="polite"
+            >
+              <span className="material-symbols-outlined text-base icon-fill">stars</span>
+              <span className="font-mono text-sm md:text-base font-bold tracking-wide tabular-nums">
+                {fmtNum(displayScore)} pts
+              </span>
+            </div>
           </div>
         </div>
       </header>
 
+      {/* Gain strip BELOW the header: delta chip on top, lime charge-bar under it */}
+      <div className="relative h-7 shrink-0 pointer-events-none" aria-hidden="true">
+        {scoreDelta !== null && (
+          <span
+            className={`absolute right-4 md:right-12 top-0 text-[11px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-md animate-deltaPop whitespace-nowrap ${
+              scoreDelta > 0 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-on-surface-variant'
+            }`}
+          >
+            {scoreDelta > 0 ? `+${fmtNum(scoreDelta)} pts` : '+0 pts'}
+          </span>
+        )}
+        <div
+          className={`absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-secondary-container via-secondary to-secondary-container transition-all duration-700 ease-out ${gainFlash ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
+        />
+      </div>
+
       {/* Main Question Arena — everything centered, fits viewport, no scroll */}
-      <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 md:px-6 flex flex-col items-center justify-center gap-3 md:gap-5 z-10 overflow-hidden">
+      <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 md:px-6 flex flex-col items-center justify-center gap-2.5 md:gap-5 z-10 overflow-hidden">
 
         {/* Compact Timer + Type Meta Row */}
         <div className="flex items-center gap-3 md:gap-4 shrink-0">
@@ -506,14 +580,14 @@ const ParticipantLiveQuiz = () => {
               {question.type ? question.type.replace('_', ' ') : 'Live Question'}
             </span>
             <span className="text-[10px] md:text-xs font-label-md text-secondary font-bold uppercase tracking-wider">
-              {isMultiQuestion ? 'Select ALL correct options' : '+2 Marks per Correct Answer'}
+              {isMultiQuestion ? 'Select ALL correct options' : `${qMarks} marks for the correct answer`}
             </span>
           </div>
         </div>
 
         {/* Question Text & Image */}
-        <div className="flex flex-col items-center gap-2 md:gap-3 text-center w-full shrink-0">
-          <h1 className="font-headline-lg text-base sm:text-lg md:text-3xl text-primary font-bold max-w-2xl leading-snug line-clamp-3">
+        <div key={`q-${question.id}`} className="flex flex-col items-center gap-2 md:gap-3 text-center w-full shrink-0 animate-slideUp">
+          <h1 className="font-headline-lg text-base sm:text-lg md:text-3xl text-primary font-bold max-w-2xl leading-snug line-clamp-3 select-none">
             {question.text}
           </h1>
           {question.imageUrl && (
@@ -521,8 +595,8 @@ const ParticipantLiveQuiz = () => {
           )}
         </div>
 
-        {/* Interactive Answer Option Grid — compact on mobile */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3.5 min-h-0 overflow-y-auto custom-scrollbar">
+        {/* Interactive Answer Option Grid — staggered entrance per question */}
+        <div key={question.id} className="w-full grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3.5 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
           {(question.options || []).map((opt, idx) => {
             const choiceId = opt.id || opt.text;
             const norm = (v) => String(v).trim().toLowerCase();
@@ -547,21 +621,22 @@ const ParticipantLiveQuiz = () => {
 
             if (revealedInfo) {
               if (isThisOptionCorrect && isSelected) {
-                cardStyle = 'border-secondary bg-secondary-container/30 text-on-secondary-container ring-2 ring-secondary shadow-lg';
+                // Clean correct pick: crisp lime border on white, no heavy fills
+                cardStyle = 'border-secondary bg-white ring-1 ring-secondary/50 shadow-md';
               } else if (isThisOptionCorrect) {
                 // Correct option the player missed — show it clearly but softer
-                cardStyle = 'border-secondary/50 bg-secondary-container/10 ring-1 ring-secondary/40';
+                cardStyle = 'border-secondary/40 bg-secondary-container/10';
               } else if (isSelected && !isThisOptionCorrect) {
-                cardStyle = 'border-error bg-error/10 text-error ring-2 ring-error shadow-lg';
+                cardStyle = 'border-error bg-white ring-1 ring-error/60 shadow-md';
               } else {
                 cardStyle = 'border-outline-variant/20 bg-surface-container-lowest opacity-40';
               }
             } else if (isSelected && isMulti) {
               // Multi-select: picked but NOT locked yet — player can still toggle
-              cardStyle = 'border-primary bg-primary/5 text-primary shadow-md ring-2 ring-primary/30';
+              cardStyle = 'border-primary bg-primary/5 shadow-md ring-2 ring-primary/30';
             } else if (isSelected) {
               // Single: Selected / Locked before reveal (neutral lock style - NOT green!)
-              cardStyle = 'border-primary bg-surface-container-high text-primary shadow-md scale-[0.98] ring-2 ring-primary/40';
+              cardStyle = 'border-primary bg-surface-container-high shadow-md scale-[0.98] ring-2 ring-primary/40';
             } else if (isLocked) {
               cardStyle = 'border-outline-variant/30 bg-surface-container-lowest opacity-60 cursor-not-allowed';
             }
@@ -570,8 +645,11 @@ const ParticipantLiveQuiz = () => {
               <button
                 key={idx}
                 onClick={() => handleSelectOption(choiceId)}
+                // Prevent pointer-focus so tapping never scroll-jumps the arena on mobile
+                onMouseDown={(e) => e.preventDefault()}
                 disabled={isLocked || !!revealedInfo}
-                className={`relative px-3 py-2.5 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all flex items-center gap-2.5 md:gap-4 group overflow-hidden text-left shrink-0 ${cardStyle}`}
+                style={{ animationDelay: `${idx * 70}ms` }}
+                className={`relative px-3 py-2.5 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all duration-200 flex items-center gap-2.5 md:gap-4 group overflow-hidden text-left shrink-0 touch-manipulation animate-riseUp ${cardStyle}`}
               >
                 {/* Visual badge icon */}
                 {revealedInfo ? (
@@ -615,7 +693,9 @@ const ParticipantLiveQuiz = () => {
                     {revealedInfo && isThisOptionCorrect && (
                       <div className="text-[10px] md:text-[11px] font-bold text-secondary mt-0.5 flex items-center gap-1">
                         <span className="material-symbols-outlined text-xs">check_circle</span>
-                        {isSelected ? 'Your Correct Pick (+2)' : 'Correct Answer'}
+                        {isSelected
+                          ? `Your Correct Pick (+${Math.round((qMarks / Math.max(revealedCorrectIds.length, 1)) * 100) / 100})`
+                          : 'Correct Answer'}
                       </div>
                     )}
                     {revealedInfo && isSelected && !isThisOptionCorrect && (
@@ -645,25 +725,29 @@ const ParticipantLiveQuiz = () => {
         </div>
 
         {/* Lock / Result Feedback Bar */}
-        <div className="w-full max-w-xl text-center shrink-0">
+        <div key={`fb-${question.id}-${revealedInfo ? 'r' : 'w'}`} className="w-full max-w-xl text-center shrink-0 animate-slideUp">
           {revealedInfo ? (
             <div className={`p-3 md:p-4 rounded-2xl border text-xs md:text-sm font-bold flex flex-col items-center gap-1 animate-fadeIn shadow-sm ${
               isCorrectChoice
                 ? 'bg-secondary-container/40 border-secondary text-secondary'
-                : hasPicked
-                  ? 'bg-error/10 border-error/40 text-error'
-                  : 'bg-surface-container-high border-outline-variant/40 text-primary'
+                : earnedPoints > 0
+                  ? 'bg-secondary-container/20 border-secondary/40 text-on-secondary-container'
+                  : hasPicked
+                    ? 'bg-error/10 border-error/40 text-error'
+                    : 'bg-surface-container-high border-outline-variant/40 text-primary'
             }`}>
               <div className="flex items-center gap-2 text-sm md:text-base">
                 <span className="material-symbols-outlined">
-                  {isCorrectChoice ? 'celebration' : hasPicked ? 'sentiment_dissatisfied' : 'info'}
+                  {isCorrectChoice ? 'celebration' : earnedPoints > 0 ? 'trending_up' : hasPicked ? 'sentiment_dissatisfied' : 'info'}
                 </span>
                 <span>
                   {isCorrectChoice
-                    ? (isMultiQuestion ? 'All Correct Picks! +2 Points!' : 'Correct! +2 Points Added!')
-                    : hasPicked
-                      ? (isMultiQuestion ? 'Your picks didn\u2019t fully match (+0). Keep going!' : 'Incorrect Answer (+0). Keep going!')
-                      : 'Time is up! You did not answer.'}
+                    ? `Perfect! All picks correct — +${earnedPoints} pts!`
+                    : earnedPoints > 0
+                      ? `Partial credit: ${selectedOptions.length}/${revealedCorrectIds.length} correct — +${earnedPoints} pts`
+                      : hasPicked
+                        ? (wrongPick ? 'A wrong pick voids the question (+0). Keep going!' : 'Incorrect Answer (+0). Keep going!')
+                        : 'Time is up! You did not answer.'}
                 </span>
               </div>
               <span className="text-[11px] md:text-xs text-on-surface-variant font-normal">

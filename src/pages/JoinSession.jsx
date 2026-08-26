@@ -68,17 +68,32 @@ const JoinSession = () => {
     setLoading(true);
 
     try {
-      // Generate unique participantId per tab/device
-      const participantId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      // Stable per-device identity: rejoining (even with a new nickname) updates
+      // the same player record instead of orphaning the old name as a phantom.
+      let deviceId = localStorage.getItem('quizcore_device_id');
+      if (!deviceId) {
+        deviceId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        localStorage.setItem('quizcore_device_id', deviceId);
+      }
+      const participantId = deviceId;
       sessionStorage.setItem('participant_id', participantId);
       sessionStorage.setItem('participant_name', username);
       sessionStorage.setItem('participant_pin', pin.toUpperCase());
       sessionStorage.removeItem('participant_score'); // Reset score for new game
-      
+
+      // Purge per-question answer locks from ANY previous session —
+      // same question bank must never pre-lock options in a new session.
+      Object.keys(sessionStorage)
+        .filter((k) => k.startsWith('answered_'))
+        .forEach((k) => sessionStorage.removeItem(k));
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('answered_'))
+        .forEach((k) => localStorage.removeItem(k));
+
       localStorage.setItem('participant_name', username);
       localStorage.setItem('participant_pin', pin.toUpperCase());
 
-      const res = await sessionAPI.joinSession(pin.toUpperCase(), username);
+      const res = await sessionAPI.joinSession(pin.toUpperCase(), username, deviceId);
       if (res.sessionToken) {
         sessionStorage.setItem('participant_token', res.sessionToken);
         sessionStorage.setItem('participant_sessionId', res.session.id);

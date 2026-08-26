@@ -455,12 +455,19 @@ module.exports = function setupSockets(io) {
 
       const isOptionCorrect = (opt) => opt && (opt.isCorrect === true || opt.isCorrect === 'true');
 
+      // Question marks drive scoring (builder dropdown). Fallback: 2.
+      const qMarks = Number(fullQ?.marks) > 0 ? Number(fullQ.marks) : 2;
+      const round2 = (n) => Math.round(n * 100) / 100;
+
       // Check correctness strictly against correctInfo / fullQ
       let isCorrect = false;
+      let points = 0; // partial credit for multiple choice
       let pickedOptions = [];
 
       if (isMultiSelect) {
-        // MULTIPLE CHOICE: all-or-nothing — every pick must be correct and cover all correct options
+        // MULTIPLE CHOICE — partial credit:
+        //   each correct option is worth (marks / totalCorrect)
+        //   picking ANY wrong option voids the whole question (0 pts)
         const pool = (fullQ && Array.isArray(fullQ.options)) ? fullQ.options : [];
         pickedOptions = optionIds
           .map(pick => pool.find(o =>
@@ -473,33 +480,48 @@ module.exports = function setupSockets(io) {
         const pickedKeys = new Set(pickedOptions.map(o => normalizeOpt(o.id || o.text)));
         const correctKeys = new Set(correctPool.map(o => normalizeOpt(o.id || o.text)));
 
+        const allPicksReal = pickedOptions.length === optionIds.length;
+        const pickedWrong = [...pickedKeys].some(k => !correctKeys.has(k));
+        const pickedCorrectCount = correctPool.filter(o => pickedKeys.has(normalizeOpt(o.id || o.text))).length;
+
         isCorrect = pool.length > 0 &&
-          pickedOptions.length === optionIds.length &&
-          pickedKeys.size === correctKeys.size &&
-          [...correctKeys].every(k => pickedKeys.has(k));
-      } else if (correctInfo) {
+          allPicksReal &&
+          correctKeys.size > 0 &&
+          pickedCorrectCount === correctKeys.size &&
+          !pickedWrong;
+
+        // Partial credit only when every pick was a correct option
+        if (!isCorrect && allPicksReal && !pickedWrong && pickedCorrectCount > 0 && correctKeys.size > 0) {
+          points = round2((qMarks / correctKeys.size) * pickedCorrectCount);
+        } else if (isCorrect) {
+          points = qMarks;
+        }
+      } else if (correctInfo || fullQ) {
         const optStr = normalizeOpt(optionId);
-        const corrIdStr = correctInfo.correctOptionId ? normalizeOpt(correctInfo.correctOptionId) : null;
-        const corrTextStr = correctInfo.correctOptionText ? normalizeOpt(correctInfo.correctOptionText) : null;
+        const corrIdStr = correctInfo?.correctOptionId ? normalizeOpt(correctInfo.correctOptionId) : null;
+        const corrTextStr = correctInfo?.correctOptionText ? normalizeOpt(correctInfo.correctOptionText) : null;
 
         if (corrIdStr && optStr === corrIdStr) {
           isCorrect = true;
         } else if (corrTextStr && optStr === corrTextStr) {
           isCorrect = true;
         }
-      }
 
-      if (!isCorrect && !isMultiSelect && fullQ && Array.isArray(fullQ.options)) {
-        const opt = fullQ.options.find(o =>
-          (o.id && String(o.id).trim().toLowerCase() === String(optionId).trim().toLowerCase()) ||
-          (o.text && o.text.trim().toLowerCase() === String(optionId).trim().toLowerCase())
-        );
-        if (opt && (opt.isCorrect === true || opt.isCorrect === 'true')) {
-          isCorrect = true;
+        if (!isCorrect && fullQ && Array.isArray(fullQ.options)) {
+          const opt = fullQ.options.find(o =>
+            (o.id && normalizeOpt(o.id) === optStr) ||
+            (o.text && normalizeOpt(o.text) === optStr)
+          );
+          if (opt && isOptionCorrect(opt)) {
+            isCorrect = true;
+          }
         }
+
+        // Single-choice / true-false award the question's full marks
+        if (isCorrect) points = qMarks;
       }
 
-      console.log(`[Socket] Answer locked for Q:${questionId}, ${isMultiSelect ? `opts:[${optionIds.join(',')}]` : `opt:${optionId}`} by ${participantName} (ID: ${participantId}) => isCorrect: ${isCorrect}`);
+      console.log(`[Socket] Answer locked for Q:${questionId}, ${isMultiSelect ? `opts:[${optionIds.join(',')}]` : `opt:${optionId}`} by ${participantName} (ID: ${participantId}) => isCorrect: ${isCorrect}, pts: ${points}`);
 
       // Record submitted answer under unique participantId
       const answerRecord = {
@@ -509,6 +531,7 @@ module.exports = function setupSockets(io) {
         optionId: isMultiSelect ? (optionIds[0] ?? null) : optionId,
         optionIds: isMultiSelect ? optionIds : undefined,
         isCorrect,
+        points,
         timestamp: Date.now()
       };
 
@@ -658,11 +681,14 @@ module.exports = function setupSockets(io) {
             matchedKey = ans.participantId;
           }
 
+          // Points were computed at submit time (marks-based, partial credit for
+          // multiple choice). Legacy answers without points fall back to +2/0.
+          const awarded = typeof ans.points === 'number' ? ans.points : (ans.isCorrect ? 2 : 0);
+          pScore.score = Math.round((pScore.score + awarded) * 100) / 100;
           if (ans.isCorrect) {
-            pScore.score += 2; // +2 marks awarded to this specific participant
             pScore.correctCount += 1;
           } else {
-            pScore.wrongCount += 1; // 0 marks on wrong answer
+            pScore.wrongCount += 1; // wrong or partially-answered questions score 0
           }
 
           // Update socketId from current participant connection

@@ -65,6 +65,18 @@ const LiveMonitoring = () => {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [bankOpen, setBankOpen] = useState(false);
+  const [bankClosing, setBankClosing] = useState(false);
+
+  const openBank = () => setBankOpen(true);
+  const closeBank = () => {
+    if (bankClosing) return;
+    setBankClosing(true);
+    setTimeout(() => {
+      setBankClosing(false);
+      setBankOpen(false);
+    }, 220); // matches panelOutRight duration
+  };
   const [recentJoinNotice, setRecentJoinNotice] = useState(null);
   const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
 
@@ -166,11 +178,20 @@ const LiveMonitoring = () => {
     };
 
     const handleAnswerTally = ({ questionId, options }) => {
+      // Merge ONLY the vote counts — the tally payload is the sanitized copy
+      // (isCorrect stripped by the server), so overwriting options wholesale
+      // would erase the answer key and break the reveal highlight.
       setQuestions(prev => prev.map(q => {
-        if (q.id === questionId) {
-          return { ...q, options };
-        }
-        return q;
+        if (q.id !== questionId) return q;
+        return {
+          ...q,
+          options: (q.options || []).map(o => {
+            const tally = (options || []).find(t =>
+              (t.id && o.id && t.id === o.id) || (t.text && o.text && t.text === o.text)
+            );
+            return tally ? { ...o, count: tally.count || 0 } : o;
+          }),
+        };
       }));
     };
 
@@ -213,6 +234,13 @@ const LiveMonitoring = () => {
   }, [sessionId, pin]);
 
   const currentQ = questions[currentQuestionIndex] || null;
+
+  // Per-question scoring summary — follows the marks set on each question
+  const qMarks = Number(currentQ?.marks) > 0 ? Number(currentQ.marks) : 2;
+  const isMultiQ = currentQ?.type === 'multiple_choice';
+  const scoringLabel = currentQ
+    ? `+${qMarks} marks · ${isMultiQ ? 'partial credit' : 'full marks'}`
+    : 'Push a question to begin';
   const totalResponses = currentQ ? (currentQ.options || []).reduce((acc, opt) => acc + (opt.count || 0), 0) : 0;
 
   // Timer countdown
@@ -232,6 +260,7 @@ const LiveMonitoring = () => {
 
   const handlePushFromBank = (bankQ) => {
     setIsAnswerRevealed(false);
+    setBankOpen(false); // pushed → panel returns to widget form
     
     // Add count:0 to options for tracking
     const newLiveQ = {
@@ -341,7 +370,9 @@ const LiveMonitoring = () => {
           {/* Scoring Rule Badge */}
           <div className="flex items-center gap-2 bg-surface-container-high px-3.5 py-1.5 rounded-full border border-outline-variant/40">
             <span className="material-symbols-outlined text-xs text-secondary">verified</span>
-            <span className="text-xs font-bold text-secondary font-mono">+2 Marks / Correct</span>
+            <span className="text-xs font-bold text-secondary font-mono select-none">
+              {currentQ ? `+${qMarks} marks${isMultiQ ? ' · partial' : ''}` : '—'}
+            </span>
           </div>
 
           {/* PIN Badge */}
@@ -416,8 +447,11 @@ const LiveMonitoring = () => {
             <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 shadow-sm flex items-center justify-between">
               <div>
                 <span className="text-[11px] font-label-md text-on-surface-variant uppercase tracking-wider">Scoring</span>
-                <div className="text-xs font-bold text-secondary mt-1">
-                  +2 Marks / Correct (0 Wrong)
+                <div className="text-xs font-bold text-secondary mt-1" title={scoringLabel}>
+                  {currentQ ? `+${qMarks} marks / correct` : 'Awaiting question'}
+                  <span className="block text-[10px] font-medium text-on-surface-variant">
+                    {isMultiQ ? 'Partial credit · wrong pick = 0' : 'Single answer · wrong = 0'}
+                  </span>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl bg-surface-container-highest text-primary flex items-center justify-center">
@@ -499,13 +533,14 @@ const LiveMonitoring = () => {
               </div>
 
               {bankQuestions.length > 0 && (
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
+                  icon="rocket_launch"
                   onClick={() => handlePushFromBank(bankQuestions[0])}
-                  className="px-8 py-3.5 rounded-full bg-secondary text-on-secondary font-label-md text-sm font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-lg">rocket_launch</span>
-                  <span>Push Question 1 to Stage Now</span>
-                </button>
+                  Push Question 1 to Stage Now
+                </Button>
               )}
             </div>
           ) : (
@@ -545,6 +580,11 @@ const LiveMonitoring = () => {
                 {currentQ.options.map((opt, idx) => {
                   const percentage = totalResponses > 0 ? Math.round(((opt.count || 0) / totalResponses) * 100) : 0;
                   const isOptionCorrect = isAnswerRevealed && (opt.isCorrect === true || opt.isCorrect === 'true');
+                  // Per-option worth mirrors the builder: marks ÷ total correct (2dp)
+                  const correctCount = currentQ.options.filter(o => o.isCorrect === true || o.isCorrect === 'true').length;
+                  const optWorth = isOptionCorrect && correctCount > 0
+                    ? Math.round((qMarks / correctCount) * 100) / 100
+                    : 0;
                   return (
                     <div 
                       key={opt.id || idx}
@@ -571,9 +611,9 @@ const LiveMonitoring = () => {
                           </span>
                           <span className="font-medium text-primary text-sm">{opt.text}</span>
                           {isOptionCorrect && (
-                            <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full flex items-center gap-1 select-none">
                               <span className="material-symbols-outlined text-xs">check</span>
-                              <span>Correct (+2)</span>
+                              <span>Correct (+{Math.round(optWorth * 100) / 100})</span>
                             </span>
                           )}
                           {opt.imageUrl && (
@@ -685,7 +725,7 @@ const LiveMonitoring = () => {
             <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
-                  Live Player Scoreboard (+2 Marks / Correct)
+                  Live Player Scoreboard{currentQ ? ` (+${qMarks} marks / correct)` : ''}
                 </span>
                 <span className="text-xs text-on-surface-variant">{leaderboard.length} ranked</span>
               </div>
@@ -709,46 +749,82 @@ const LiveMonitoring = () => {
 
         </section>
 
-        {/* Right: Question Bank Sidebar (stacks below the deck on small screens) */}
-        <aside className="w-full lg:w-80 xl:w-96 bg-surface-container-lowest border-t lg:border-t-0 lg:border-l border-outline-variant/30 flex flex-col shrink-0 max-h-56 lg:max-h-none">
-          <div className="p-4 border-b border-outline-variant/30 bg-surface-container-low flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">library_books</span>
-              <span className="font-label-md text-sm font-bold text-primary">Question Bank</span>
-            </div>
-            <span className="text-xs bg-surface-container-highest px-2 py-0.5 rounded-full font-bold">{bankQuestions.length}</span>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-            {bankQuestions.length === 0 ? (
-              <div className="text-center text-sm text-on-surface-variant py-8">
-                Your bank is empty. <Link to="/builder" className="text-secondary hover:underline">Create questions in Builder</Link>
-              </div>
-            ) : (
-              bankQuestions.map((bankQ, idx) => (
-                <div key={bankQ.id || idx} className="bg-surface-container-low border border-outline-variant/30 rounded-2xl p-4 flex flex-col gap-3 hover:border-outline transition-colors">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container/20 px-2 py-0.5 rounded-full">
-                      Q{idx + 1} • {bankQ.type ? bankQ.type.replace('_', ' ') : 'Question'}
-                    </span>
-                    <span className="text-xs font-mono text-on-surface-variant">{bankQ.timeLimitSeconds || 30}s</span>
-                  </div>
-                  <p className="text-sm font-bold text-primary line-clamp-2">{bankQ.text}</p>
-                  
-                  <button
-                    onClick={() => handlePushFromBank(bankQ)}
-                    className={buttonClasses('primary', 'sm', 'w-full !py-2 mt-1')}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">send</span>
-                    Push Live Now
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </aside>
-
       </main>
+
+      {/* Floating Question Bank widget — consistent button system */}
+      {!bankOpen && !bankClosing && (
+        <button
+          onClick={openBank}
+          className={buttonClasses('dark', 'md', 'fixed bottom-6 right-6 z-40 !px-5 !py-3 shadow-xl hover:shadow-2xl')}
+          aria-label="Open question bank"
+        >
+          <span className="material-symbols-outlined text-[20px]">library_books</span>
+          <span>Question Bank</span>
+          <span className="min-w-[22px] h-[22px] px-1 flex items-center justify-center rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold">
+            {bankQuestions.length}
+          </span>
+        </button>
+      )}
+
+      {/* Question Bank overlay panel — blurred backdrop + smooth slide in/out */}
+      {(bankOpen || bankClosing) && (
+        <div
+          className={`fixed inset-0 z-50 bg-black/40 backdrop-blur-sm ${bankClosing ? 'animate-fadeOut' : 'animate-fadeIn'}`}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) closeBank(); }}
+        >
+          <div className={`absolute right-3 top-3 bottom-3 w-80 max-w-[85vw] bg-surface-container-lowest rounded-3xl border border-outline-variant/40 shadow-2xl flex flex-col overflow-hidden ${bankClosing ? 'animate-panelToWidget' : 'animate-panelFromWidget'}`}>
+            <div className="p-4 border-b border-outline-variant/30 bg-surface-container-low flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px]">library_books</span>
+                <span className="font-label-md text-sm font-bold text-primary select-none">Question Bank</span>
+                <span className="text-xs bg-surface-container-highest px-2 py-0.5 rounded-full font-bold select-none">{bankQuestions.length}</span>
+              </div>
+              <button
+                onClick={closeBank}
+                className="text-on-surface-variant hover:text-primary p-1.5 rounded-full hover:bg-surface-container transition-colors cursor-pointer"
+                aria-label="Close question bank"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+              {bankQuestions.length === 0 ? (
+                <div className="text-center text-sm text-on-surface-variant py-8">
+                  Your bank is empty. <Link to="/builder" className="text-secondary hover:underline">Create questions in Builder</Link>
+                </div>
+              ) : (
+                bankQuestions.map((bankQ, idx) => (
+                  <div
+                    key={bankQ.id || idx}
+                    className="bg-surface-container-low border border-outline-variant/30 rounded-2xl p-4 flex flex-col gap-3 hover:border-outline transition-colors animate-slideUp"
+                    style={{ animationDelay: `${Math.min(idx * 40, 300)}ms` }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container/20 px-2 py-0.5 rounded-full select-none">
+                        Q{idx + 1} • {bankQ.type ? bankQ.type.replace('_', ' ') : 'Question'}
+                      </span>
+                      <span className="text-xs font-mono text-on-surface-variant">{bankQ.timeLimitSeconds || 30}s</span>
+                    </div>
+                    <p className="text-sm font-bold text-primary line-clamp-2">{bankQ.text}</p>
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="send"
+                      fullWidth
+                      className="!py-2 mt-1"
+                      onClick={() => handlePushFromBank(bankQ)}
+                    >
+                      Push Live Now
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* QR Code Share Modal */}
       <Modal open={showQRModal} onClose={() => setShowQRModal(false)} maxWidth="max-w-4xl">

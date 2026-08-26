@@ -843,7 +843,21 @@ const SessionBuilder = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentQ.options.map((opt, optIdx) => (
+                  {currentQ.options.map((opt, optIdx) => {
+                    // Partial-credit preview: the 100% share is split evenly across
+                    // correct options; each is worth (marks / totalCorrect) points.
+                    const isMultiType = currentQ.type === 'multiple_choice';
+                    const correctCount = currentQ.options.filter(o => o.isCorrect).length;
+                    const qMarks = Number(currentQ.marks) > 0 ? Number(currentQ.marks) : 2;
+                    const round2 = (n) => Math.round(n * 100) / 100;
+                    const sharePct = isMultiType && correctCount > 0
+                      ? Math.round((100 / correctCount) * 10) / 10
+                      : 0;
+                    const optWorth = isMultiType && opt.isCorrect && correctCount > 0
+                      ? round2(qMarks / correctCount)
+                      : 0;
+
+                    return (
                     <div
                       key={`${opt.id}-${optIdx}`}
                       className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col gap-3 relative ${
@@ -872,15 +886,29 @@ const SessionBuilder = () => {
                           onChange={(e) => handleUpdateOption(optIdx, 'text', e.target.value)}
                           placeholder={`Option ${optIdx + 1}`}
                           disabled={currentQ.type === 'true_false'}
-                          className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-sm font-medium text-primary flex-1 disabled:opacity-80"
+                          className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-sm font-medium text-primary flex-1 disabled:opacity-80 min-w-0"
                         />
+
+                        {/* Per-option point value — visible to admin only */}
+                        {isMultiType && (
+                          <span
+                            title={opt.isCorrect ? `Worth ${sharePct}% of the question · awards ${optWorth} pts` : 'Selecting this option scores 0'}
+                            className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-label-md font-bold border select-none ${
+                              opt.isCorrect
+                                ? 'bg-secondary-container/60 text-on-secondary-container border-secondary/30'
+                                : 'bg-surface-container-high text-on-surface-variant/70 border-outline-variant/30 line-through'
+                            }`}
+                          >
+                            {opt.isCorrect ? `${sharePct}% · ${optWorth} pts` : '0 pts'}
+                          </span>
+                        )}
 
                         {currentQ.type !== 'true_false' && currentQ.options.length > 2 && (
                           <button
                             type="button"
                             onClick={() => handleDeleteOption(optIdx)}
                             aria-label="Remove option"
-                            className="text-outline hover:text-error p-1 rounded-full opacity-60 hover:opacity-100 hover:bg-error-container/40 transition-all press-effect"
+                            className="text-outline hover:text-error p-1 rounded-full opacity-60 hover:opacity-100 hover:bg-error-container/40 transition-all press-effect shrink-0"
                           >
                             <span className="material-symbols-outlined text-[16px]">close</span>
                           </button>
@@ -915,9 +943,26 @@ const SessionBuilder = () => {
                          )}
                       </div>
 
-                    </div>
-                  ))}
+                     </div>
+                    );
+                  })}
                 </div>
+
+                {/* Partial-credit explainer (admin only) */}
+                {currentQ.type === 'multiple_choice' && (
+                  <p className="mt-4 text-[11px] font-label-md text-on-surface-variant flex items-start gap-1.5 bg-surface-container-low border border-outline-variant/30 rounded-xl px-3 py-2.5">
+                    <span className="material-symbols-outlined text-[14px] text-secondary mt-px">percent</span>
+                    <span>
+                      Partial credit is on: the <strong className="text-primary">100%</strong> share is split across{' '}
+                      <strong className="text-primary">{currentQ.options.filter(o => o.isCorrect).length || 0} correct option(s)</strong>
+                      {currentQ.options.filter(o => o.isCorrect).length > 0 && (
+                        <> — each correct pick earns{' '}
+                        <strong className="text-primary">{Math.round(((Number(currentQ.marks) > 0 ? Number(currentQ.marks) : 2) / currentQ.options.filter(o => o.isCorrect).length) * 100) / 100} pts</strong>
+                        {currentQ.options.filter(o => o.isCorrect).length > 1 ? ' (decimals allowed)' : ''}, but picking even one wrong option scores <strong className="text-error">0</strong>.</>
+                      )}
+                    </span>
+                  </p>
+                )}
               </div>
 
             </div>

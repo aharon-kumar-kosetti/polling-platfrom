@@ -183,7 +183,7 @@ export const sessionAPI = {
     });
   },
 
-  joinSession: async (pin, username) => {
+  joinSession: async (pin, username, deviceId = '') => {
     if (USE_MOCKS) {
       await delay(800);
       if (pin === 'LIME-99' || pin.startsWith('QUIZ') || pin.startsWith('TECH')) {
@@ -197,7 +197,7 @@ export const sessionAPI = {
     }
     return fetchClient('/sessions/join', {
       method: 'POST',
-      body: JSON.stringify({ pin, username }),
+      body: JSON.stringify({ pin, username, deviceId }),
     });
   }
 };

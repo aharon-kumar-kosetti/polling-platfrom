@@ -4,7 +4,7 @@ import socketManager from '../sockets/socketManager';
 import { sessionAPI } from '../api/client';
 import { buttonClasses } from '../components/ui/Button';
 
-/* ---------- Count-up animation hook ---------- */
+/* ---------- Count-up animation hook (decimal-safe) ---------- */
 const useCountUp = (target, duration = 900, start = true) => {
   const [value, setValue] = useState(0);
   useEffect(() => {
@@ -13,7 +13,8 @@ const useCountUp = (target, duration = 900, start = true) => {
     const t0 = performance.now();
     const tick = (t) => {
       const p = Math.min(1, (t - t0) / duration);
-      setValue(Math.round((target || 0) * (1 - Math.pow(1 - p, 3))));
+      // Ease-out over a 100× space so fractional points (e.g. 1.33) animate too
+      setValue(Math.round((target || 0) * 100 * (1 - Math.pow(1 - p, 3))) / 100);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -21,6 +22,8 @@ const useCountUp = (target, duration = 900, start = true) => {
   }, [target, duration, start]);
   return value;
 };
+
+const fmtPts = (v) => String(Math.round((v || 0) * 100) / 100);
 
 /* ---------- Confetti layer (pure CSS, deterministic) ---------- */
 const CONFETTI = Array.from({ length: 16 }, (_, i) => ({
@@ -90,7 +93,7 @@ const PodiumColumn = ({ player, place, heightClass, delay, icon, labelStyle, ped
           {player.username}
         </div>
         <div className={`font-mono font-bold ${isFirst ? 'text-sm text-secondary-container/90' : 'text-xs text-white/70'}`}>
-          {score} pts
+          {fmtPts(score)} pts
         </div>
       </div>
 
@@ -139,7 +142,7 @@ const StandingRow = ({ player, maxScore, isCurrent, delay }) => {
         )}
       </div>
       <div className="relative z-10 font-mono font-bold text-sm shrink-0">
-        {score} pts
+        {fmtPts(score)} pts
       </div>
     </div>
   );
