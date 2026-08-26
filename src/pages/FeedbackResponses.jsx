@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/ui/Sidebar';
+import { buttonClasses } from '../components/ui/Button';
 
 const FeedbackResponses = () => {
   const feedbackData = [
@@ -53,7 +54,7 @@ const FeedbackResponses = () => {
 
         <Link
           to="/analytics"
-          className="px-5 py-2 rounded-full border border-outline-variant/60 text-xs font-label-md hover:bg-surface-container transition-colors press-effect"
+          className={buttonClasses('outline', 'sm')}
         >
           View Analytics
         </Link>

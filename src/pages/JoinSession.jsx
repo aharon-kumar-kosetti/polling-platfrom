@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { sessionAPI } from '../api/client';
 import QRScannerModal from '../components/QRScannerModal';
+import Button from '../components/ui/Button';
 
 const JoinSession = () => {
   const navigate = useNavigate();
@@ -98,7 +99,7 @@ const JoinSession = () => {
   };
 
   return (
-    <div className="bg-background text-on-background min-h-[calc(100vh-80px)] flex flex-col relative overflow-x-hidden antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+    <div className="bg-background text-on-background min-h-[calc(100vh-80px)] flex flex-col relative overflow-x-hidden antialiased selection:bg-secondary-container selection:text-on-secondary-container pt-safe pb-safe">
 
       {/* Ambient background styling */}
       <div className="fixed top-1/4 right-[-10%] w-[45vw] h-[45vw] rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10 animate-subtle-ripple"></div>
@@ -170,13 +171,9 @@ const JoinSession = () => {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-secondary text-on-secondary font-label-md text-sm py-4 rounded-full hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md press-effect"
-              >
-                <span>Next</span>
-                <span className="material-symbols-outlined text-sm">arrow_forward</span>
-              </button>
+              <Button type="submit" variant="primary" size="lg" fullWidth iconRight="arrow_forward">
+                Next
+              </Button>
 
               <div className="w-full flex items-center gap-4 py-1">
                 <div className="h-px bg-outline-variant/50 flex-grow"></div>
@@ -184,14 +181,16 @@ const JoinSession = () => {
                 <div className="h-px bg-outline-variant/50 flex-grow"></div>
               </div>
 
-              <button
+              <Button
                 type="button"
-                className="w-full bg-surface-container-high text-primary border border-outline-variant/40 font-label-md text-sm py-4 rounded-full hover:bg-surface-container-highest hover:border-outline transition-all flex items-center justify-center gap-2 shadow-sm press-effect cursor-pointer"
+                variant="outline"
+                size="lg"
+                fullWidth
+                icon="qr_code_scanner"
                 onClick={() => setShowQRScanner(true)}
               >
-                <span className="material-symbols-outlined text-sm">qr_code_scanner</span>
-                <span>Scan QR Code</span>
-              </button>
+                Scan QR Code
+              </Button>
             </form>
           )}
 
@@ -217,23 +216,26 @@ const JoinSession = () => {
               </div>
 
               <div className="flex gap-3">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="lg"
+                  icon="arrow_back"
+                  className="w-1/3"
                   onClick={() => setStep('pin')}
-                  className="w-1/3 bg-surface-container-high text-on-surface-variant font-label-md text-sm py-4 rounded-full hover:bg-surface-container-highest hover:text-primary transition-all press-effect cursor-pointer flex items-center justify-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-sm">arrow_back</span>
                   Back
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className="w-2/3 bg-primary text-on-primary font-label-md text-sm py-4 rounded-full hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md press-effect disabled:opacity-50 disabled:pointer-events-none"
+                  variant="primary"
+                  size="lg"
+                  loading={loading}
+                  iconRight={!loading ? 'login' : null}
+                  className="w-2/3"
                 >
-                  {loading && <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
-                  <span>{loading ? 'Joining...' : 'Enter Session'}</span>
-                  {!loading && <span className="material-symbols-outlined text-sm">login</span>}
-                </button>
+                  {loading ? 'Joining...' : 'Enter Session'}
+                </Button>
               </div>
             </form>
           )}

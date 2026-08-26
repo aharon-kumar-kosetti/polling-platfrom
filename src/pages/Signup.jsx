@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Button from '../components/ui/Button';
 
 const Signup = () => {
   const { register, login } = useAuth();
@@ -103,13 +104,16 @@ const Signup = () => {
                 required
               />
             </div>
-            <button 
-              className="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full mt-2 hover:bg-primary-container hover:text-on-primary-container transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50" 
+            <Button
               type="submit"
-              disabled={loading}
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+              className="mt-2"
             >
               {loading ? 'Creating account...' : 'Create Account'}
-            </button>
+            </Button>
           </form>
           
           <p className="mt-8 text-center font-body-md text-body-md text-on-surface-variant">

@@ -230,7 +230,7 @@ module.exports = function setupSockets(io) {
     console.log(`[Socket] User connected: ${socket.id} (role: ${socket.user?.role || 'anonymous'})`);
 
     // Join a specific session room with unique participantId & deduplicated player record
-    socket.on('join_room', ({ sessionId, pin, username, participantId: clientProvidedId }) => {
+    socket.on('join_room', ({ sessionId, pin, username, participantId: clientProvidedId, spectator }) => {
       const primaryKey = sessionId || pin;
       if (!primaryKey) return;
 
@@ -246,7 +246,13 @@ module.exports = function setupSockets(io) {
       const uniqueKeys = Array.from(new Set(allKeys));
       uniqueKeys.forEach(k => socket.join(k));
 
-      const isParticipant = socket.user?.role === 'participant' || (username && !username.toLowerCase().includes('host'));
+      // Spectators (leaderboard viewers, analytics pages) receive room state but
+      // are NEVER registered as players — leftover nicknames on any device can't
+      // create phantom 0-point leaderboard entries anymore.
+      const isParticipant = !spectator && (
+        socket.user?.role === 'participant' ||
+        (username && !username.toLowerCase().includes('host'))
+      );
 
       if (isParticipant) {
         const participantId = clientProvidedId || socket.user?.participantId || `p_${socket.id.slice(0, 8)}`;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { buttonClasses } from './ui/Button';
 
 const TopNavBar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -30,23 +31,23 @@ const TopNavBar = () => {
         <div className="hidden md:flex items-center gap-3">
           {isAuthenticated ? (
             <>
-              <Link to="/dashboard" className="bg-primary text-on-primary rounded-full px-5 py-2.5 font-label-md text-label-md hover:bg-primary-container transition-all flex items-center gap-2">
+              <Link to="/dashboard" className={buttonClasses('primary', 'sm')}>
                 <span>Dashboard</span>
                 <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </Link>
-              <button 
+              <button
                 onClick={handleLogout}
-                className="text-on-surface-variant hover:text-error text-xs font-label-md px-3 py-2 transition-colors"
+                className="text-on-surface-variant hover:text-error text-xs font-label-md px-3 py-2 transition-colors cursor-pointer"
               >
                 Sign Out
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="text-on-surface hover:text-primary font-label-md text-sm px-4 py-2 transition-colors">
+              <Link to="/login" className="text-on-surface hover:text-primary font-label-md text-sm px-4 py-2 transition-colors cursor-pointer">
                 Log In
               </Link>
-              <Link to="/signup" className="bg-primary text-on-primary rounded-full px-5 py-2.5 font-label-md text-label-md hover:bg-primary-container transition-all flex items-center gap-2 shadow-sm">
+              <Link to="/signup" className={buttonClasses('primary', 'sm')}>
                 Get Started
                 <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </Link>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { buttonClasses } from '../components/ui/Button';
 
 const ParticipantProfile = () => {
   const [username, setUsername] = useState(() => {
@@ -23,11 +24,11 @@ const ParticipantProfile = () => {
     <div className="bg-background text-on-background min-h-screen flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container">
       
       {/* Top Header */}
-      <header className="h-20 bg-surface-container-lowest border-b border-outline-variant/30 px-6 md:px-12 flex items-center justify-between sticky top-0 z-30">
+      <header className="bg-surface-container-lowest border-b border-outline-variant/30 px-4 sm:px-6 md:px-12 flex items-center justify-between sticky top-0 z-30 h-[calc(3.5rem+env(safe-area-inset-top))] sm:h-20 pt-safe">
         <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
           <span className="material-symbols-outlined text-secondary">token</span><span className="text-primary">QuizCore</span>
         </Link>
-        <Link to="/join" className="px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-xs hover:bg-primary-container transition-all flex items-center gap-1.5">
+        <Link to="/join" className={buttonClasses('primary', 'sm')}>
           <span>Join New Room</span>
           <span className="material-symbols-outlined text-sm">arrow_forward</span>
         </Link>
@@ -59,7 +60,7 @@ const ParticipantProfile = () => {
                     onChange={(e) => setUsername(e.target.value)}
                     className="px-3 py-1.5 bg-surface-container border border-primary rounded-xl text-lg font-bold focus:outline-none focus:ring-1 focus:ring-primary"
                   />
-                  <button onClick={handleSaveName} className="px-3.5 py-1.5 bg-primary text-on-primary text-xs rounded-full font-label-md hover:bg-primary-container transition-colors press-effect">
+                  <button onClick={handleSaveName} className={buttonClasses('primary', 'sm', '!px-3.5 !py-1.5 !text-xs')}>
                     Save
                   </button>
                 </div>

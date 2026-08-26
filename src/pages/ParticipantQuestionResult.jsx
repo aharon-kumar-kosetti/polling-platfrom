@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import socketManager from '../sockets/socketManager';
+import { buttonClasses } from '../components/ui/Button';
 
 const ParticipantQuestionResult = () => {
   const [searchParams] = useSearchParams();
@@ -39,15 +40,15 @@ const ParticipantQuestionResult = () => {
   }, [navigate, pin, username, sessionId, score]);
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex flex-col justify-between items-center antialiased selection:bg-secondary-container selection:text-on-secondary-container p-6 relative overflow-hidden">
-      
+    <div className="bg-background text-on-background h-[100dvh] overflow-hidden flex flex-col justify-between items-center antialiased selection:bg-secondary-container selection:text-on-secondary-container p-4 sm:p-6 pt-safe pb-safe relative">
+
       {/* Decorative Ambient Blobs */}
       <div className={`fixed top-1/4 -left-20 w-96 h-96 rounded-full blur-[100px] pointer-events-none -z-10 ${
         isCorrect ? 'bg-secondary-container/30' : 'bg-error-container/20'
       }`}></div>
 
       {/* Top Participant Mini Bar */}
-      <header className="w-full max-w-lg flex items-center justify-between py-4">
+      <header className="w-full max-w-lg shrink-0 flex items-center justify-between py-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center font-bold text-xs">
             {username.charAt(0).toUpperCase()}
@@ -65,7 +66,7 @@ const ParticipantQuestionResult = () => {
       </header>
 
       {/* Main Feedback Card */}
-      <main className="w-full max-w-lg bg-surface-container-lowest rounded-3xl p-8 md:p-10 border border-outline-variant/30 shadow-editorial text-center relative z-10 animate-fadeIn my-auto">
+      <main className="w-full max-w-lg shrink-0 bg-surface-container-lowest rounded-3xl p-6 md:p-10 border border-outline-variant/30 shadow-editorial text-center relative z-10 animate-scaleIn my-auto">
         
         {/* Status Icon */}
         <div className={`w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center shadow-md ${
@@ -113,7 +114,7 @@ const ParticipantQuestionResult = () => {
         <div className="flex flex-col gap-3">
           <Link
             to={`/leaderboard?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}`}
-            className="w-full py-3.5 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-sm"
+            className={buttonClasses('primary', 'lg')}
           >
             <span>View Leaderboard</span>
             <span className="material-symbols-outlined text-sm">leaderboard</span>
@@ -121,7 +122,7 @@ const ParticipantQuestionResult = () => {
 
           <button
             onClick={() => navigate(`/play?pin=${pin}&username=${encodeURIComponent(username)}&score=${score}&sessionId=${encodeURIComponent(sessionId)}`)}
-            className="w-full py-3.5 rounded-full border border-outline-variant/60 font-label-md text-sm hover:bg-surface-container transition-colors"
+            className={buttonClasses('outline', 'lg')}
           >
             Go to Live Arena
           </button>
@@ -129,7 +130,7 @@ const ParticipantQuestionResult = () => {
 
       </main>
 
-      <footer className="py-4 text-center text-xs text-outline font-label-md">
+      <footer className="shrink-0 py-3 text-center text-xs text-outline font-label-md select-none">
         <span className="text-primary font-bold">QuizCore</span> • Round complete
       </footer>
 

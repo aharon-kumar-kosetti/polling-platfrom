@@ -332,29 +332,29 @@ const ParticipantLiveQuiz = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, question?.id, revealedInfo]);
 
-  // 1. NO ACTIVE QUESTION SCREEN: Tell user to wait for host
+  // 1. NO ACTIVE QUESTION SCREEN: fixed-viewport, centered, no scroll
   if (!question) {
     return (
-      <div className="bg-background text-on-background min-h-screen flex flex-col items-center justify-between p-6 antialiased">
-        <header className="w-full max-w-4xl flex items-center justify-between py-4 border-b border-outline-variant/20">
-          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2">
+      <div className="bg-background text-on-background h-[100dvh] overflow-hidden flex flex-col items-center justify-between p-4 sm:p-6 pt-safe pb-safe antialiased">
+        <header className="w-full max-w-4xl shrink-0 flex items-center justify-between py-3 border-b border-outline-variant/20">
+          <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2 select-none">
             <span className="material-symbols-outlined text-secondary">token</span>
             <span className="text-primary">QuizCore</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="text-xs font-mono font-bold bg-surface-container-high px-3 py-1.5 rounded-full text-primary border border-outline-variant/40">
               PIN: {pin}
             </div>
-            <div className="flex items-center gap-1.5 px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-sm">
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-sm">
               <span className="material-symbols-outlined text-sm">stars</span>
               <span className="font-mono text-sm font-bold">{score} pts</span>
             </div>
           </div>
         </header>
 
-        <div className="text-center flex flex-col items-center gap-6 my-auto max-w-md p-8 bg-surface-container-lowest rounded-3xl border border-outline-variant/30 shadow-editorial animate-fadeIn">
-          <div className="w-20 h-20 rounded-full bg-secondary-container/40 flex items-center justify-center text-secondary relative">
-            <span className="material-symbols-outlined text-3xl animate-float">hourglass_top</span>
+        <div className="text-center flex flex-col items-center gap-5 my-auto max-w-md w-full p-6 sm:p-8 bg-surface-container-lowest rounded-3xl border border-outline-variant/30 shadow-editorial animate-fadeIn">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-secondary-container/40 flex items-center justify-center text-secondary relative shrink-0">
+            <span className="material-symbols-outlined text-2xl sm:text-3xl animate-float">hourglass_top</span>
             <span className="absolute w-full h-full rounded-full border-2 border-secondary border-t-transparent animate-spin"></span>
           </div>
 
@@ -362,40 +362,40 @@ const ParticipantLiveQuiz = () => {
             <span className="inline-block text-[11px] font-label-md uppercase tracking-wider text-secondary font-bold bg-secondary-container/40 px-3 py-1 rounded-full mb-2">
               Waiting for Host
             </span>
-            <h2 className="font-headline-lg text-2xl font-bold text-primary mb-2">
+            <h2 className="font-headline-lg text-xl sm:text-2xl font-bold text-primary mb-1.5">
               Get Ready for the Question!
             </h2>
-            <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">
+            <p className="font-body-md text-xs sm:text-sm text-on-surface-variant leading-relaxed">
               The question will appear on your screen the moment the host pushes it.
             </p>
           </div>
 
           {/* Current Player Live Score Card */}
-          <div className="w-full bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs">
+          <div className="w-full bg-surface-container-low rounded-2xl p-3.5 border border-outline-variant/30 flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold text-xs shrink-0">
                 {username.charAt(0).toUpperCase()}
               </div>
-              <div className="text-left">
-                <div className="font-bold text-xs text-primary">{username} (You)</div>
+              <div className="text-left min-w-0">
+                <div className="font-bold text-xs text-primary truncate">{username} (You)</div>
                 <div className="text-[10px] text-on-surface-variant">{rank ? `Rank: #${rank}` : 'Live Arena'}</div>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <div className="text-[10px] uppercase font-bold text-on-surface-variant">Your Points</div>
-              <div className="font-mono text-lg font-bold text-secondary">{score} pts</div>
+              <div className="font-mono text-base sm:text-lg font-bold text-secondary">{score} pts</div>
             </div>
           </div>
         </div>
 
-        <footer className="py-4 text-xs text-on-surface-variant font-label-md text-center">
+        <footer className="shrink-0 py-3 text-[11px] text-on-surface-variant font-label-md text-center select-none">
           Connected live to session PIN: <strong className="text-primary font-mono">{pin}</strong>
         </footer>
       </div>
     );
   }
 
-  // 2. LIVE QUESTION ARENA
+  // 2. LIVE QUESTION ARENA — fixed-viewport, zero-scroll, centered for mobile play
   const normCmp = (v) => String(v).trim().toLowerCase();
   const isMultiQuestion = question.type === 'multiple_choice';
   const revealedCorrectIds = revealedInfo
@@ -424,44 +424,44 @@ const ParticipantLiveQuiz = () => {
   );
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex flex-col justify-between antialiased selection:bg-secondary-container selection:text-on-secondary-container relative overflow-x-hidden">
-      
+    <div className="bg-background text-on-background h-[100dvh] overflow-hidden flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container relative pt-safe pb-safe">
+
       {/* Background ambient blobs */}
       <div className="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-surface-variant/30 blur-3xl pointer-events-none -z-10"></div>
 
-      {/* Top Participant Status Bar */}
-      <header className="px-6 py-4 md:px-12 flex items-center justify-between z-10 border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs shadow-inner">
+      {/* Top Participant Status Bar — compact for mobile */}
+      <header className="shrink-0 px-4 py-2.5 md:px-12 md:py-4 flex items-center justify-between z-10 border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 shadow-sm">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs shadow-inner shrink-0">
             {username.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="font-label-md text-xs font-bold text-primary">{username}</div>
+          <div className="min-w-0">
+            <div className="font-label-md text-xs font-bold text-primary truncate">{username}</div>
             <div className="text-[10px] text-on-surface-variant flex items-center gap-1 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
-              PIN: {pin}
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse shrink-0"></span>
+              <span className="truncate">PIN: {pin}</span>
             </div>
           </div>
         </div>
 
         {/* Score & Ranking Pill */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {rank && (
-            <div className="flex items-center gap-1 px-3 py-1.5 bg-surface-container-high rounded-full text-xs font-bold text-primary border border-outline-variant/40">
+            <div className="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-surface-container-high rounded-full text-xs font-bold text-primary border border-outline-variant/40">
               <span className="material-symbols-outlined icon-fill text-sm text-secondary">emoji_events</span>
               <span>#{rank}</span>
             </div>
           )}
 
           {/* DYNAMIC SCORE BADGE */}
-          <div className="relative flex items-center gap-1.5 px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-md transition-all">
+          <div className="relative flex items-center gap-1.5 px-3 md:px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-bold shadow-md transition-all">
             <span className="material-symbols-outlined text-base">stars</span>
             <span className="font-mono text-sm md:text-base font-bold tracking-wide">{score} pts</span>
 
             {/* Floating Score Delta Badge */}
             {scoreDelta !== null && (
-              <span className={`absolute -bottom-6 right-0 text-xs font-bold px-2 py-0.5 rounded-full shadow-md animate-slideDown ${
+              <span className={`absolute -bottom-5 right-0 text-xs font-bold px-2 py-0.5 rounded-full shadow-md animate-slideDown ${
                 scoreDelta > 0 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
               }`}>
                 {scoreDelta > 0 ? `+${scoreDelta} pts` : '+0 pts'}
@@ -471,66 +471,58 @@ const ParticipantLiveQuiz = () => {
         </div>
       </header>
 
-      {/* Main Question Arena */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-6 md:py-8 flex flex-col justify-center items-center z-10">
-        
-        {/* Progress & Circular Countdown Timer */}
-        <div className="flex flex-col items-center mb-6">
+      {/* Main Question Arena — everything centered, fits viewport, no scroll */}
+      <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 md:px-6 flex flex-col items-center justify-center gap-3 md:gap-5 z-10 overflow-hidden">
+
+        {/* Compact Timer + Type Meta Row */}
+        <div className="flex items-center gap-3 md:gap-4 shrink-0">
           {!revealedInfo ? (
-            <div className="relative w-20 h-20 flex items-center justify-center mb-2">
+            <div className="relative w-14 h-14 md:w-20 md:h-20 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" className="stroke-surface-container-highest" strokeWidth="7" fill="transparent" />
                 <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  className="stroke-surface-container-highest"
-                  strokeWidth="6"
-                  fill="transparent"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
+                  cx="50" cy="50" r="40"
                   className={`transition-all duration-1000 ${timeLeft <= 5 ? 'stroke-error' : 'stroke-secondary'}`}
-                  strokeWidth="6"
+                  strokeWidth="7"
                   strokeDasharray="251"
                   strokeDashoffset={strokeDashoffset}
                   strokeLinecap="round"
                   fill="transparent"
                 />
               </svg>
-              <span className={`absolute font-mono text-xl font-bold ${timeLeft <= 5 ? 'text-error animate-ping' : 'text-primary'}`}>
+              <span className={`absolute font-mono text-base md:text-xl font-bold ${timeLeft <= 5 ? 'text-error animate-ping' : 'text-primary'}`}>
                 {timeLeft}
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-secondary text-on-secondary rounded-full font-label-md text-xs font-bold shadow-md mb-3 animate-fadeIn">
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-secondary text-on-secondary rounded-full font-label-md text-xs font-bold shadow-md animate-fadeIn">
               <span className="material-symbols-outlined text-sm">visibility</span>
-              <span>Host Revealed Answer</span>
+              <span>Answer Revealed</span>
             </div>
           )}
 
-          <div className="flex items-center gap-2 text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
-            <span>{question.type ? question.type.replace('_', ' ') : 'Live Question'}</span>
-            <span>•</span>
-            <span className="text-secondary font-bold">
+          <div className="flex flex-col items-start gap-0.5 text-left">
+            <span className="text-[10px] md:text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
+              {question.type ? question.type.replace('_', ' ') : 'Live Question'}
+            </span>
+            <span className="text-[10px] md:text-xs font-label-md text-secondary font-bold uppercase tracking-wider">
               {isMultiQuestion ? 'Select ALL correct options' : '+2 Marks per Correct Answer'}
             </span>
           </div>
         </div>
 
         {/* Question Text & Image */}
-        <div className="flex flex-col items-center gap-4 mb-8 text-center w-full">
-          <h1 className="font-headline-lg text-xl md:text-3xl text-primary font-bold max-w-2xl leading-snug">
+        <div className="flex flex-col items-center gap-2 md:gap-3 text-center w-full shrink-0">
+          <h1 className="font-headline-lg text-base sm:text-lg md:text-3xl text-primary font-bold max-w-2xl leading-snug line-clamp-3">
             {question.text}
           </h1>
           {question.imageUrl && (
-            <img src={question.imageUrl} alt="Question" className="max-h-44 object-contain rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
+            <img src={question.imageUrl} alt="Question" className="max-h-24 md:max-h-44 object-contain rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
           )}
         </div>
 
-        {/* 4 Interactive Answer Option Grid */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-6">
+        {/* Interactive Answer Option Grid — compact on mobile */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3.5 min-h-0 overflow-y-auto custom-scrollbar">
           {(question.options || []).map((opt, idx) => {
             const choiceId = opt.id || opt.text;
             const norm = (v) => String(v).trim().toLowerCase();
@@ -579,31 +571,31 @@ const ParticipantLiveQuiz = () => {
                 key={idx}
                 onClick={() => handleSelectOption(choiceId)}
                 disabled={isLocked || !!revealedInfo}
-                className={`relative p-4 md:p-5 rounded-3xl border-2 transition-all flex items-center gap-4 group overflow-hidden text-left ${cardStyle}`}
+                className={`relative px-3 py-2.5 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all flex items-center gap-2.5 md:gap-4 group overflow-hidden text-left shrink-0 ${cardStyle}`}
               >
                 {/* Visual badge icon */}
                 {revealedInfo ? (
                   isThisOptionCorrect ? (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center animate-fadeIn shadow-md">
-                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                    <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center animate-fadeIn shadow-md">
+                      <span className="material-symbols-outlined text-base md:text-[18px]">check_circle</span>
                     </div>
                   ) : isSelected ? (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-error text-on-error flex items-center justify-center animate-fadeIn shadow-md">
-                      <span className="material-symbols-outlined text-[18px]">cancel</span>
+                    <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-error text-on-error flex items-center justify-center animate-fadeIn shadow-md">
+                      <span className="material-symbols-outlined text-base md:text-[18px]">cancel</span>
                     </div>
                   ) : null
                 ) : isSelected && isMulti ? (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center animate-fadeIn shadow-md">
-                    <span className="material-symbols-outlined text-[18px]">check</span>
+                  <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-primary text-on-primary flex items-center justify-center animate-fadeIn shadow-md">
+                    <span className="material-symbols-outlined text-base md:text-[18px]">check</span>
                   </div>
                 ) : isSelected ? (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full bg-primary text-on-primary flex items-center gap-1 text-[11px] font-bold animate-fadeIn">
+                  <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-primary text-on-primary flex items-center gap-1 text-[10px] md:text-[11px] font-bold animate-fadeIn">
                     <span className="material-symbols-outlined text-xs">lock</span>
                     <span>Locked</span>
                   </div>
                 ) : null}
 
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors ${
+                <div className={`w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors ${
                   revealedInfo && isThisOptionCorrect
                     ? 'bg-secondary text-on-secondary'
                     : revealedInfo && isSelected && !isThisOptionCorrect
@@ -615,36 +607,36 @@ const ParticipantLiveQuiz = () => {
                   {String.fromCharCode(97 + idx)}
                 </div>
 
-                <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-1 pr-14">
-                  <div>
-                    <span className="font-bold text-base md:text-lg leading-tight text-primary">
-                      {opt.text}
-                    </span>
+                <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-1 pr-10 md:pr-14 min-w-0">
+                  <span className="font-bold text-sm md:text-lg leading-tight text-primary line-clamp-2">
+                    {opt.text}
+                  </span>
+                  <div className="flex flex-col">
                     {revealedInfo && isThisOptionCorrect && (
-                      <div className="text-[11px] font-bold text-secondary mt-0.5 flex items-center gap-1">
+                      <div className="text-[10px] md:text-[11px] font-bold text-secondary mt-0.5 flex items-center gap-1">
                         <span className="material-symbols-outlined text-xs">check_circle</span>
-                        {isSelected ? 'Your Correct Pick (+2 Marks)' : 'Correct Answer'}
+                        {isSelected ? 'Your Correct Pick (+2)' : 'Correct Answer'}
                       </div>
                     )}
                     {revealedInfo && isSelected && !isThisOptionCorrect && (
-                      <div className="text-[11px] font-bold text-error mt-0.5 flex items-center gap-1">
+                      <div className="text-[10px] md:text-[11px] font-bold text-error mt-0.5 flex items-center gap-1">
                         <span className="material-symbols-outlined text-xs">cancel</span>
-                        Your Pick (+0 Marks)
+                        Your Pick (+0)
                       </div>
                     )}
                     {!revealedInfo && isSelected && isMulti && (
-                      <div className="text-[11px] font-bold text-primary/70 mt-0.5">
+                      <div className="hidden md:flex text-[11px] font-bold text-primary/70 mt-0.5">
                         Selected — tap again to deselect
                       </div>
                     )}
                     {!revealedInfo && isSelected && !isMulti && (
-                      <div className="text-[11px] font-bold text-primary/70 mt-0.5">
+                      <div className="hidden md:flex text-[11px] font-bold text-primary/70 mt-0.5">
                         Your Submitted Choice (Locked)
                       </div>
                     )}
                   </div>
                   {opt.imageUrl && (
-                    <img src={opt.imageUrl} alt="Option" className="h-10 w-10 object-cover rounded-lg shrink-0 border border-outline-variant/40" />
+                    <img src={opt.imageUrl} alt="Option" className="hidden sm:block h-10 w-10 object-cover rounded-lg shrink-0 border border-outline-variant/40" />
                   )}
                 </div>
               </button>
@@ -653,33 +645,33 @@ const ParticipantLiveQuiz = () => {
         </div>
 
         {/* Lock / Result Feedback Bar */}
-        <div className="w-full max-w-xl text-center mb-6">
+        <div className="w-full max-w-xl text-center shrink-0">
           {revealedInfo ? (
-            <div className={`p-4 rounded-2xl border text-sm font-bold flex flex-col items-center gap-1.5 animate-fadeIn shadow-sm ${
+            <div className={`p-3 md:p-4 rounded-2xl border text-xs md:text-sm font-bold flex flex-col items-center gap-1 animate-fadeIn shadow-sm ${
               isCorrectChoice
                 ? 'bg-secondary-container/40 border-secondary text-secondary'
                 : hasPicked
                   ? 'bg-error/10 border-error/40 text-error'
                   : 'bg-surface-container-high border-outline-variant/40 text-primary'
             }`}>
-              <div className="flex items-center gap-2 text-base">
+              <div className="flex items-center gap-2 text-sm md:text-base">
                 <span className="material-symbols-outlined">
                   {isCorrectChoice ? 'celebration' : hasPicked ? 'sentiment_dissatisfied' : 'info'}
                 </span>
                 <span>
                   {isCorrectChoice
-                    ? (isMultiQuestion ? 'All Correct Picks! +2 Points Added to Your Score!' : 'Correct! +2 Points Added to Your Score!')
+                    ? (isMultiQuestion ? 'All Correct Picks! +2 Points!' : 'Correct! +2 Points Added!')
                     : hasPicked
-                      ? (isMultiQuestion ? 'Your picks didn\u2019t fully match (+0 Marks). Keep going!' : 'Incorrect Answer (+0 Marks). Keep going!')
+                      ? (isMultiQuestion ? 'Your picks didn\u2019t fully match (+0). Keep going!' : 'Incorrect Answer (+0). Keep going!')
                       : 'Time is up! You did not answer.'}
                 </span>
               </div>
-              <span className="text-xs text-on-surface-variant font-normal">
+              <span className="text-[11px] md:text-xs text-on-surface-variant font-normal">
                 Total Score: <strong className="text-primary font-mono font-bold">{score} pts</strong> • Waiting for next question...
               </span>
             </div>
           ) : isLocked ? (
-            <div className="p-3.5 bg-surface-container-low rounded-2xl border border-outline-variant/40 text-xs font-bold text-primary flex items-center justify-center gap-2 animate-fadeIn">
+            <div className="p-2.5 md:p-3.5 bg-surface-container-low rounded-2xl border border-outline-variant/40 text-[11px] md:text-xs font-bold text-primary flex items-center justify-center gap-2 animate-fadeIn">
               <span className="material-symbols-outlined text-secondary text-sm">lock</span>
               <span>
                 {isMultiQuestion
@@ -691,11 +683,7 @@ const ParticipantLiveQuiz = () => {
             <button
               onClick={handleSubmitMulti}
               disabled={selectedOptions.length === 0}
-              className={`w-full px-6 py-4 rounded-full font-label-md text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 press-effect ${
-                selectedOptions.length > 0
-                  ? 'bg-secondary text-on-secondary hover:brightness-110 animate-pulse'
-                  : 'bg-surface-container-high text-on-surface-variant cursor-not-allowed'
-              }`}
+              className="w-full px-6 py-3 md:py-4 rounded-full font-label-md text-sm font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer select-none hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none animate-glowPulse bg-secondary-container text-on-secondary-container border-2 border-secondary-container hover:bg-secondary hover:text-on-secondary"
             >
               <span className="material-symbols-outlined text-base">lock</span>
               {selectedOptions.length > 0
@@ -703,15 +691,15 @@ const ParticipantLiveQuiz = () => {
                 : 'Select all options that apply'}
             </button>
           ) : (
-            <div className="text-xs text-on-surface-variant font-label-md">
+            <div className="text-[11px] md:text-xs text-on-surface-variant font-label-md">
               Tap an option above to submit your answer
             </div>
           )}
         </div>
 
-        {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION */}
+        {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION (desktop — hidden on mobile to guarantee zero-scroll play) */}
         {(responders.top3.length > 0 || responders.others.length > 0) && (
-          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn">
+          <div className="hidden md:block w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0">
             
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">

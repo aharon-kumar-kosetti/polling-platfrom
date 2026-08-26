@@ -19,10 +19,12 @@ import LiveMonitoring from './pages/LiveMonitoring'
 import AccountSettings from './pages/AccountSettings'
 import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/ProtectedRoute'
+import ScrollProgress from './components/ScrollProgress'
 
 function App() {
   return (
     <>
+      <ScrollProgress />
       <TopNavBar />
       <Routes>
         {/* Public & Entry Routes */}

@@ -20,6 +20,27 @@
     font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   }
 
+  /* Scrollbars are hidden site-wide — a top progress bar shows position instead */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe-area padding for notched / chrome-heavy mobile browsers */
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  .px-safe {
+    padding-left: max(env(safe-area-inset-left), 0px);
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+
   /* Prevent I-beam text cursor glitches on non-editable chrome (logos, icons, headings, nav) */
   nav a,
   nav button,
@@ -126,6 +147,18 @@
     transform-origin: top;
     animation: growDown var(--dur-base) var(--ease-out-expo) both;
   }
+  .animate-riseUp {
+    animation: riseUp 700ms var(--ease-out-expo) both;
+  }
+  .animate-popIn {
+    animation: popIn 500ms var(--ease-spring) both;
+  }
+  .animate-confetti {
+    animation: confettiFall linear infinite;
+  }
+  .animate-glowPulse {
+    animation: glowPulse 2.4s ease-in-out infinite;
+  }
   .animate-tabIn {
     animation: tabIn var(--dur-base) var(--ease-out-expo) both;
   }
@@ -227,6 +260,27 @@
 @keyframes growDown {
   from { opacity: 0; transform: scaleY(0); }
   to { opacity: 1; transform: scaleY(1); }
+}
+
+/* Leaderboard podium & celebration motion */
+@keyframes riseUp {
+  0% { opacity: 0; transform: translateY(40px) scale(0.95); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.4); }
+  70% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(212, 240, 57, 0.25); }
+  50% { box-shadow: 0 0 48px rgba(212, 240, 57, 0.55); }
 }
 
 @keyframes tabIn {

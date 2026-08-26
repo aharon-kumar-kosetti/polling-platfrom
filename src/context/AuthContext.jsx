@@ -35,6 +35,17 @@ export const AuthProvider = ({ children }) => {
     setUser(res.user);
     // for mock mode persistence
     localStorage.setItem('mock_logged_in', 'true');
+
+    // Organizer session started on this device — wipe any leftover player
+    // identity so old nicknames can never leak into leaderboards or joins.
+    ['participant_name', 'participant_pin'].forEach((k) => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+    ['participant_id', 'participant_token', 'participant_sessionId', 'participant_score'].forEach((k) => {
+      sessionStorage.removeItem(k);
+    });
+
     return res;
   };
 

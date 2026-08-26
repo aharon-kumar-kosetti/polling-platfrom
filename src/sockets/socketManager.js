@@ -1,7 +1,10 @@
 // socketManager.js
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
+const SOCKET_URL = (envSocketUrl && envSocketUrl.trim() !== '')
+  ? envSocketUrl
+  : (typeof window !== 'undefined' ? window.location.origin : undefined);
 
 class SocketManager {
   constructor() {

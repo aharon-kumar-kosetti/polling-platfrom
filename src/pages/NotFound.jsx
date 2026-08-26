@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { buttonClasses } from '../components/ui/Button';
 
 const NotFound = () => {
   return (
@@ -30,7 +31,7 @@ const NotFound = () => {
         <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
           <Link
             to="/join"
-            className="px-6 py-3.5 rounded-full bg-secondary text-on-secondary font-label-md text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow"
+            className={buttonClasses('primary', 'md')}
           >
             <span>Enter Another PIN</span>
             <span className="material-symbols-outlined text-sm">login</span>
@@ -38,7 +39,7 @@ const NotFound = () => {
 
           <Link
             to="/"
-            className="px-6 py-3.5 rounded-full border border-outline-variant font-label-md text-sm hover:bg-surface-container transition-colors flex items-center justify-center"
+            className={buttonClasses('outline', 'md')}
           >
             Return to Homepage
           </Link>

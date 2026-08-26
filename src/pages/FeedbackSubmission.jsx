@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
+import Button, { buttonClasses } from '../components/ui/Button';
 
 const FeedbackSubmission = () => {
   const [searchParams] = useSearchParams();
@@ -53,21 +54,21 @@ const FeedbackSubmission = () => {
   };
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex flex-col justify-between antialiased selection:bg-secondary-container selection:text-on-secondary-container relative p-6">
+    <div className="bg-background text-on-background min-h-screen flex flex-col justify-between antialiased selection:bg-secondary-container selection:text-on-secondary-container relative p-4 sm:p-6 pt-safe pb-safe">
       
       {/* Ambient Blob */}
       <div className="fixed top-0 right-0 w-96 h-96 rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10"></div>
 
-      <header className="max-w-2xl mx-auto w-full flex items-center justify-between py-4">
-        <Link to="/" className="font-display-sm text-2xl font-bold text-primary flex items-center gap-2">
+      <header className="max-w-2xl mx-auto w-full shrink-0 flex items-center justify-between py-4">
+        <Link to="/" className="font-display-sm text-xl sm:text-2xl font-bold text-primary flex items-center gap-2 select-none cursor-pointer">
           <span className="material-symbols-outlined text-secondary">token</span><span className="text-primary">QuizCore</span>
         </Link>
-        <div className="text-xs font-mono text-on-surface-variant font-bold">
+        <div className="text-xs font-mono text-on-surface-variant font-bold select-none">
           ROOM: {pin}
         </div>
       </header>
 
-      <main className="max-w-xl mx-auto w-full flex-1 flex flex-col justify-center py-8">
+      <main className="max-w-xl mx-auto w-full flex-1 flex flex-col justify-center py-6">
         
         {!submitted ? (
           <div className="bg-surface-container-lowest rounded-3xl p-8 md:p-10 border border-outline-variant/30 shadow-editorial">
@@ -165,13 +166,9 @@ const FeedbackSubmission = () => {
                     <div className="flex flex-col items-center gap-3">
                       <span className="material-symbols-outlined text-4xl text-outline-variant">cloud_upload</span>
                       <p className="text-xs text-on-surface-variant">Supported formats: PDF, DOC/DOCX, PNG, JPG/JPEG</p>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2 mt-2 bg-secondary-container text-on-secondary-container rounded-full font-label-md text-xs hover:bg-secondary hover:text-on-secondary transition-colors press-effect"
-                      >
+                      <Button type="button" variant="primary" size="sm" className="mt-2" icon="upload" onClick={() => fileInputRef.current?.click()}>
                         Upload File
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-3">
@@ -180,13 +177,9 @@ const FeedbackSubmission = () => {
                         <span className="font-label-md text-sm truncate max-w-[200px]">{file.name}</span>
                       </div>
                       <span className="text-xs text-on-surface-variant">{formatFileSize(file.size)}</span>
-                      <button
-                        type="button"
-                        onClick={handleRemoveFile}
-                        className="px-4 py-2 mt-2 border border-error text-error rounded-full font-label-md text-xs hover:bg-error-container transition-colors"
-                      >
+                      <Button type="button" variant="outline-danger" size="sm" className="mt-2" icon="delete" onClick={handleRemoveFile}>
                         Remove File
-                      </button>
+                      </Button>
                     </div>
                   )}
                   <input
@@ -199,14 +192,16 @@ const FeedbackSubmission = () => {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="submit"
-                disabled={submitting}
-                className="w-full py-4 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shadow-md active:scale-98 mt-2 flex items-center justify-center gap-2 disabled:opacity-60"
+                variant="primary"
+                size="lg"
+                fullWidth
+                loading={submitting}
+                className="mt-2"
               >
-                {submitting && <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                 {submitting ? 'Submitting...' : 'Submit Feedback'}
-              </button>
+              </Button>
 
             </form>
           </div>
@@ -221,10 +216,7 @@ const FeedbackSubmission = () => {
             </p>
 
             <div className="flex justify-center">
-              <Link
-                to="/"
-                className="px-8 py-3 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all"
-              >
+              <Link to="/" className={buttonClasses('primary', 'lg')}>
                 Return to Home
               </Link>
             </div>

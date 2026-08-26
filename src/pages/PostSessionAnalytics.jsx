@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import Sidebar from '../components/ui/Sidebar';
+import { buttonClasses } from '../components/ui/Button';
 
 const PostSessionAnalytics = () => {
   const [searchParams] = useSearchParams();
@@ -68,16 +69,16 @@ const PostSessionAnalytics = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-variant flex items-center gap-1.5 transition-colors press-effect"
+            className={buttonClasses('outline', 'sm')}
           >
-            <span className="material-symbols-outlined text-sm">download</span>
-            Export CSV
+            <span className="material-symbols-outlined text-[16px] shrink-0 leading-none">download</span>
+            <span>Export CSV</span>
           </button>
           <Link
             to="/dashboard"
-            className="px-5 py-2 rounded-full bg-primary text-on-primary text-xs font-label-md hover:bg-primary-container transition-all press-effect"
+            className={buttonClasses('primary', 'sm')}
           >
-            Dashboard
+            <span>Dashboard</span>
           </Link>
         </div>
       </header>
@@ -165,7 +166,7 @@ const PostSessionAnalytics = () => {
           </div>
           <Link
             to="/feedback/responses"
-            className="px-6 py-3 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shrink-0"
+            className={buttonClasses('primary', 'md')}
           >
             View Feedback Responses &rarr;
           </Link>

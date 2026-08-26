@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Button from '../components/ui/Button';
 
 const Authentication = () => {
   const { login } = useAuth();
@@ -50,7 +51,7 @@ const Authentication = () => {
           
           <div className="mb-8">
             <h1 className="font-display-sm text-display-sm text-primary">Log in</h1>
-            <p className="mt-2 font-body-lg text-body-lg text-on-surface-variant">Welcome back to QUIZCORE.</p>
+            <p className="mt-2 font-body-lg text-body-lg text-on-surface-variant">Welcome back to QuizCore.</p>
           </div>
           
           {error && (
@@ -87,13 +88,16 @@ const Authentication = () => {
                 required
               />
             </div>
-            <button 
-              className="w-full bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full mt-2 hover:bg-primary-container hover:text-on-primary-container transition-all shadow-sm hover:shadow-md active:scale-[0.98] disabled:opacity-50" 
+            <Button
               type="submit"
-              disabled={loading}
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+              className="mt-2"
             >
               {loading ? 'Logging in...' : 'Log in'}
-            </button>
+            </Button>
           </form>
           
           <p className="mt-8 text-center font-body-md text-body-md text-on-surface-variant">

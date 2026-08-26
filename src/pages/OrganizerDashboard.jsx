@@ -8,6 +8,7 @@ import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
 import { Spinner, SkeletonCard } from '../components/ui/Spinner';
+import Button, { buttonClasses } from '../components/ui/Button';
 
 const OrganizerDashboard = () => {
   const { user, logout } = useAuth();
@@ -120,18 +121,7 @@ const OrganizerDashboard = () => {
     <div className="bg-background text-on-background min-h-screen flex flex-col md:flex-row antialiased relative selection:bg-secondary-container selection:text-on-secondary-container">
 
       {/* Side Navigation (consistent across all workspace pages) */}
-      <Sidebar
-        active="/dashboard"
-        action={
-          <button
-            onClick={openCreateModal}
-            className="w-full bg-primary text-on-primary rounded-full py-3 px-4 font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-all hover:shadow-md press-effect"
-          >
-            <span className="material-symbols-outlined text-sm">add</span>
-            New Session
-          </button>
-        }
-      />
+      <Sidebar active="/dashboard" />
 
       {/* Main Content Area */}
       <main className="flex-grow w-full md:pl-64 flex flex-col min-h-screen animate-pageEnter">
@@ -145,11 +135,11 @@ const OrganizerDashboard = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={openCreateModal}
-              className="bg-primary text-on-primary text-xs px-3 py-1.5 rounded-full flex items-center gap-1 press-effect"
+              className={buttonClasses('primary', 'sm', '!px-3 !py-1.5')}
             >
               <span className="material-symbols-outlined text-sm">add</span> New
             </button>
-            <button onClick={handleLogout} className="text-error p-1.5">
+            <button onClick={handleLogout} className="text-error p-1.5" aria-label="Sign out">
               <span className="material-symbols-outlined text-[20px]">logout</span>
             </button>
           </div>
@@ -292,15 +282,16 @@ const OrganizerDashboard = () => {
                 <p className="font-body-md text-on-surface-variant max-w-md mx-auto mb-6">
                   Create your first interactive quiz or poll to share a PIN code with your participants.
                 </p>
-                <button
+                <Button
+                  variant="primary"
+                  iconRight="arrow_forward"
                   onClick={() => {
                     setSessionTitle('My First Quiz');
                     openCreateModal();
                   }}
-                  className="bg-primary text-on-primary px-6 py-3 rounded-full font-label-md hover:bg-primary-container transition-all press-effect shadow-sm"
                 >
                   Create First Session
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
@@ -342,7 +333,7 @@ const OrganizerDashboard = () => {
                       <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end pt-3 md:pt-0 border-t md:border-t-0 border-outline-variant/20">
                         <button
                           onClick={(e) => handleCopyPin(session.pin, e)}
-                          className="px-3 py-1.5 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container flex items-center gap-1.5 transition-colors press-effect"
+                          className={buttonClasses('ghost', 'sm')}
                           title="Copy PIN"
                         >
                           <span className="material-symbols-outlined text-[14px]">
@@ -353,7 +344,7 @@ const OrganizerDashboard = () => {
 
                         <Link
                           to={`/builder/${session.id}`}
-                          className="px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-label-md hover:bg-surface-container-highest transition-all flex items-center gap-1 shadow-sm press-effect"
+                          className={buttonClasses('outline', 'sm')}
                         >
                           <span>Edit Questions</span>
                           <span className="material-symbols-outlined text-[14px]">edit_document</span>
@@ -361,7 +352,7 @@ const OrganizerDashboard = () => {
 
                         <Link
                           to={`/host/${session.id}?pin=${session.pin}&title=${encodeURIComponent(session.name)}`}
-                          className="px-3.5 py-1.5 rounded-full bg-secondary text-on-secondary text-xs font-label-md hover:brightness-95 transition-all flex items-center gap-1 shadow-sm press-effect"
+                          className={buttonClasses('primary', 'sm')}
                         >
                           <span>Host Live</span>
                           <span className="material-symbols-outlined text-[14px]">sensors</span>
@@ -369,7 +360,7 @@ const OrganizerDashboard = () => {
 
                         <Link
                           to={`/waiting-room?pin=${session.pin}`}
-                          className="px-3.5 py-1.5 rounded-full bg-primary text-on-primary text-xs font-label-md hover:bg-primary-container transition-all flex items-center gap-1 press-effect"
+                          className={buttonClasses('dark', 'sm')}
                         >
                           <span>Player View</span>
                           <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
@@ -450,22 +441,12 @@ const OrganizerDashboard = () => {
               </div>
 
               <div className="flex justify-end gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-5 py-2.5 rounded-full font-label-md text-sm text-on-surface-variant hover:bg-surface-container transition-colors press-effect"
-                >
+                <Button type="button" variant="ghost" onClick={() => setShowCreateModal(false)}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label-md text-sm hover:bg-primary-container transition-all disabled:opacity-50 flex items-center gap-2 font-bold shadow-sm press-effect"
-                >
-                  {creating && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                </Button>
+                <Button type="submit" variant="primary" loading={creating} iconRight={!creating ? 'fullscreen' : null}>
                   {creating ? 'Creating...' : 'Launch Room Presenter'}
-                  {!creating && <span className="material-symbols-outlined text-sm">fullscreen</span>}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -488,13 +469,9 @@ const OrganizerDashboard = () => {
               <span className="font-bold tracking-wider">LIVE AUDIENCE PRESENTATION</span>
             </div>
 
-            <button
-              onClick={() => setCreatedSession(null)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-container text-xs font-label-md transition-colors press-effect"
-            >
-              <span className="material-symbols-outlined text-sm">close</span>
-              <span>Exit Presenter</span>
-            </button>
+            <Button variant="outline" size="sm" icon="close" onClick={() => setCreatedSession(null)}>
+              Exit Presenter
+            </Button>
           </header>
 
           {/* Main Full-Screen Presenter Stage */}
@@ -577,17 +554,13 @@ const OrganizerDashboard = () => {
 
           {/* Bottom Presenter Actions Bar */}
           <footer className="flex flex-wrap gap-4 items-center justify-between w-full max-w-7xl mx-auto pt-6 border-t border-outline-variant/30 animate-slideUp" style={{ animationDelay: '120ms' }}>
-            <button
-              onClick={() => setCreatedSession(null)}
-              className="px-6 py-3.5 rounded-full font-label-md text-sm border border-outline-variant hover:bg-surface-container transition-colors flex items-center gap-2 press-effect"
-            >
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
-              <span>Back to Dashboard</span>
-            </button>
+            <Button variant="outline" icon="arrow_back" onClick={() => setCreatedSession(null)}>
+              Back to Dashboard
+            </Button>
 
             <Link
               to={`/host/${createdSession.id}?pin=${createdSession.pin}&title=${encodeURIComponent(createdSession.name)}`}
-              className="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md text-base hover:bg-primary-container transition-all flex items-center gap-2 shadow-xl hover:shadow-2xl font-bold press-effect"
+              className={buttonClasses('primary', 'lg', 'font-bold shadow-xl hover:shadow-2xl')}
             >
               <span className="material-symbols-outlined text-lg">sensors</span>
               <span>Launch Live Host Deck</span>

@@ -4,6 +4,7 @@ import socketManager from '../sockets/socketManager';
 import { QRCodeSVG } from 'qrcode.react';
 import { questionAPI, sessionAPI } from '../api/client';
 import Modal from '../components/ui/Modal';
+import Button, { buttonClasses } from '../components/ui/Button';
 
 const DEFAULT_STARTER_QUESTIONS = [
   {
@@ -328,11 +329,7 @@ const LiveMonitoring = () => {
             <button
               onClick={handleRevealAnswer}
               disabled={isAnswerRevealed}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold font-label-md transition-all flex items-center gap-1.5 shadow-md ${
-                isAnswerRevealed 
-                  ? 'bg-secondary-container text-on-secondary-container border border-secondary/40' 
-                  : 'bg-secondary text-on-secondary hover:opacity-90 active:scale-95 animate-pulse'
-              }`}
+              className={buttonClasses(isAnswerRevealed ? 'outline' : 'primary', 'sm', '!font-bold')}
             >
               <span className="material-symbols-outlined text-[16px]">
                 {isAnswerRevealed ? 'task_alt' : 'visibility'}
@@ -356,17 +353,17 @@ const LiveMonitoring = () => {
             </button>
           </div>
 
-          <button 
+          <button
             onClick={() => setShowQRModal(true)}
-            className="px-3.5 py-1.5 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-variant flex items-center gap-1 transition-colors"
+            className={buttonClasses('outline', 'sm')}
           >
             <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
             QR
           </button>
 
-          <button 
+          <button
             onClick={handleEndQuiz}
-            className="px-4 py-1.5 rounded-full bg-error/10 text-error hover:bg-error hover:text-on-error transition-colors text-xs font-label-md"
+            className={buttonClasses('outline-danger', 'sm')}
           >
             End
           </button>
@@ -458,7 +455,7 @@ const LiveMonitoring = () => {
                 </div>
                 <button
                   onClick={() => setShowQRModal(true)}
-                  className="px-3 py-1 bg-primary text-on-primary rounded-full text-xs font-label-md hover:bg-primary-container transition-all flex items-center gap-1 shrink-0"
+                  className={buttonClasses('primary', 'sm', '!px-3 !py-1 !text-xs shrink-0')}
                 >
                   <span className="material-symbols-outlined text-xs">qr_code_2</span>
                   Display QR
@@ -521,13 +518,15 @@ const LiveMonitoring = () => {
                 </span>
                 
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setIsTimerRunning(!isTimerRunning)}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={isTimerRunning ? 'pause' : 'play_arrow'}
                     disabled={timeLeft === 0}
-                    className="px-3 py-1.5 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container disabled:opacity-50 transition-colors"
+                    onClick={() => setIsTimerRunning(!isTimerRunning)}
                   >
                     {isTimerRunning ? 'Pause Timer' : 'Resume Timer'}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -657,11 +656,7 @@ const LiveMonitoring = () => {
                 <button
                   onClick={handleRevealAnswer}
                   disabled={isAnswerRevealed}
-                  className={`w-full sm:w-auto px-6 py-3 rounded-full text-xs md:text-sm font-bold font-label-md transition-all shadow-md flex items-center justify-center gap-2 ${
-                    isAnswerRevealed 
-                      ? 'bg-secondary-container text-on-secondary-container border-2 border-secondary ring-2 ring-secondary/30' 
-                      : 'bg-secondary text-on-secondary hover:opacity-90 active:scale-95 shadow-secondary/30'
-                  }`}
+                  className={buttonClasses(isAnswerRevealed ? 'outline' : 'primary', 'md', '!font-bold w-full sm:w-auto')}
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {isAnswerRevealed ? 'check_circle' : 'visibility'}
@@ -671,21 +666,13 @@ const LiveMonitoring = () => {
 
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   {/* Push Next Question Button */}
-                  <button
-                    onClick={handleNextQuestion}
-                    className="px-5 py-3 rounded-full bg-surface-container-highest hover:bg-outline-variant/30 text-primary font-label-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
-                  >
-                    <span>Next Question</span>
-                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                  </button>
+                  <Button variant="outline" iconRight="arrow_forward" onClick={handleNextQuestion}>
+                    Next Question
+                  </Button>
 
-                  <button
-                    onClick={handleEndQuiz}
-                    className="px-5 py-3 rounded-full bg-primary text-on-primary font-label-md text-xs font-bold hover:bg-primary-container transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
-                  >
-                    <span>Finish Quiz</span>
-                    <span className="material-symbols-outlined text-[16px]">flag</span>
-                  </button>
+                  <Button variant="dark" iconRight="flag" onClick={handleEndQuiz}>
+                    Finish Quiz
+                  </Button>
                 </div>
 
               </div>
@@ -750,7 +737,7 @@ const LiveMonitoring = () => {
                   
                   <button
                     onClick={() => handlePushFromBank(bankQ)}
-                    className="w-full bg-primary text-on-primary rounded-full py-2 text-xs font-bold hover:bg-primary-container transition-colors flex justify-center items-center gap-1.5 mt-1 active:scale-95 shadow-sm"
+                    className={buttonClasses('primary', 'sm', 'w-full !py-2 mt-1')}
                   >
                     <span className="material-symbols-outlined text-[14px]">send</span>
                     Push Live Now
@@ -845,12 +832,9 @@ const LiveMonitoring = () => {
 
           </div>
 
-          <button
-            onClick={() => setShowQRModal(false)}
-            className="px-8 py-3 rounded-full bg-primary text-on-primary text-sm font-label-md hover:bg-primary-container transition-all shadow-md"
-          >
+          <Button variant="dark" size="lg" onClick={() => setShowQRModal(false)}>
             Continue to Host Deck
-          </button>
+          </Button>
         </div>
       </Modal>
 

@@ -18,7 +18,7 @@ const isActivePath = (active, to) => {
   return active.startsWith(to);
 };
 
-const Sidebar = ({ active, action = null }) => {
+const Sidebar = ({ active }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -47,12 +47,7 @@ const Sidebar = ({ active, action = null }) => {
         </div>
       </div>
 
-      {/* Optional contextual action (e.g. New Session) */}
-      {action && (
-        <div className="px-6 mb-4 flex flex-col gap-3 animate-fadeIn">{action}</div>
-      )}
-
-      {/* Nav Links — fixed metrics so switching sections never shifts layout */}
+      {/* Nav Links */}
       <nav className="flex flex-col gap-1.5 px-3 flex-grow">
         {NAV_ITEMS.map((item) => {
           const activeItem = isActivePath(active, item.to);

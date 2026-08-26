@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/ui/Sidebar';
+import Button, { buttonClasses } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 
 const AccountSettings = () => {
@@ -39,7 +40,7 @@ const AccountSettings = () => {
             <h1 className="font-display-sm text-xl md:text-2xl font-bold text-primary">Account &amp; Workspace Settings</h1>
           </div>
 
-          <Link to="/dashboard" className="hidden sm:flex px-4 py-2 rounded-full border border-outline-variant/50 text-xs font-label-md hover:bg-surface-container transition-colors press-effect">
+          <Link to="/dashboard" className={buttonClasses('outline', 'sm', 'hidden sm:flex')}>
             Back to Dashboard
           </Link>
         </header>
@@ -151,18 +152,12 @@ const AccountSettings = () => {
             </div>
 
             <div className="flex justify-end gap-3">
-              <Link
-                to="/dashboard"
-                className="px-6 py-3 rounded-full border border-outline-variant font-label-md text-sm hover:bg-surface-container transition-colors press-effect"
-              >
+              <Link to="/dashboard" className={buttonClasses('ghost')}>
                 Cancel
               </Link>
-              <button
-                type="submit"
-                className="px-8 py-3 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all shadow press-effect"
-              >
+              <Button type="submit" variant="primary">
                 Save Changes
-              </button>
+              </Button>
             </div>
 
           </form>

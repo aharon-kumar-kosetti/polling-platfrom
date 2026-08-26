@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { questionAPI, sessionAPI } from '../api/client';
 import Sidebar from '../components/ui/Sidebar';
@@ -6,6 +6,7 @@ import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Dropdown from '../components/ui/Dropdown';
 import ImportQuestionsModal from '../components/ImportQuestionsModal';
+import Button, { buttonClasses } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 
 const TYPE_OPTIONS = [
@@ -20,6 +21,8 @@ const MARKS_OPTIONS = [
   { value: 3, label: '3 Marks' },
   { value: 4, label: '4 Marks' },
 ];
+
+const DRAFT_KEY = 'quizcore_builder_draft';
 
 const SessionBuilder = () => {
   const { id } = useParams();
@@ -54,7 +57,14 @@ const SessionBuilder = () => {
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind: 'draft' | 'bank', index?, id?, title? }
   const [isDeleting, setIsDeleting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [autosaveState, setAutosaveState] = useState('idle'); // idle | saving | saved | error
 
+  const hydratedRef = useRef(false);
+  const lastSnapshotRef = useRef('');
+  const suppressAutosaveRef = useRef(false);
+
+  // Hydrate from DB (sessions + bank). In bank-builder mode, restore any
+  // unsaved local draft so questions are never lost between visits.
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -78,6 +88,24 @@ const SessionBuilder = () => {
           setBankQuestions(parsedBank);
         }
 
+        if (!id) {
+          // Restore the local working draft if one exists (takes priority over bank seed)
+          const savedDraft = localStorage.getItem(DRAFT_KEY);
+          if (savedDraft) {
+            try {
+              const parsedDraft = JSON.parse(savedDraft);
+              if (Array.isArray(parsedDraft) && parsedDraft.length > 0) {
+                setQuestions(parsedDraft);
+                setActiveQuestionIndex(0);
+                lastSnapshotRef.current = JSON.stringify(parsedDraft);
+                hydratedRef.current = true;
+                toast('Unsaved draft restored — press "Save Session" to store it in your bank.', 'info');
+                return;
+              }
+            } catch (e) { localStorage.removeItem(DRAFT_KEY); }
+          }
+        }
+
         if (sourceQuestions.length > 0) {
           const parsed = sourceQuestions.reduce((acc, q) => {
             try { acc.push({ ...q, options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options }); }
@@ -92,11 +120,54 @@ const SessionBuilder = () => {
       } catch (err) {
         console.error('Failed to fetch data:', err);
         toast('Failed to load your questions. Check your connection.', 'error');
+      } finally {
+        lastSnapshotRef.current = JSON.stringify(questions);
+        hydratedRef.current = true;
       }
     };
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // AUTOSAVE — sessions persist straight to the database; the standalone
+  // builder keeps a local draft so nothing is ever lost on refresh/logout.
+  useEffect(() => {
+    if (!hydratedRef.current || isPublishing) return undefined;
+    const snapshot = JSON.stringify(questions);
+    if (snapshot === lastSnapshotRef.current) return undefined;
+
+    // After an explicit save the content already lives in the DB/bank —
+    // sync the snapshot once without writing a redundant draft.
+    if (suppressAutosaveRef.current) {
+      suppressAutosaveRef.current = false;
+      lastSnapshotRef.current = snapshot;
+      return undefined;
+    }
+
+    const delay = id ? 2000 : 600;
+    const timer = setTimeout(async () => {
+      if (id) {
+        setAutosaveState('saving');
+        try {
+          await sessionAPI.updateSessionQuestions(id, questions.filter(q => q.text && q.text.trim() !== ''));
+          lastSnapshotRef.current = snapshot;
+          setAutosaveState('saved');
+        } catch (e) {
+          console.warn('Autosave failed:', e.message);
+          setAutosaveState('error');
+        }
+      } else {
+        try {
+          localStorage.setItem(DRAFT_KEY, snapshot);
+          lastSnapshotRef.current = snapshot;
+          setAutosaveState('saved');
+        } catch (e) {
+          setAutosaveState('error');
+        }
+      }
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [questions, id, isPublishing]);
 
   const currentQ = questions[activeQuestionIndex] || questions[0];
 
@@ -341,6 +412,9 @@ const SessionBuilder = () => {
               return newBank;
             });
           }
+          // Questions now live in the bank — clear the local draft
+          localStorage.removeItem(DRAFT_KEY);
+          suppressAutosaveRef.current = true;
           toast(`Saved ${validQuestions.length} question${validQuestions.length > 1 ? 's' : ''} to your Question Bank!`);
         }
       } else if (bankModalAction === 'single') {
@@ -421,18 +495,7 @@ const SessionBuilder = () => {
     <div className="bg-surface-container-lowest text-on-surface antialiased flex h-screen overflow-hidden font-body-md text-body-md">
 
       {/* Side Navigation Bar (consistent across all workspace pages) */}
-      <Sidebar
-        active="/builder"
-        action={
-          <button
-            onClick={handleAddQuestion}
-            className="w-full flex items-center justify-center gap-2 bg-primary text-on-primary rounded-full px-4 py-2.5 font-label-md text-label-md hover:bg-primary-container transition-all shadow-sm press-effect"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            Add Question
-          </button>
-        }
-      />
+      <Sidebar active="/builder" />
 
       {/* Main Workspace Area */}
       <main className="flex-1 flex flex-col w-full h-full bg-surface-bright overflow-hidden animate-pageEnter md:pl-64">
@@ -458,25 +521,56 @@ const SessionBuilder = () => {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="px-3 md:px-4 py-2.5 rounded-full border border-outline-variant/50 text-primary font-label-md text-sm hover:bg-surface-container hover:border-outline transition-all flex items-center gap-2 press-effect"
-              title="Bulk import questions from a JSON file"
+            {/* Autosave indicator */}
+            <span
+              className={`hidden lg:inline-flex items-center gap-1.5 text-[11px] font-label-md transition-all duration-300 ${
+                autosaveState === 'error' ? 'text-error' : 'text-on-surface-variant'
+              }`}
+              aria-live="polite"
             >
-              <span className="material-symbols-outlined text-[18px]">upload_file</span>
-              <span className="hidden sm:inline">Import JSON</span>
-            </button>
+              {autosaveState === 'saving' && (<>
+                <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Saving…
+              </>)}
+              {autosaveState === 'saved' && (<>
+                <span className="material-symbols-outlined text-[14px] text-secondary">cloud_done</span>
+                {id ? 'Saved to database' : 'Draft saved'}
+              </>)}
+              {autosaveState === 'error' && (<>
+                <span className="material-symbols-outlined text-[14px]">cloud_off</span>
+                Offline — will retry
+              </>)}
+            </span>
 
-            <button
-              onClick={handleSaveSession}
-              disabled={isPublishing}
-              className="px-4 md:px-6 py-2.5 rounded-full bg-secondary text-on-secondary font-label-md text-sm hover:brightness-95 transition-all shadow flex items-center gap-2 press-effect disabled:opacity-50 disabled:pointer-events-none"
+            <Button
+              variant="outline"
+              size="sm"
+              icon="upload_file"
+              onClick={() => setShowImportModal(true)}
+              title="Bulk import questions from a JSON file"
+              className="hidden sm:inline-flex"
             >
-              {isPublishing
-                ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                : <span className="material-symbols-outlined text-[18px]">save</span>}
+              Import JSON
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon="upload_file"
+              onClick={() => setShowImportModal(true)}
+              title="Bulk import questions from a JSON file"
+              className="sm:hidden !px-3"
+              aria-label="Import JSON"
+            />
+
+            <Button
+              variant="primary"
+              size="sm"
+              icon="save"
+              loading={isPublishing}
+              onClick={handleSaveSession}
+            >
               {isPublishing ? 'Saving...' : 'Save Session'}
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -579,7 +673,7 @@ const SessionBuilder = () => {
                     <span className="font-label-md text-xs font-bold text-primary uppercase tracking-wider">Question Bank</span>
                     <button
                       onClick={() => setShowImportModal(true)}
-                      className="px-2.5 py-1 rounded-full bg-primary text-on-primary text-[10px] font-label-md font-bold hover:bg-primary-container transition-all press-effect flex items-center gap-1"
+                      className={buttonClasses('primary', 'sm', '!px-2.5 !py-1 !text-[10px]')}
                       title="Bulk import questions from JSON"
                     >
                       <span className="material-symbols-outlined text-[13px]">upload_file</span>
@@ -682,7 +776,7 @@ const SessionBuilder = () => {
 
                   <button
                     onClick={() => handleSaveSingleToBank(currentQ)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-secondary-container hover:text-on-secondary-container transition-colors text-xs font-label-md shadow-sm border border-outline-variant/20 press-effect"
+                    className={buttonClasses('outline', 'sm')}
                     title="Save this specific question to your global Question Bank"
                   >
                     <span className="material-symbols-outlined text-[14px]">inventory_2</span>
@@ -830,23 +924,23 @@ const SessionBuilder = () => {
 
             {/* Quick Actions Footer */}
             <div className="flex justify-between items-center w-full">
-              <button
+              <Button
+                variant="outline"
+                icon="arrow_back"
                 disabled={activeQuestionIndex === 0}
                 onClick={() => setActiveQuestionIndex(prev => prev - 1)}
-                className="px-5 py-2.5 rounded-full border border-outline-variant/50 font-label-md text-sm hover:bg-surface-container transition-colors flex items-center gap-1.5 press-effect disabled:opacity-40 disabled:pointer-events-none"
               >
-                <span className="material-symbols-outlined text-sm">arrow_back</span>
                 Previous Question
-              </button>
+              </Button>
 
-              <button
+              <Button
+                variant="primary"
+                iconRight="arrow_forward"
                 disabled={activeQuestionIndex === questions.length - 1}
                 onClick={() => setActiveQuestionIndex(prev => prev + 1)}
-                className="px-5 py-2.5 rounded-full bg-primary text-on-primary font-label-md text-sm hover:bg-primary-container transition-all flex items-center gap-1.5 press-effect disabled:opacity-40 disabled:pointer-events-none"
               >
                 Next Question
-                <span className="material-symbols-outlined text-sm">arrow_forward</span>
-              </button>
+              </Button>
             </div>
 
           </section>
@@ -933,21 +1027,12 @@ const SessionBuilder = () => {
           </p>
 
           <div className="flex justify-end gap-3 mt-6">
-            <button
-              onClick={() => setShowBankModal(false)}
-              className="px-5 py-2.5 rounded-full font-label-md text-sm border border-outline-variant/50 text-on-surface-variant hover:bg-surface-container transition-colors press-effect disabled:opacity-50"
-              disabled={isPublishing}
-            >
+            <Button variant="ghost" disabled={isPublishing} onClick={() => setShowBankModal(false)}>
               Cancel
-            </button>
-            <button
-              onClick={executeSaveToBank}
-              className="px-5 py-2.5 rounded-full font-label-md text-sm bg-primary text-on-primary hover:bg-primary-container transition-all shadow-sm flex items-center gap-2 press-effect disabled:opacity-50"
-              disabled={isPublishing}
-            >
-              {isPublishing && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+            </Button>
+            <Button variant="primary" loading={isPublishing} onClick={executeSaveToBank} disabled={isPublishing}>
               {isPublishing ? 'Saving...' : `Save to ${(bankChoice === 'new' ? (newBankName.trim() || suggestBankName()) : selectedBankName) || 'Bank'}`}
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>

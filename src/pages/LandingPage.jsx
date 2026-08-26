@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { buttonClasses } from '../components/ui/Button';
 
 const LandingPage = () => {
   return (
@@ -27,13 +28,13 @@ const LandingPage = () => {
               Create interactive sessions, live polls, and real-time quizzes to make your presentations unforgettable.
             </p>
 
-            {/* Action Buttons */}
+            {/* Action Buttons — canonical button definitions */}
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mt-2 self-center lg:self-start">
-              <Link to="/login" className="w-full sm:w-auto bg-secondary-container text-on-secondary-container border-2 border-secondary-container hover:bg-secondary hover:text-on-secondary rounded-full px-8 py-4 font-label-md text-label-md transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 press-effect cursor-pointer">
+              <Link to="/login" className={buttonClasses('primary', 'lg', 'w-full sm:w-auto')}>
                 <span className="material-symbols-outlined text-[20px]">podium</span>
                 Host a Session
               </Link>
-              <Link to="/join" className="w-full sm:w-auto bg-transparent text-primary border-2 border-outline hover:border-primary hover:bg-surface-variant rounded-full px-8 py-4 font-label-md text-label-md transition-all duration-300 flex items-center justify-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
+              <Link to="/join" className={buttonClasses('outline', 'lg', 'w-full sm:w-auto')}>
                 Join a Session
                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
               </Link>
