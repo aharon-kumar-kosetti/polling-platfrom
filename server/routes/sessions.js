@@ -220,10 +220,12 @@ router.delete('/:id', authenticateOrganizer, async (req, res) => {
 });
 
 // POST /api/sessions/join
-// For participants joining via PIN
+// For participants joining via PIN.
+// deviceId makes rejoins idempotent: changing your nickname on the same
+// device UPDATES the existing player row instead of creating a phantom.
 router.post('/join', async (req, res) => {
   try {
-    const { pin, username } = req.body;
+    const { pin, username, deviceId } = req.body;
 
     if (!pin || !username) {
       return res.status(400).json({ message: 'PIN and username are required' });
@@ -235,13 +237,34 @@ router.post('/join', async (req, res) => {
       return res.status(404).json({ message: 'Session not found' });
     }
 
-    // Add participant to the session
-    const participant = await prisma.participant.create({
-      data: {
-        username: username.trim(),
-        sessionId: session.id,
+    // Upsert by (session, device): rename-in-place for known devices
+    let participant;
+    if (deviceId) {
+      const existing = await prisma.participant.findFirst({
+        where: { sessionId: session.id, deviceId },
+      });
+      if (existing) {
+        participant = await prisma.participant.update({
+          where: { id: existing.id },
+          data: { username: username.trim() },
+        });
+      } else {
+        participant = await prisma.participant.create({
+          data: {
+            username: username.trim(),
+            sessionId: session.id,
+            deviceId,
+          },
+        });
       }
-    });
+    } else {
+      participant = await prisma.participant.create({
+        data: {
+          username: username.trim(),
+          sessionId: session.id,
+        },
+      });
+    }
 
     // Generate a specific JWT for this participant (used for WebSockets auth)
     const token = jwt.sign(

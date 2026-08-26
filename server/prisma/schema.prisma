@@ -38,7 +38,10 @@ model Participant {
   score     Int      @default(0)
   sessionId String
   session   Session  @relation(fields: [sessionId], references: [id])
+  deviceId  String?
   joinedAt  DateTime @default(now())
+
+  @@unique([sessionId, deviceId])
 }
 
 model Question {
