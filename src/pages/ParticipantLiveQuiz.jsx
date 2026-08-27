@@ -27,6 +27,8 @@ const ParticipantLiveQuiz = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [revealedInfo, setRevealedInfo] = useState(null);
   const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
+  const [fastestCorrect, setFastestCorrect] = useState([]);
+  const [bonusReceived, setBonusReceived] = useState(0);
   
   // Independent tab-isolated score initialization
   const [score, setScore] = useState(() => {
@@ -172,6 +174,8 @@ const ParticipantLiveQuiz = () => {
           setIsLocked(!!savedAnswer || savedMulti.length > 0);
           setRevealedInfo(null); // Never reveal answer on a new question until host clicks reveal
           setScoreDelta(null);
+          setBonusReceived(0);
+          setFastestCorrect([]);
           setResponders(data.responders || { top3: [], others: [], totalAnswered: 0 });
           const timeLimit = incoming.timeLimitSeconds || 30;
           setTimeLeft(timeLimit);
@@ -195,6 +199,13 @@ const ParticipantLiveQuiz = () => {
 
       if (data?.responders) {
         setResponders(data.responders);
+      }
+
+      // Capture top 10 fastest correct for the Fastest Fingers section
+      if (Array.isArray(data?.fastestCorrect)) {
+        setFastestCorrect(data.fastestCorrect);
+      } else if (data?.responders?.fastestCorrect) {
+        setFastestCorrect(data.responders.fastestCorrect);
       }
 
       // Try to find our entry in the leaderboard payload
@@ -265,6 +276,9 @@ const ParticipantLiveQuiz = () => {
       }
       if (data?.rank) {
         setRank(data.rank);
+      }
+      if (data?.bonus > 0) {
+        setBonusReceived(data.bonus);
       }
     };
 
@@ -781,68 +795,60 @@ const ParticipantLiveQuiz = () => {
           )}
         </div>
 
-        {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION (desktop — hidden on mobile to guarantee zero-scroll play) */}
-        {(responders.top3.length > 0 || responders.others.length > 0) && (
-          <div className="hidden md:block w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0">
-            
-            <div className="flex items-center justify-between mb-4">
+        {/* TOP 10 FASTEST FINGERS — Correct answer players ranked by speed */}
+        {revealedInfo && fastestCorrect.length > 0 && (
+          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-4 md:p-6 border border-outline-variant/30 shadow-sm animate-slideUp shrink-0">
+            <div className="flex items-center justify-between mb-3 md:mb-4">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary text-lg">bolt</span>
-                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
-                  Question Responders ({responders.totalAnswered})
+                <span className="material-symbols-outlined text-secondary text-base md:text-lg">bolt</span>
+                <span className="font-label-md text-[11px] md:text-xs uppercase tracking-wider font-bold text-primary">
+                  Fastest Fingers ({fastestCorrect.length})
                 </span>
               </div>
-              <span className="text-[11px] text-on-surface-variant font-medium">Top 3 Fastest Highlighted</span>
+              <span className="text-[10px] md:text-[11px] text-on-surface-variant font-medium">Correct answers only</span>
             </div>
 
-            {/* TOP 3 HIGHLIGHTED CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-              {responders.top3.map((player) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-2.5 max-h-52 md:max-h-64 overflow-y-auto pr-1">
+              {fastestCorrect.map((player) => (
                 <div
                   key={player.id || player.username}
-                  className={`p-3 rounded-2xl border-2 flex items-center justify-between shadow-md transition-all ${
+                  className={`p-2.5 md:p-3 rounded-xl md:rounded-2xl border flex items-center justify-between shadow-sm transition-all ${
                     player.rank === 1
                       ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
-                      : player.rank === 2
-                        ? 'bg-surface-container-high border-outline-variant ring-2 ring-outline-variant/20'
-                        : 'bg-surface-container-lowest border-outline-variant/60'
+                      : player.rank <= 3
+                        ? 'bg-surface-container-high border-outline-variant ring-1 ring-outline-variant/20'
+                        : player.rank <= 5
+                          ? 'bg-surface-container-low border-outline-variant/50'
+                          : 'bg-surface-container-lowest border-outline-variant/30'
                   }`}
                 >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                      {player.rank === 1 ? 'emoji_events' : player.rank === 2 ? 'workspace_premium' : 'military_tech'}
-                    </span>
-                    <div className="truncate text-left">
-                      <div className="text-xs font-bold text-primary truncate max-w-[90px]">
+                  <div className="flex items-center gap-2 md:gap-2.5 truncate">
+                    <div className={`w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shrink-0 ${
+                      player.rank === 1 ? 'bg-secondary text-on-secondary'
+                        : player.rank <= 3 ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container-highest text-primary'
+                    }`}>
+                      #{player.rank}
+                    </div>
+                    <div className="truncate">
+                      <span className="text-[11px] md:text-xs font-bold text-primary truncate block">
                         {player.username}
-                      </div>
-                      <div className="text-[10px] font-bold text-secondary">
-                        {player.rank === 1 ? 'Fastest' : `#${player.rank} Quick`}
-                      </div>
+                      </span>
+                      <span className="text-[9px] md:text-[10px] font-mono text-on-surface-variant">
+                        {player.timeTakenMs ? `${(player.timeTakenMs / 1000).toFixed(2)}s` : '—'}
+                      </span>
                     </div>
                   </div>
-                  <span className="material-symbols-outlined text-xs text-secondary">check</span>
+                  <span className={`text-[10px] md:text-[11px] font-mono font-bold px-1.5 md:px-2 py-0.5 rounded-md shrink-0 ${
+                    player.bonus >= 1
+                      ? 'bg-secondary-container text-secondary'
+                      : 'bg-surface-container-high text-primary'
+                  }`}>
+                    +{player.bonus} bonus
+                  </span>
                 </div>
               ))}
             </div>
-
-            {/* OTHER NON-HIGHLIGHTED PLAYERS */}
-            {responders.others.length > 0 && (
-              <div className="pt-3 border-t border-outline-variant/20">
-                <div className="text-[10px] uppercase font-bold text-on-surface-variant mb-2">Other Responders</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {responders.others.map((otherP) => (
-                    <span
-                      key={otherP.id || otherP.username}
-                      className="px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant/30 text-xs text-on-surface-variant font-medium"
-                    >
-                      {otherP.username}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
           </div>
         )}
 

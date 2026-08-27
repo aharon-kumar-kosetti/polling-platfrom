@@ -79,6 +79,7 @@ const LiveMonitoring = () => {
   };
   const [recentJoinNotice, setRecentJoinNotice] = useState(null);
   const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
+  const [fastestCorrect, setFastestCorrect] = useState([]);
 
   // Fetch session details, question bank, and connect socket
   useEffect(() => {
@@ -205,6 +206,9 @@ const LiveMonitoring = () => {
       if (data && (Array.isArray(data.top3) || Array.isArray(data.others))) {
         setResponders(data);
       }
+      if (Array.isArray(data?.fastestCorrect)) {
+        setFastestCorrect(data.fastestCorrect);
+      }
     };
 
     const handleSettings = (data) => {
@@ -260,6 +264,7 @@ const LiveMonitoring = () => {
 
   const handlePushFromBank = (bankQ) => {
     setIsAnswerRevealed(false);
+    setFastestCorrect([]);
     setBankOpen(false); // pushed → panel returns to widget form
     
     // Add count:0 to options for tracking
@@ -631,61 +636,60 @@ const LiveMonitoring = () => {
                 })}
               </div>
 
-              {/* Top 3 Highlighted Question Responders & Others */}
-              {(responders.top3.length > 0 || responders.others.length > 0) && (
-                <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 mb-6">
+              {/* Top 10 Fastest Fingers — Correct answers ranked by speed */}
+              {(responders.fastestCorrect?.length > 0 || fastestCorrect.length > 0) && (
+                <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 mb-6 animate-slideUp">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-secondary text-sm">bolt</span>
                       <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
-                        Fastest Responders ({responders.totalAnswered})
+                        Fastest Fingers ({(fastestCorrect.length || responders.fastestCorrect?.length || 0)})
                       </span>
                     </div>
-                    <span className="text-[10px] text-on-surface-variant font-bold uppercase">Top 3 Highlighted</span>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase">Correct Only • Bonus Pts</span>
                   </div>
 
-                  {/* Top 3 Highlighted Badges (system palette: lime → neutral → dark) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
-                    {responders.top3.map((player) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                    {(fastestCorrect.length > 0 ? fastestCorrect : responders.fastestCorrect || []).map((player) => (
                       <div
                         key={player.username}
-                        className={`p-2.5 rounded-xl border-2 flex items-center justify-between shadow-sm ${
+                        className={`p-2.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
                           player.rank === 1
                             ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
-                            : player.rank === 2
-                              ? 'bg-surface-container-high border-outline-variant ring-2 ring-outline-variant/20'
-                              : 'bg-surface-container-lowest border-outline-variant/60'
+                            : player.rank <= 3
+                              ? 'bg-surface-container-high border-outline-variant ring-1 ring-outline-variant/20'
+                              : player.rank <= 5
+                                ? 'bg-surface-container-low border-outline-variant/50'
+                                : 'bg-surface-container-lowest border-outline-variant/30'
                         }`}
                       >
-                        <div className="flex items-center gap-2 truncate">
-                          <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                            {player.rank === 1 ? 'emoji_events' : player.rank === 2 ? 'workspace_premium' : 'military_tech'}
-                          </span>
-                          <span className="text-xs font-bold text-primary truncate max-w-[100px]">
-                            {player.username}
-                          </span>
+                        <div className="flex items-center gap-2.5 truncate">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            player.rank === 1 ? 'bg-secondary text-on-secondary'
+                              : player.rank <= 3 ? 'bg-primary text-on-primary'
+                              : 'bg-surface-container-highest text-primary'
+                          }`}>
+                            #{player.rank}
+                          </div>
+                          <div className="truncate">
+                            <span className="text-xs font-bold text-primary truncate block">
+                              {player.username}
+                            </span>
+                            <span className="text-[10px] font-mono text-on-surface-variant">
+                              {player.timeTakenMs ? `${(player.timeTakenMs / 1000).toFixed(2)}s` : '—'}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-bold text-secondary">
-                          {player.rank === 1 ? 'Fastest' : `#${player.rank}`}
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                          player.bonus >= 1
+                            ? 'bg-secondary-container text-secondary'
+                            : 'bg-surface-container-high text-primary'
+                        }`}>
+                          +{player.bonus} bonus
                         </span>
                       </div>
                     ))}
                   </div>
-
-                  {/* Other non-highlighted responders */}
-                  {responders.others.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-outline-variant/20">
-                      <span className="text-[10px] uppercase font-bold text-on-surface-variant mr-1">Others:</span>
-                      {responders.others.map((otherP) => (
-                        <span
-                          key={otherP.username}
-                          className="px-2 py-0.5 rounded-full bg-surface-container-highest text-[11px] text-on-surface-variant font-medium"
-                        >
-                          {otherP.username}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
