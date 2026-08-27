@@ -658,7 +658,39 @@ module.exports = function setupSockets(io) {
         }
       }
 
+      // Fastest Fingers Calculation
+      const correctAnswersList = [];
+      answersMap.forEach((ans) => {
+        if (ans.isCorrect) {
+          correctAnswersList.push(ans);
+        }
+      });
+      // Sort by submission timestamp (fastest first)
+      correctAnswersList.sort((a, b) => a.timestamp - b.timestamp);
+
+      const fastestFingers = correctAnswersList.map((ans, idx) => {
+        let bonus = 0;
+        if (idx < 5) bonus = 1;
+        else if (idx < 10) bonus = 0.5;
+        ans.bonusPoints = bonus;
+        return {
+          username: ans.username,
+          timeTaken: ans.timestamp, // Client could calculate elapsed time if needed
+          rank: idx + 1,
+          bonus
+        };
+      });
+
+      const userBonuses = new Map();
+      correctAnswersList.forEach(ans => {
+        const uKey = (ans.username || ans.participantId).trim().toLowerCase();
+        userBonuses.set(uKey, ans.bonusPoints || 0);
+      });
+
+      const individualUpdates = new Map();
+
       answersMap.forEach((ans, uKey) => {
+        const bonus = userBonuses.get(uKey) || 0;
         allKeys.forEach(k => {
           if (!sessionPlayerScores[k]) sessionPlayerScores[k] = new Map();
           
@@ -683,8 +715,8 @@ module.exports = function setupSockets(io) {
 
           // Points were computed at submit time (marks-based, partial credit for
           // multiple choice). Legacy answers without points fall back to +2/0.
-          const awarded = typeof ans.points === 'number' ? ans.points : (ans.isCorrect ? 2 : 0);
-          pScore.score = Math.round((pScore.score + awarded) * 100) / 100;
+          const awardedBase = typeof ans.points === 'number' ? ans.points : (ans.isCorrect ? 2 : 0);
+          pScore.score = Math.round((pScore.score + awardedBase + bonus) * 100) / 100;
           if (ans.isCorrect) {
             pScore.correctCount += 1;
           } else {
@@ -704,6 +736,7 @@ module.exports = function setupSockets(io) {
           }
 
           sessionPlayerScores[k].set(matchedKey, pScore);
+          individualUpdates.set(matchedKey, { awardedBase, bonusPoint: bonus });
         });
       });
 
@@ -714,7 +747,8 @@ module.exports = function setupSockets(io) {
         correctOptionIds,
         correctOptionTexts,
         questionType: fullQ?.type || 'single_choice',
-        optionsWithCorrectness: fullQ?.options || []
+        optionsWithCorrectness: fullQ?.options || [],
+        fastestFingers: fastestFingers
       };
 
       allKeys.forEach(k => {
@@ -745,12 +779,15 @@ module.exports = function setupSockets(io) {
       // ALSO: Send individual score_update to each player's specific socket
       updatedLeaderboard.forEach(entry => {
         if (entry.socketId) {
+          const updateInfo = individualUpdates.get(entry.id) || { awardedBase: 0, bonusPoint: 0 };
           io.to(entry.socketId).emit('score_update', {
             score: entry.score,
             rank: entry.rank,
             username: entry.username,
             correctOptionId,
-            correctOptionText
+            correctOptionText,
+            awardedBase: updateInfo.awardedBase,
+            bonusPoint: updateInfo.bonusPoint
           });
         }
       });

@@ -39,6 +39,7 @@ const ParticipantLiveQuiz = () => {
 
   const [rank, setRank] = useState(null);
   const [scoreDelta, setScoreDelta] = useState(null);
+  const [fastestFingers, setFastestFingers] = useState([]);
   const currentQIdRef = useRef(null);
 
   // ---- Animated score display: number rolls up/down whenever score changes ----
@@ -69,7 +70,7 @@ const ParticipantLiveQuiz = () => {
   // Gain flash: lime charge-bar under the header + pill glow whenever points arrive
   const [gainFlash, setGainFlash] = useState(false);
   useEffect(() => {
-    if (scoreDelta === null || scoreDelta <= 0) return undefined;
+    if (scoreDelta === null || (scoreDelta.base + (scoreDelta.bonus || 0)) <= 0) return undefined;
     setGainFlash(true);
     const t = setTimeout(() => setGainFlash(false), 1100);
     return () => clearTimeout(t);
@@ -172,6 +173,7 @@ const ParticipantLiveQuiz = () => {
           setIsLocked(!!savedAnswer || savedMulti.length > 0);
           setRevealedInfo(null); // Never reveal answer on a new question until host clicks reveal
           setScoreDelta(null);
+          setFastestFingers([]);
           setResponders(data.responders || { top3: [], others: [], totalAnswered: 0 });
           const timeLimit = incoming.timeLimitSeconds || 30;
           setTimeLeft(timeLimit);
@@ -195,6 +197,9 @@ const ParticipantLiveQuiz = () => {
 
       if (data?.responders) {
         setResponders(data.responders);
+      }
+      if (data?.fastestFingers) {
+        setFastestFingers(data.fastestFingers);
       }
 
       // Try to find our entry in the leaderboard payload
@@ -222,7 +227,7 @@ const ParticipantLiveQuiz = () => {
           ? Math.round((qMarks * pickedSet.length / correctSet.length) * 100) / 100
           : 0;
 
-        setScoreDelta(pickedSet.length > 0 ? earned : null);
+        setScoreDelta(pickedSet.length > 0 ? { base: earned, bonus: 0 } : null);
 
         // Server truth wins when we can find ourselves; optimistic local math otherwise
         if (myEntry) {
@@ -244,7 +249,7 @@ const ParticipantLiveQuiz = () => {
           (data.correctOptionText && String(myPick).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
         );
         const earned = isCorrect ? qMarks : 0;
-        setScoreDelta(earned);
+        setScoreDelta({ base: earned, bonus: 0 });
 
         if (myEntry) {
           applyScore(myEntry);
@@ -265,6 +270,9 @@ const ParticipantLiveQuiz = () => {
       }
       if (data?.rank) {
         setRank(data.rank);
+      }
+      if (data?.awardedBase !== undefined) {
+        setScoreDelta({ base: data.awardedBase, bonus: data.bonusPoint || 0 });
       }
     };
 
@@ -529,15 +537,18 @@ const ParticipantLiveQuiz = () => {
         </div>
       </header>
 
-      {/* Gain strip BELOW the header: delta chip on top, lime charge-bar under it */}
       <div className="relative h-7 shrink-0 pointer-events-none" aria-hidden="true">
         {scoreDelta !== null && (
           <span
             className={`absolute right-4 md:right-12 top-0 text-[11px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-md animate-deltaPop whitespace-nowrap ${
-              scoreDelta > 0 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-on-surface-variant'
+              (scoreDelta.base + (scoreDelta.bonus || 0)) > 0 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-on-surface-variant'
             }`}
           >
-            {scoreDelta > 0 ? `+${fmtNum(scoreDelta)} pts` : '+0 pts'}
+            {(scoreDelta.base + (scoreDelta.bonus || 0)) > 0 
+              ? (scoreDelta.bonus > 0 
+                  ? `+${fmtNum(scoreDelta.base)}+${fmtNum(scoreDelta.bonus)} pts` 
+                  : `+${fmtNum(scoreDelta.base)} pts`) 
+              : '+0 pts'}
           </span>
         )}
         <div
@@ -843,6 +854,46 @@ const ParticipantLiveQuiz = () => {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* FASTEST FINGERS SECTION (Top 10) */}
+        {fastestFingers.length > 0 && (
+          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0 mt-4 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-lg">timer</span>
+                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
+                  Top 10 Fastest Fingers
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              {fastestFingers.slice(0, 10).map((player) => (
+                <div
+                  key={player.username}
+                  className={`p-3 rounded-2xl border-2 flex items-center justify-between shadow-md transition-all ${
+                    player.rank === 1
+                      ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
+                      : 'bg-surface-container-lowest border-outline-variant/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
+                      {player.rank === 1 ? 'emoji_events' : 'workspace_premium'}
+                    </span>
+                    <div className="truncate text-left">
+                      <div className="text-xs font-bold text-primary truncate max-w-[120px]">
+                        {player.username}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-secondary">
+                    {player.bonus > 0 ? `+${player.bonus} Bonus` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

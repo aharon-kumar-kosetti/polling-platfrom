@@ -143,6 +143,26 @@ router.post('/bank', authenticateOrganizer, async (req, res) => {
   }
 });
 
+// DELETE /api/questions/bank/group/:bankName - Delete an entire question bank (ownership-scoped)
+router.delete('/bank/group/:bankName', authenticateOrganizer, async (req, res) => {
+  try {
+    const { bankName } = req.params;
+    const decodedBankName = decodeURIComponent(bankName);
+    const result = await prisma.savedQuestion.deleteMany({
+      where: { bankName: decodedBankName, userId: req.user.userId },
+    });
+
+    res.json({
+      success: true,
+      message: `Deleted ${result.count} question(s) from question bank "${decodedBankName}"`,
+      count: result.count
+    });
+  } catch (error) {
+    console.error('[Questions] Error deleting question bank:', error);
+    res.status(500).json({ message: 'Server error deleting question bank' });
+  }
+});
+
 // DELETE /api/questions/bank/:id - Delete a saved question (ownership-scoped)
 router.delete('/bank/:id', authenticateOrganizer, async (req, res) => {
   try {

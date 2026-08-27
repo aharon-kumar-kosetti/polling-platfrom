@@ -279,6 +279,10 @@ const SessionBuilder = () => {
     setDeleteTarget({ kind: 'bank', id: bankQId, title: target?.text });
   };
 
+  const requestDeleteBankGroup = (bankName, count) => {
+    setDeleteTarget({ kind: 'bank_group', bankName, count });
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -291,6 +295,10 @@ const SessionBuilder = () => {
           setActiveQuestionIndex(Math.max(0, updated.length - 1));
         }
         toast('Question removed from draft.', 'info');
+      } else if (deleteTarget.kind === 'bank_group') {
+        await questionAPI.deleteQuestionBank(deleteTarget.bankName);
+        setBankQuestions(bankQuestions.filter(q => (q.bankName || 'General') !== deleteTarget.bankName));
+        toast(`Question Bank "${deleteTarget.bankName}" deleted.`, 'info');
       } else {
         await questionAPI.deleteSavedQuestion(deleteTarget.id);
         setBankQuestions(bankQuestions.filter(q => q.id !== deleteTarget.id));
@@ -707,7 +715,18 @@ const SessionBuilder = () => {
                 <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-4 custom-scrollbar">
                   {Object.entries(groupedBankQuestions).map(([bankName, qs]) => (
                     <div key={bankName} className="flex flex-col gap-2">
-                      <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{bankName} ({qs.length})</h4>
+                      <div className="flex items-center justify-between group/bankHead">
+                        <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{bankName} ({qs.length})</h4>
+                        <button
+                          onClick={() => requestDeleteBankGroup(bankName, qs.length)}
+                          title={`Delete entire "${bankName}" question bank`}
+                          aria-label={`Delete ${bankName} bank`}
+                          className="opacity-0 group-hover/bankHead:opacity-100 hover:opacity-100 transition-opacity flex items-center gap-1 text-[11px] font-bold text-error/80 hover:text-error hover:bg-error-container/30 px-2 py-0.5 rounded-full border border-error/20"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">delete_sweep</span>
+                          <span>Delete Bank</span>
+                        </button>
+                      </div>
                       {qs.map((bq) => (
                         <div
                           key={bq.id}
@@ -1126,13 +1145,21 @@ const SessionBuilder = () => {
         onConfirm={confirmDelete}
         busy={isDeleting}
         tone="danger"
-        title={deleteTarget?.kind === 'bank' ? 'Delete from Question Bank?' : 'Delete this question?'}
-        message={
-          deleteTarget?.kind === 'bank'
-            ? `"${deleteTarget?.title || 'Untitled question'}" will be permanently removed from your global bank.`
-            : `"${deleteTarget?.title || 'Untitled question'}" will be removed from this session draft.`
+        title={
+          deleteTarget?.kind === 'bank_group'
+            ? `Delete Entire Question Bank "${deleteTarget?.bankName}"?`
+            : deleteTarget?.kind === 'bank'
+              ? 'Delete from Question Bank?'
+              : 'Delete this question?'
         }
-        confirmLabel="Delete"
+        message={
+          deleteTarget?.kind === 'bank_group'
+            ? `All ${deleteTarget?.count || 0} question(s) in "${deleteTarget?.bankName}" will be permanently removed from your global question bank. This action cannot be undone.`
+            : deleteTarget?.kind === 'bank'
+              ? `"${deleteTarget?.title || 'Untitled question'}" will be permanently removed from your global bank.`
+              : `"${deleteTarget?.title || 'Untitled question'}" will be removed from this session draft.`
+        }
+        confirmLabel={deleteTarget?.kind === 'bank_group' ? 'Delete Bank' : 'Delete'}
         cancelLabel="Keep It"
       />
 

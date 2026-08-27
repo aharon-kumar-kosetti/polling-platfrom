@@ -79,6 +79,10 @@ const LiveMonitoring = () => {
   };
   const [recentJoinNotice, setRecentJoinNotice] = useState(null);
   const [responders, setResponders] = useState({ top3: [], others: [], totalAnswered: 0 });
+  const [fastestFingers, setFastestFingers] = useState([]);
+  const [showAllFastestFingers, setShowAllFastestFingers] = useState(false);
+  const [showAllLeaderboard, setShowAllLeaderboard] = useState(false);
+  const [showAllRoster, setShowAllRoster] = useState(false);
 
   // Fetch session details, question bank, and connect socket
   useEffect(() => {
@@ -213,6 +217,12 @@ const LiveMonitoring = () => {
       }
     };
 
+    const handleAnswerRevealed = (data) => {
+      if (data?.fastestFingers) {
+        setFastestFingers(data.fastestFingers);
+      }
+    };
+
     socketManager.on('participants_updated', handleParticipantsUpdated);
     socketManager.on('participant_joined', handleParticipantJoined);
     socketManager.on('participant_left', handleParticipantLeft);
@@ -220,6 +230,7 @@ const LiveMonitoring = () => {
     socketManager.on('leaderboard_updated', handleLeaderboard);
     socketManager.on('question_responders_updated', handleResponders);
     socketManager.on('settings_updated', handleSettings);
+    socketManager.on('answer_revealed', handleAnswerRevealed);
 
     return () => {
       socketManager.off('participants_updated', handleParticipantsUpdated);
@@ -229,6 +240,7 @@ const LiveMonitoring = () => {
       socketManager.off('leaderboard_updated', handleLeaderboard);
       socketManager.off('question_responders_updated', handleResponders);
       socketManager.off('settings_updated', handleSettings);
+      socketManager.off('answer_revealed', handleAnswerRevealed);
       socketManager.disconnect();
     };
   }, [sessionId, pin]);
@@ -260,6 +272,8 @@ const LiveMonitoring = () => {
 
   const handlePushFromBank = (bankQ) => {
     setIsAnswerRevealed(false);
+    setFastestFingers([]);
+    setShowAllFastestFingers(false);
     setBankOpen(false); // pushed → panel returns to widget form
     
     // Add count:0 to options for tracking
@@ -468,10 +482,28 @@ const LiveMonitoring = () => {
                 <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
                   Live Player Roster ({players.length})
                 </span>
+                {players.length > 5 && (
+                  <span className="text-[11px] text-on-surface-variant font-medium ml-1">
+                    ({showAllRoster ? `All ${players.length}` : 'Top 5'})
+                  </span>
+                )}
               </div>
-              <span className="text-xs text-on-surface-variant">
-                Join PIN: <strong className="font-mono text-primary font-bold">{pin}</strong>
-              </span>
+              <div className="flex items-center gap-3">
+                {players.length > 5 && (
+                  <button
+                    onClick={() => setShowAllRoster(!showAllRoster)}
+                    className="text-[11px] font-bold text-secondary hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>{showAllRoster ? 'Show Top 5' : `Show All (${players.length})`}</span>
+                    <span className="material-symbols-outlined text-xs">
+                      {showAllRoster ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
+                )}
+                <span className="text-xs text-on-surface-variant">
+                  Join PIN: <strong className="font-mono text-primary font-bold">{pin}</strong>
+                </span>
+              </div>
             </div>
 
             {players.length === 0 ? (
@@ -496,8 +528,8 @@ const LiveMonitoring = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto py-1">
-                {players.map((player, idx) => (
+              <div className={`flex flex-wrap gap-2 ${showAllRoster ? 'max-h-60' : 'max-h-28'} overflow-y-auto py-1 transition-all`}>
+                {(showAllRoster ? players : players.slice(0, 5)).map((player, idx) => (
                   <div
                     key={player.id || player.socketId || idx}
                     className="flex items-center gap-2 bg-surface-container-low border border-outline-variant/40 rounded-full px-3 py-1 shadow-sm animate-fadeIn"
@@ -511,6 +543,15 @@ const LiveMonitoring = () => {
                     </span>
                   </div>
                 ))}
+                {!showAllRoster && players.length > 5 && (
+                  <button
+                    onClick={() => setShowAllRoster(true)}
+                    className="flex items-center gap-1 bg-surface-container-highest border border-outline-variant/50 rounded-full px-3 py-1 text-[11px] font-bold text-primary hover:bg-surface-container-high transition-colors cursor-pointer"
+                  >
+                    <span>+{players.length - 5} more</span>
+                    <span className="material-symbols-outlined text-xs">expand_more</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -565,7 +606,7 @@ const LiveMonitoring = () => {
                 </div>
               </div>
 
-              <h2 className="font-headline-lg text-xl md:text-2xl text-primary font-bold mb-6">
+              <h2 className="font-headline-lg text-2xl sm:text-3xl lg:text-4xl text-primary font-bold mb-5 leading-tight">
                 {currentQ.text}
               </h2>
 
@@ -576,7 +617,7 @@ const LiveMonitoring = () => {
               )}
 
               {/* Response Bars / Option Breakdown */}
-              <div className="flex flex-col gap-3 mb-6 flex-1">
+              <div className="flex flex-col gap-3.5 mb-6 flex-1">
                 {currentQ.options.map((opt, idx) => {
                   const percentage = totalResponses > 0 ? Math.round(((opt.count || 0) / totalResponses) * 100) : 0;
                   const isOptionCorrect = isAnswerRevealed && (opt.isCorrect === true || opt.isCorrect === 'true');
@@ -588,7 +629,7 @@ const LiveMonitoring = () => {
                   return (
                     <div 
                       key={opt.id || idx}
-                      className={`p-3.5 rounded-2xl border transition-all relative overflow-hidden ${
+                      className={`p-4 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all relative overflow-hidden ${
                         isOptionCorrect
                           ? 'border-secondary bg-secondary-container/20 ring-2 ring-secondary'
                           : 'border-outline-variant/40 bg-surface-container-low'
@@ -602,28 +643,28 @@ const LiveMonitoring = () => {
                         style={{ width: `${percentage}%` }}
                       ></div>
 
-                      <div className="relative z-10 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs uppercase ${
-                            isOptionCorrect ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
+                      <div className="relative z-10 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <span className={`w-9 h-9 md:w-10 md:h-10 rounded-xl md:rounded-2xl flex items-center justify-center font-bold text-sm md:text-base uppercase shrink-0 ${
+                            isOptionCorrect ? 'bg-secondary text-on-secondary shadow-sm' : 'bg-surface-container-highest text-primary'
                           }`}>
                             {opt.id || String.fromCharCode(97 + idx)}
                           </span>
-                          <span className="font-medium text-primary text-sm">{opt.text}</span>
+                          <span className="font-bold text-primary text-base md:text-xl leading-snug truncate">{opt.text}</span>
                           {isOptionCorrect && (
-                            <span className="text-[10px] uppercase font-bold text-secondary bg-secondary-container px-2 py-0.5 rounded-full flex items-center gap-1 select-none">
-                              <span className="material-symbols-outlined text-xs">check</span>
+                            <span className="text-xs uppercase font-bold text-secondary bg-secondary-container px-3 py-1 rounded-full flex items-center gap-1 shrink-0 select-none shadow-sm">
+                              <span className="material-symbols-outlined text-sm">check</span>
                               <span>Correct (+{Math.round(optWorth * 100) / 100})</span>
                             </span>
                           )}
                           {opt.imageUrl && (
-                            <img src={opt.imageUrl} alt="Option thumbnail" className="h-7 w-7 object-cover rounded-md border border-outline-variant/40" />
+                            <img src={opt.imageUrl} alt="Option thumbnail" className="h-10 w-10 object-cover rounded-lg border border-outline-variant/40 shrink-0" />
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 font-mono">
-                          <span className="text-xs font-bold text-on-surface-variant">{opt.count || 0} votes</span>
-                          <span className="font-bold text-sm text-primary">{percentage}%</span>
+                        <div className="flex items-center gap-3.5 font-mono shrink-0">
+                          <span className="text-xs md:text-sm font-bold text-on-surface-variant">{opt.count || 0} votes</span>
+                          <span className="font-extrabold text-base md:text-lg text-primary">{percentage}%</span>
                         </div>
                       </div>
                     </div>
@@ -631,8 +672,53 @@ const LiveMonitoring = () => {
                 })}
               </div>
 
-              {/* Top 3 Highlighted Question Responders & Others */}
-              {(responders.top3.length > 0 || responders.others.length > 0) && (
+              {/* Question Responders / Fastest Fingers */}
+              {isAnswerRevealed && fastestFingers.length > 0 ? (
+                <div 
+                  className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 mb-6 cursor-pointer transition-colors hover:bg-surface-container"
+                  onClick={() => setShowAllFastestFingers(!showAllFastestFingers)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-secondary text-lg">timer</span>
+                      <span className="font-label-md text-sm md:text-base uppercase tracking-wider font-bold text-primary">
+                        Top Fastest Correct Fingers ({fastestFingers.length} total)
+                      </span>
+                    </div>
+                    <span className="text-[10px] md:text-xs text-on-surface-variant font-bold uppercase flex items-center gap-1">
+                      {showAllFastestFingers ? 'Showing All' : 'Showing Top 10'}
+                      <span className="material-symbols-outlined text-sm">{showAllFastestFingers ? 'expand_less' : 'expand_more'}</span>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-2.5">
+                    {(showAllFastestFingers ? fastestFingers : fastestFingers.slice(0, 10)).map((player) => (
+                      <div
+                        key={player.username}
+                        className={`p-3 rounded-xl border-2 flex items-center justify-between shadow-sm ${
+                          player.rank === 1
+                            ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
+                            : player.rank <= 5
+                              ? 'bg-surface-container-high border-secondary/50'
+                              : 'bg-surface-container-lowest border-outline-variant/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
+                            {player.rank === 1 ? 'emoji_events' : player.rank <= 5 ? 'workspace_premium' : 'military_tech'}
+                          </span>
+                          <span className="text-sm font-bold text-primary truncate max-w-[150px]">
+                            {player.username}
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-secondary">
+                          {player.bonus > 0 ? `+${player.bonus}` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (!isAnswerRevealed && (responders.top3.length > 0 || responders.others.length > 0)) ? (
                 <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -643,7 +729,6 @@ const LiveMonitoring = () => {
                     </div>
                     <span className="text-[10px] text-on-surface-variant font-bold uppercase">Top 3 Highlighted</span>
                   </div>
-
                   {/* Top 3 Highlighted Badges (system palette: lime → neutral → dark) */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
                     {responders.top3.map((player) => (
@@ -687,7 +772,7 @@ const LiveMonitoring = () => {
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
 
               {/* Primary Host Actions Bar */}
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-5 border-t border-outline-variant/20">
@@ -722,25 +807,78 @@ const LiveMonitoring = () => {
 
           {/* Live Scoreboard Table */}
           {leaderboard.length > 0 && (
-            <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
-                  Live Player Scoreboard{currentQ ? ` (+${qMarks} marks / correct)` : ''}
-                </span>
-                <span className="text-xs text-on-surface-variant">{leaderboard.length} ranked</span>
+            <div 
+              className="bg-surface-container-lowest rounded-2xl md:rounded-3xl p-5 md:p-6 border border-outline-variant/40 shadow-sm transition-all cursor-pointer hover:border-secondary/40"
+              onClick={() => setShowAllLeaderboard(!showAllLeaderboard)}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-secondary text-xl md:text-2xl">leaderboard</span>
+                    <h3 className="font-display-sm text-base md:text-lg font-bold text-primary uppercase tracking-wider">
+                      LIVE PLAYER SCOREBOARD
+                    </h3>
+                  </div>
+                  <span className="text-xs text-on-surface-variant font-medium mt-0.5 block">
+                    {leaderboard.length > 5 && !showAllLeaderboard 
+                      ? `Showing Top 5 of ${leaderboard.length} ranked players • Click box to view all` 
+                      : `All ${leaderboard.length} ranked players`}
+                  </span>
+                </div>
+                
+                {leaderboard.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowAllLeaderboard(!showAllLeaderboard); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container/60 hover:bg-secondary-container text-on-secondary-container text-xs font-bold transition-all shadow-sm"
+                  >
+                    <span>{showAllLeaderboard ? 'Show Top 5 Only' : `Show All (${leaderboard.length})`}</span>
+                    <span className="material-symbols-outlined text-sm">
+                      {showAllLeaderboard ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                {leaderboard.map((player) => (
-                  <div key={player.id} className="bg-surface-container-low rounded-xl p-2.5 border border-outline-variant/30 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        player.rank === 1 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(showAllLeaderboard ? leaderboard : leaderboard.slice(0, 5)).map((player) => (
+                  <div 
+                    key={player.id || player.username} 
+                    className={`rounded-xl md:rounded-2xl p-3.5 md:p-4 border flex items-center justify-between shadow-sm transition-all ${
+                      player.rank === 1
+                        ? 'bg-secondary-container/30 border-secondary ring-1 ring-secondary/30'
+                        : player.rank <= 3
+                          ? 'bg-surface-container-high border-outline-variant/60'
+                          : 'bg-surface-container-low border-outline-variant/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center text-xs md:text-sm font-bold shrink-0 shadow-sm ${
+                        player.rank === 1 
+                          ? 'bg-secondary text-on-secondary' 
+                          : player.rank === 2
+                            ? 'bg-primary text-on-primary'
+                            : player.rank === 3
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-surface-container-highest text-primary'
                       }`}>
                         #{player.rank}
                       </span>
-                      <span className="text-xs font-bold text-primary truncate max-w-[120px]">{player.username}</span>
+                      <div className="min-w-0">
+                        <span className="text-sm md:text-lg font-bold text-primary truncate block max-w-[180px] sm:max-w-[240px] md:max-w-[300px]">
+                          {player.username}
+                        </span>
+                        {player.rank === 1 && (
+                          <span className="text-[10px] md:text-[11px] font-bold text-secondary flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">emoji_events</span>
+                            Current Leader
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="font-mono text-xs font-bold text-primary">{player.score} pts</span>
+                    <span className="font-mono text-base md:text-xl font-extrabold text-secondary tracking-tight shrink-0 ml-3">
+                      {player.score} pts
+                    </span>
                   </div>
                 ))}
               </div>

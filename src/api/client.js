@@ -229,5 +229,13 @@ export const questionAPI = {
       return { success: true };
     }
     return fetchClient(`/questions/bank/${id}`, { method: 'DELETE' });
+  },
+
+  deleteQuestionBank: async (bankName) => {
+    if (USE_MOCKS) {
+      await delay(300);
+      return { success: true };
+    }
+    return fetchClient(`/questions/bank/group/${encodeURIComponent(bankName)}`, { method: 'DELETE' });
   }
 };
