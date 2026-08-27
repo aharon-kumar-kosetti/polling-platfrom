@@ -240,6 +240,14 @@ router.post('/join', async (req, res) => {
     // Upsert by (session, device): rename-in-place for known devices
     let participant;
     if (deviceId) {
+      // Delete any stale participant records for this device from other sessions
+      await prisma.participant.deleteMany({
+        where: {
+          deviceId,
+          sessionId: { not: session.id }
+        }
+      });
+
       const existing = await prisma.participant.findFirst({
         where: { sessionId: session.id, deviceId },
       });
