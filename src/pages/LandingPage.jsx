@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { buttonClasses } from '../components/ui/Button';
-import hostLoginBg from '../assets/host-login-bg.jpg';
 
 const LandingPage = () => {
   return (
@@ -46,7 +45,7 @@ const LandingPage = () => {
           <div className="w-full lg:w-1/2 relative hidden lg:flex min-h-[400px] lg:min-h-0 lg:h-full max-h-[640px] items-center justify-center animate-slideUp" style={{ animationDelay: '120ms' }}>
             {/* Main Image Card */}
             <div className="relative w-[85%] max-w-[460px] aspect-[4/5] max-h-full rounded-[24px] overflow-hidden paper-border soft-shadow bg-surface-container-lowest z-10 transform rotate-1 transition-transform hover:rotate-0 duration-500 scale-95">
-              <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: `url(${hostLoginBg})`}}></div>
+              <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: 'url("https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2000&auto=format&fit=crop")'}}></div>
 
               {/* Glassmorphism Overlay Element */}
               <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl backdrop-blur-xl bg-surface-container-lowest/70 border border-surface-container-lowest/50 shadow-sm flex items-center justify-between">

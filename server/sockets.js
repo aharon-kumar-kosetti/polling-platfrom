@@ -127,12 +127,8 @@ function getLeaderboard(sessionIdOrPin) {
 function getQuestionResponders(sessionIdOrPin) {
   const relatedKeys = getRelatedRoomKeys(sessionIdOrPin);
   const userMap = new Map(); // usernameKey -> answerRecord
-  let startedAt = null;
 
   for (const k of relatedKeys) {
-    if (activeSessions[k] && activeSessions[k].startedAt) {
-      startedAt = activeSessions[k].startedAt;
-    }
     if (sessionSubmittedAnswers[k]) {
       for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
         const uKey = (ans.username || pId).trim().toLowerCase();
@@ -151,16 +147,13 @@ function getQuestionResponders(sessionIdOrPin) {
     id: a.participantId,
     username: a.username,
     optionId: a.optionId,
-    timeTakenMs: startedAt ? Math.max(0, a.timestamp - startedAt) : 0,
     isHighlighted: true
   }));
 
-  const others = sorted.slice(3).map((a, idx) => ({
-    rank: idx + 4,
+  const others = sorted.slice(3).map(a => ({
     id: a.participantId,
     username: a.username,
     optionId: a.optionId,
-    timeTakenMs: startedAt ? Math.max(0, a.timestamp - startedAt) : 0,
     isHighlighted: false
   }));
 
