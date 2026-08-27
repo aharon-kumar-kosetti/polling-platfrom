@@ -9,12 +9,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: "file:/opt/render/project/src/server/data/dev.db"
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
         sync: false
-    disk:
-      name: sqlite-data
-      mountPath: /opt/render/project/src/server/data
-      sizeGB: 1
+
