@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
+import hostLoginBg from '../assets/host-login-bg.jpg';
 
 const Authentication = () => {
   const { login } = useAuth();
@@ -29,10 +30,9 @@ const Authentication = () => {
     <div className="h-[calc(100vh-80px)] overflow-hidden bg-background text-on-background antialiased flex">
       <div className="hidden lg:flex lg:w-1/2 bg-surface-container relative overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{backgroundImage: "url('https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=2400&auto=format&fit=crop')"}}>
+          className="absolute inset-0 bg-contain bg-no-repeat bg-center"
+          style={{backgroundImage: `url(${hostLoginBg})`}}>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
         <div className="absolute bottom-12 left-12 right-12 z-10 text-white max-w-md select-none">
           <h2 className="font-display-sm text-3xl xl:text-display-sm mb-4 leading-tight drop-shadow-lg">Engage Your Audience Like Never Before.</h2>
           <p className="font-body-lg text-base xl:text-body-lg opacity-90 leading-relaxed">Join thousands of creators hosting interactive quizzes and polls.</p>

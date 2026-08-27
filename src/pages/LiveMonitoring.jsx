@@ -631,8 +631,8 @@ const LiveMonitoring = () => {
                 })}
               </div>
 
-              {/* Top 3 Highlighted Question Responders & Others */}
-              {(responders.top3.length > 0 || responders.others.length > 0) && (
+              {/* Question Responders - All players ranked by time */}
+              {(responders.top3?.length > 0 || responders.others?.length > 0) && (
                 <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 mb-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -641,51 +641,36 @@ const LiveMonitoring = () => {
                         Fastest Responders ({responders.totalAnswered})
                       </span>
                     </div>
-                    <span className="text-[10px] text-on-surface-variant font-bold uppercase">Top 3 Highlighted</span>
                   </div>
 
-                  {/* Top 3 Highlighted Badges (system palette: lime → neutral → dark) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
-                    {responders.top3.map((player) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                    {[...(responders.top3 || []), ...(responders.others || [])].map((player) => (
                       <div
                         key={player.username}
-                        className={`p-2.5 rounded-xl border-2 flex items-center justify-between shadow-sm ${
+                        className={`p-2.5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
                           player.rank === 1
                             ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
-                            : player.rank === 2
-                              ? 'bg-surface-container-high border-outline-variant ring-2 ring-outline-variant/20'
-                              : 'bg-surface-container-lowest border-outline-variant/60'
+                            : player.rank <= 3
+                              ? 'bg-surface-container-high border-outline-variant ring-1 ring-outline-variant/20'
+                              : 'bg-surface-container-lowest border-outline-variant/40'
                         }`}
                       >
-                        <div className="flex items-center gap-2 truncate">
-                          <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                            {player.rank === 1 ? 'emoji_events' : player.rank === 2 ? 'workspace_premium' : 'military_tech'}
-                          </span>
-                          <span className="text-xs font-bold text-primary truncate max-w-[100px]">
+                        <div className="flex items-center gap-2.5 truncate">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            player.rank === 1 ? 'bg-secondary text-on-secondary' : 'bg-surface-container-highest text-primary'
+                          }`}>
+                            #{player.rank}
+                          </div>
+                          <span className="text-xs font-bold text-primary truncate">
                             {player.username}
                           </span>
                         </div>
-                        <span className="text-[10px] font-bold text-secondary">
-                          {player.rank === 1 ? 'Fastest' : `#${player.rank}`}
+                        <span className="text-[11px] font-mono font-bold text-secondary bg-surface-container px-2 py-0.5 rounded-md shrink-0">
+                          {player.timeTakenMs ? `${(player.timeTakenMs / 1000).toFixed(3)}s` : '0.000s'}
                         </span>
                       </div>
                     ))}
                   </div>
-
-                  {/* Other non-highlighted responders */}
-                  {responders.others.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-outline-variant/20">
-                      <span className="text-[10px] uppercase font-bold text-on-surface-variant mr-1">Others:</span>
-                      {responders.others.map((otherP) => (
-                        <span
-                          key={otherP.username}
-                          className="px-2 py-0.5 rounded-full bg-surface-container-highest text-[11px] text-on-surface-variant font-medium"
-                        >
-                          {otherP.username}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
