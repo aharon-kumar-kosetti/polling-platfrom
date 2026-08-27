@@ -127,12 +127,8 @@ function getLeaderboard(sessionIdOrPin) {
 function getQuestionResponders(sessionIdOrPin) {
   const relatedKeys = getRelatedRoomKeys(sessionIdOrPin);
   const userMap = new Map(); // usernameKey -> answerRecord
-  let startedAt = null;
 
   for (const k of relatedKeys) {
-    if (activeSessions[k] && activeSessions[k].startedAt) {
-      startedAt = activeSessions[k].startedAt;
-    }
     if (sessionSubmittedAnswers[k]) {
       for (const [pId, ans] of sessionSubmittedAnswers[k].entries()) {
         const uKey = (ans.username || pId).trim().toLowerCase();
@@ -151,36 +147,19 @@ function getQuestionResponders(sessionIdOrPin) {
     id: a.participantId,
     username: a.username,
     optionId: a.optionId,
-    isCorrect: !!a.isCorrect,
-    timeTakenMs: startedAt ? Math.max(0, a.timestamp - startedAt) : 0,
     isHighlighted: true
   }));
 
-  const others = sorted.slice(3).map((a, idx) => ({
-    rank: idx + 4,
+  const others = sorted.slice(3).map(a => ({
     id: a.participantId,
     username: a.username,
     optionId: a.optionId,
-    isCorrect: !!a.isCorrect,
-    timeTakenMs: startedAt ? Math.max(0, a.timestamp - startedAt) : 0,
     isHighlighted: false
-  }));
-
-  // Top 10 fastest CORRECT responders for "Fastest Fingers" section
-  const correctOnly = sorted.filter(a => !!a.isCorrect);
-  const fastestCorrect = correctOnly.slice(0, 10).map((a, idx) => ({
-    rank: idx + 1,
-    id: a.participantId,
-    username: a.username,
-    timeTakenMs: startedAt ? Math.max(0, a.timestamp - startedAt) : 0,
-    // Bonus: top 5 correct get +1, next 5 get +0.5
-    bonus: idx < 5 ? 1 : 0.5
   }));
 
   return {
     top3,
     others,
-    fastestCorrect,
     totalAnswered: sorted.length
   };
 }
@@ -728,30 +707,6 @@ module.exports = function setupSockets(io) {
         });
       });
 
-      // --- BONUS POINTS for fastest correct responders ---
-      // Compute before building the leaderboard so bonuses appear immediately.
-      if (!alreadyRevealed) {
-        const respondersForBonus = getQuestionResponders(primaryKey);
-        const fastestCorrect = respondersForBonus.fastestCorrect || [];
-
-        fastestCorrect.forEach((fc) => {
-          const uKey = fc.username.trim().toLowerCase();
-          const bonus = fc.bonus; // +1 for top 5, +0.5 for rank 6–10
-
-          allKeys.forEach(k => {
-            if (!sessionPlayerScores[k]) return;
-            // Find the player's score record
-            for (const [scoreId, rec] of sessionPlayerScores[k].entries()) {
-              if (rec.username?.trim().toLowerCase() === uKey || scoreId === fc.id) {
-                rec.score = Math.round((rec.score + bonus) * 100) / 100;
-                rec.bonusAwarded = bonus;
-                break;
-              }
-            }
-          });
-        });
-      }
-
       const revealPayload = {
         questionId: fullQ?.id || 'q_active',
         correctOptionId,
@@ -780,8 +735,7 @@ module.exports = function setupSockets(io) {
         io.to(k).emit('answer_revealed', {
           ...revealPayload,
           leaderboard: updatedLeaderboard,
-          responders: respondersData,
-          fastestCorrect: respondersData.fastestCorrect || []
+          responders: respondersData
         });
         io.to(k).emit('leaderboard_updated', { rankings: updatedLeaderboard });
         io.to(k).emit('participants_updated', currentList);
@@ -791,17 +745,10 @@ module.exports = function setupSockets(io) {
       // ALSO: Send individual score_update to each player's specific socket
       updatedLeaderboard.forEach(entry => {
         if (entry.socketId) {
-          // Check if this player got a bonus
-          let bonus = 0;
-          const fcList = respondersData.fastestCorrect || [];
-          const fcEntry = fcList.find(fc => fc.username?.trim().toLowerCase() === entry.username?.trim().toLowerCase() || fc.id === entry.id);
-          if (fcEntry) bonus = fcEntry.bonus;
-
           io.to(entry.socketId).emit('score_update', {
             score: entry.score,
             rank: entry.rank,
             username: entry.username,
-            bonus,
             correctOptionId,
             correctOptionText
           });
