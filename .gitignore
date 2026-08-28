@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Agent IDE customizations & skills
+.agents/
+skills-lock.json

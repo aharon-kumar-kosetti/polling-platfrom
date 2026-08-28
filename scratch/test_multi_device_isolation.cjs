@@ -1,7 +1,8 @@
 const io = require('socket.io-client');
 
 const SOCKET_URL = 'http://127.0.0.1:3000';
-const ROOM_PIN = 'TEST-3DEV';
+const ROOM_PIN = `ISO_${Date.now()}`;
+const SESSION_ID = `sess_iso_${Date.now()}`;
 
 function delay(ms) {
   return new Promise(r => setTimeout(r, ms));
@@ -23,10 +24,10 @@ async function testMultiDeviceIsolation() {
   console.log('✓ Host and 3 distinct device sockets connected');
 
   // Join room with unique participantId per device
-  hostSocket.emit('join_room', { sessionId: 'sess_3dev', pin: ROOM_PIN, username: 'Host Organizer' });
-  dev1Socket.emit('join_room', { sessionId: 'sess_3dev', pin: ROOM_PIN, username: 'Player 1', participantId: 'p_dev_1' });
-  dev2Socket.emit('join_room', { sessionId: 'sess_3dev', pin: ROOM_PIN, username: 'Player 2', participantId: 'p_dev_2' });
-  dev3Socket.emit('join_room', { sessionId: 'sess_3dev', pin: ROOM_PIN, username: 'Player 3', participantId: 'p_dev_3' });
+  hostSocket.emit('join_room', { sessionId: SESSION_ID, pin: ROOM_PIN, username: 'Host Organizer' });
+  dev1Socket.emit('join_room', { sessionId: SESSION_ID, pin: ROOM_PIN, username: 'Player 1', participantId: 'p_dev_1' });
+  dev2Socket.emit('join_room', { sessionId: SESSION_ID, pin: ROOM_PIN, username: 'Player 2', participantId: 'p_dev_2' });
+  dev3Socket.emit('join_room', { sessionId: SESSION_ID, pin: ROOM_PIN, username: 'Player 3', participantId: 'p_dev_3' });
 
   await delay(300);
 
@@ -45,7 +46,7 @@ async function testMultiDeviceIsolation() {
 
   console.log('→ Host pushes Question 1');
   hostSocket.emit('organizer:next_question', {
-    sessionId: 'sess_3dev',
+    sessionId: SESSION_ID,
     pin: ROOM_PIN,
     question: q1
   });
@@ -58,7 +59,7 @@ async function testMultiDeviceIsolation() {
     optionId: 'b',
     username: 'Player 1',
     participantId: 'p_dev_1',
-    sessionId: 'sess_3dev',
+    sessionId: SESSION_ID,
     pin: ROOM_PIN
   });
 
@@ -68,7 +69,7 @@ async function testMultiDeviceIsolation() {
     optionId: 'a',
     username: 'Player 2',
     participantId: 'p_dev_2',
-    sessionId: 'sess_3dev',
+    sessionId: SESSION_ID,
     pin: ROOM_PIN
   });
 
@@ -78,7 +79,7 @@ async function testMultiDeviceIsolation() {
     optionId: 'c',
     username: 'Player 3',
     participantId: 'p_dev_3',
-    sessionId: 'sess_3dev',
+    sessionId: SESSION_ID,
     pin: ROOM_PIN
   });
 
@@ -92,7 +93,7 @@ async function testMultiDeviceIsolation() {
   });
 
   hostSocket.emit('organizer:reveal_answer', {
-    sessionId: 'sess_3dev',
+    sessionId: SESSION_ID,
     pin: ROOM_PIN,
     question: q1
   });
@@ -106,7 +107,7 @@ async function testMultiDeviceIsolation() {
   console.log(`Q1 Results => Device 1 (Wrong): ${dev1Score} pts, Device 2 (Correct): ${dev2Score} pts, Device 3 (Wrong): ${dev3Score} pts`);
 
   if (dev1Score !== 0) throw new Error(`Device 1 expected 0 pts, got ${dev1Score}`);
-  if (dev2Score !== 2) throw new Error(`Device 2 expected 2 pts, got ${dev2Score}`);
+  if (dev2Score !== 3) throw new Error(`Device 2 expected 3 pts, got ${dev2Score}`);
   if (dev3Score !== 0) throw new Error(`Device 3 expected 0 pts, got ${dev3Score}`);
 
   console.log('🎉 MULTI-DEVICE 100% ISOLATION TEST PASSED SUCCESSFULLY!');
