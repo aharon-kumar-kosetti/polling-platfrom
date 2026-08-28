@@ -557,7 +557,7 @@ const ParticipantLiveQuiz = () => {
       </div>
 
       {/* Main Question Arena — everything centered, fits viewport, no scroll */}
-      <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 md:px-6 flex flex-col items-center justify-center gap-2.5 md:gap-5 z-10 overflow-hidden">
+      <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 md:px-6 flex flex-col items-center justify-start gap-4 md:gap-5 z-10 overflow-y-auto pt-4 pb-8">
 
         {/* Compact Timer + Type Meta Row */}
         <div className="flex items-center gap-3 md:gap-4 shrink-0">
@@ -607,7 +607,7 @@ const ParticipantLiveQuiz = () => {
         </div>
 
         {/* Interactive Answer Option Grid — staggered entrance per question */}
-        <div key={question.id} className="w-full grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3.5 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar">
+        <div key={question.id} className="w-full grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3.5 shrink-0">
           {(question.options || []).map((opt, idx) => {
             const choiceId = opt.id || opt.text;
             const norm = (v) => String(v).trim().toLowerCase();
@@ -792,9 +792,9 @@ const ParticipantLiveQuiz = () => {
           )}
         </div>
 
-        {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION (desktop — hidden on mobile to guarantee zero-scroll play) */}
+        {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION */}
         {(responders.top3.length > 0 || responders.others.length > 0) && (
-          <div className="hidden md:block w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0">
+          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-4 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0">
             
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
