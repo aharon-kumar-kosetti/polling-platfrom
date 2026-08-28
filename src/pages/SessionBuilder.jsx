@@ -24,6 +24,18 @@ const MARKS_OPTIONS = [
 
 const DRAFT_KEY = 'quizcore_builder_draft';
 
+const createDefaultQuestion = () => ({
+  id: Date.now(),
+  text: '',
+  type: 'single_choice',
+  marks: 2,
+  imageUrl: '',
+  options: [
+    { id: 'a', text: 'Option 1', isCorrect: true, imageUrl: '' },
+    { id: 'b', text: 'Option 2', isCorrect: false, imageUrl: '' },
+  ]
+});
+
 const SessionBuilder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -283,6 +295,10 @@ const SessionBuilder = () => {
     setDeleteTarget({ kind: 'bank_group', bankName, count });
   };
 
+  const requestClearAllDrafts = () => {
+    setDeleteTarget({ kind: 'clear_drafts', count: questions.length });
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -295,6 +311,22 @@ const SessionBuilder = () => {
           setActiveQuestionIndex(Math.max(0, updated.length - 1));
         }
         toast('Question removed from draft.', 'info');
+      } else if (deleteTarget.kind === 'clear_drafts') {
+        const resetQ = [createDefaultQuestion()];
+        setQuestions(resetQ);
+        setActiveQuestionIndex(0);
+        localStorage.removeItem(DRAFT_KEY);
+        suppressAutosaveRef.current = true;
+        lastSnapshotRef.current = JSON.stringify(resetQ);
+        if (id) {
+          try {
+            await sessionAPI.updateSessionQuestions(id, []);
+          } catch (err) {
+            console.warn('Failed to clear session questions on server:', err);
+          }
+        }
+        setAutosaveState('idle');
+        toast('All draft questions cleared.', 'info');
       } else if (deleteTarget.kind === 'bank_group') {
         await questionAPI.deleteQuestionBank(deleteTarget.bankName);
         setBankQuestions(bankQuestions.filter(q => (q.bankName || 'General') !== deleteTarget.bankName));
@@ -572,6 +604,26 @@ const SessionBuilder = () => {
             </span>
 
             <Button
+              variant="outline-danger"
+              size="sm"
+              icon="delete_sweep"
+              onClick={requestClearAllDrafts}
+              title="Clear all draft questions"
+              className="hidden sm:inline-flex"
+            >
+              Clear All Drafts
+            </Button>
+            <Button
+              variant="outline-danger"
+              size="sm"
+              icon="delete_sweep"
+              onClick={requestClearAllDrafts}
+              title="Clear all draft questions"
+              className="sm:hidden !px-3"
+              aria-label="Clear All Drafts"
+            />
+
+            <Button
               variant="outline"
               size="sm"
               icon="upload_file"
@@ -634,15 +686,25 @@ const SessionBuilder = () => {
 
             {activeTab === 'drafts' ? (
               <div key="drafts-panel" className="animate-tabIn flex flex-col flex-1 overflow-hidden">
-                <div className="p-4 border-b border-outline-variant/20 flex justify-between items-center">
+                <div className="p-4 border-b border-outline-variant/20 flex justify-between items-center gap-2">
                   <span className="font-label-md text-xs font-bold text-primary uppercase tracking-wider">Active List</span>
-                  <button
-                    onClick={handleAddQuestion}
-                    className="w-7 h-7 rounded-full bg-surface-variant text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-all shadow-sm press-effect"
-                    title="Add new question"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">add</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={requestClearAllDrafts}
+                      className="text-[11px] font-label-md font-bold text-error hover:text-error hover:bg-error-container/40 px-2.5 py-1 rounded-full border border-error/30 flex items-center gap-1 transition-all press-effect shadow-xs"
+                      title="Clear all draft questions"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">delete_sweep</span>
+                      <span>Clear All Drafts</span>
+                    </button>
+                    <button
+                      onClick={handleAddQuestion}
+                      className="w-7 h-7 rounded-full bg-surface-variant text-primary flex items-center justify-center hover:bg-primary hover:text-on-primary transition-all shadow-sm press-effect"
+                      title="Add new question"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
@@ -1146,21 +1208,31 @@ const SessionBuilder = () => {
         busy={isDeleting}
         tone="danger"
         title={
-          deleteTarget?.kind === 'bank_group'
-            ? `Delete Entire Question Bank "${deleteTarget?.bankName}"?`
-            : deleteTarget?.kind === 'bank'
-              ? 'Delete from Question Bank?'
-              : 'Delete this question?'
+          deleteTarget?.kind === 'clear_drafts'
+            ? 'Clear All Draft Questions?'
+            : deleteTarget?.kind === 'bank_group'
+              ? `Delete Entire Question Bank "${deleteTarget?.bankName}"?`
+              : deleteTarget?.kind === 'bank'
+                ? 'Delete from Question Bank?'
+                : 'Delete this question?'
         }
         message={
-          deleteTarget?.kind === 'bank_group'
-            ? `All ${deleteTarget?.count || 0} question(s) in "${deleteTarget?.bankName}" will be permanently removed from your global question bank. This action cannot be undone.`
-            : deleteTarget?.kind === 'bank'
-              ? `"${deleteTarget?.title || 'Untitled question'}" will be permanently removed from your global bank.`
-              : `"${deleteTarget?.title || 'Untitled question'}" will be removed from this session draft.`
+          deleteTarget?.kind === 'clear_drafts'
+            ? `Are you sure you want to clear all ${deleteTarget?.count || questions.length} draft question(s)? This will reset your current draft session.`
+            : deleteTarget?.kind === 'bank_group'
+              ? `All ${deleteTarget?.count || 0} question(s) in "${deleteTarget?.bankName}" will be permanently removed from your global question bank. This action cannot be undone.`
+              : deleteTarget?.kind === 'bank'
+                ? `"${deleteTarget?.title || 'Untitled question'}" will be permanently removed from your global bank.`
+                : `"${deleteTarget?.title || 'Untitled question'}" will be removed from this session draft.`
         }
-        confirmLabel={deleteTarget?.kind === 'bank_group' ? 'Delete Bank' : 'Delete'}
-        cancelLabel="Keep It"
+        confirmLabel={
+          deleteTarget?.kind === 'clear_drafts'
+            ? 'Clear All Drafts'
+            : deleteTarget?.kind === 'bank_group'
+              ? 'Delete Bank'
+              : 'Delete'
+        }
+        cancelLabel={deleteTarget?.kind === 'clear_drafts' ? 'Cancel' : 'Keep It'}
       />
 
     </div>
