@@ -41,6 +41,7 @@ const ParticipantLiveQuiz = () => {
   const [scoreDelta, setScoreDelta] = useState(null);
   const [fastestFingers, setFastestFingers] = useState([]);
   const currentQIdRef = useRef(null);
+  const mainScrollRef = useRef(null);
 
   // ---- Animated score display: number rolls up/down whenever score changes ----
   const [displayScore, setDisplayScore] = useState(score);
@@ -120,18 +121,15 @@ const ParticipantLiveQuiz = () => {
     socketManager.connect(token);
     socketManager.emit('join_room', { sessionId, pin, username: curUName, participantId: curPId });
 
-    // Helper: find own entry in a leaderboard array
+    // Helper: find own entry in a leaderboard array strictly by participantId / socketId
     const findMyEntry = (entries) => {
       if (!Array.isArray(entries)) return null;
       const myId = participantIdRef.current;
       const mySocketId = socketManager.getSocket()?.id;
-      const myName = usernameRef.current?.trim().toLowerCase();
 
-      return entries.find(p =>
-        (p.id && p.id === myId) ||
-        (p.socketId && mySocketId && p.socketId === mySocketId) ||
-        (p.username && p.username.trim().toLowerCase() === myName)
-      ) || null;
+      return entries.find(p => p.id && p.id === myId)
+        || entries.find(p => p.socketId && mySocketId && p.socketId === mySocketId)
+        || null;
     };
 
     // Helper: apply score/rank from a matched entry
@@ -243,10 +241,19 @@ const ParticipantLiveQuiz = () => {
 
       const myPick = selectedOptionRef.current;
       if (myPick) {
+        const pickStr = String(myPick).trim().toLowerCase();
+        const corrIdStr = data.correctOptionId ? String(data.correctOptionId).trim().toLowerCase() : null;
+        const corrTextStr = data.correctOptionText ? String(data.correctOptionText).trim().toLowerCase() : null;
+        const correctIds = (data.correctOptionIds || []).map(c => String(c).trim().toLowerCase());
+        const correctTexts = (data.optionsWithCorrectness || [])
+          .filter(o => o.isCorrect === true || o.isCorrect === 'true')
+          .map(o => String(o.id || o.text).trim().toLowerCase());
+
         const isCorrect = (
-          myPick === data.correctOptionId ||
-          String(myPick).toLowerCase() === String(data.correctOptionId).toLowerCase() ||
-          (data.correctOptionText && String(myPick).trim().toLowerCase() === String(data.correctOptionText).trim().toLowerCase())
+          (corrIdStr && pickStr === corrIdStr) ||
+          (corrTextStr && pickStr === corrTextStr) ||
+          correctIds.includes(pickStr) ||
+          correctTexts.includes(pickStr)
         );
         const earned = isCorrect ? qMarks : 0;
         setScoreDelta({ base: earned, bonus: 0 });
@@ -264,6 +271,9 @@ const ParticipantLiveQuiz = () => {
     // Direct per-player score push from server (most reliable path)
     const handleScoreUpdate = (data) => {
       console.log('[Socket] Direct score_update received:', data);
+      if (data?.participantId && data.participantId !== participantIdRef.current) {
+        return;
+      }
       if (data?.score !== undefined) {
         setScore(data.score);
         sessionStorage.setItem('participant_score', String(data.score));
@@ -390,10 +400,17 @@ const ParticipantLiveQuiz = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, question?.id, revealedInfo]);
 
-  // 1. NO ACTIVE QUESTION SCREEN: fixed-viewport, centered, no scroll
+  // Auto-scroll to top when a new question arrives or answer is revealed
+  useEffect(() => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [question?.id, revealedInfo]);
+
+  // 1. NO ACTIVE QUESTION SCREEN
   if (!question) {
     return (
-      <div className="bg-background text-on-background h-[100dvh] overflow-hidden flex flex-col items-center justify-between p-4 sm:p-6 pt-safe pb-safe antialiased">
+      <div className="bg-background text-on-background min-h-[100dvh] h-[100dvh] overflow-y-auto flex flex-col items-center justify-between p-4 sm:p-6 pt-safe pb-safe antialiased custom-scrollbar">
         <header className="w-full max-w-4xl shrink-0 flex items-center justify-between py-3 border-b border-outline-variant/20">
           <Link to="/" className="font-display-sm text-xl font-bold flex items-center gap-2 select-none">
             <span className="material-symbols-outlined text-secondary">token</span>
@@ -491,7 +508,7 @@ const ParticipantLiveQuiz = () => {
       : (isCorrectChoice ? qMarks : 0);
 
   return (
-    <div className="bg-background text-on-background h-[100dvh] overflow-hidden flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container relative pt-safe pb-safe">
+    <div className="bg-background text-on-background min-h-[100dvh] h-[100dvh] overflow-hidden flex flex-col antialiased selection:bg-secondary-container selection:text-on-secondary-container relative pt-safe pb-safe">
 
       {/* Background ambient blobs */}
       <div className="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-secondary-container/20 blur-3xl pointer-events-none -z-10"></div>
@@ -556,347 +573,355 @@ const ParticipantLiveQuiz = () => {
         />
       </div>
 
-      {/* Main Question Arena — everything centered, fits viewport, no scroll */}
-      <main className="flex-1 min-h-0 w-full max-w-4xl mx-auto px-4 md:px-6 flex flex-col items-center justify-start gap-4 md:gap-5 z-10 overflow-y-auto pt-4 pb-8">
+      {/* Main Question Arena — smoothly scrollable, natural vertical flow */}
+      <main
+        ref={mainScrollRef}
+        className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain custom-scrollbar px-3.5 sm:px-6 py-3 sm:py-4 z-10"
+      >
+        <div className="w-full max-w-4xl mx-auto flex flex-col items-center justify-start gap-3 sm:gap-4 md:gap-5 pb-16">
 
-        {/* Compact Timer + Type Meta Row */}
-        <div className="flex items-center gap-3 md:gap-4 shrink-0">
-          {!revealedInfo ? (
-            <div className="relative w-14 h-14 md:w-20 md:h-20 flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" className="stroke-surface-container-highest" strokeWidth="7" fill="transparent" />
-                <circle
-                  cx="50" cy="50" r="40"
-                  className={`transition-all duration-1000 ${timeLeft <= 5 ? 'stroke-error' : 'stroke-secondary'}`}
-                  strokeWidth="7"
-                  strokeDasharray="251"
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                  fill="transparent"
-                />
-              </svg>
-              <span className={`absolute font-mono text-base md:text-xl font-bold ${timeLeft <= 5 ? 'text-error animate-ping' : 'text-primary'}`}>
-                {timeLeft}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-secondary text-on-secondary rounded-full font-label-md text-xs font-bold shadow-md animate-fadeIn">
-              <span className="material-symbols-outlined text-sm">visibility</span>
-              <span>Answer Revealed</span>
-            </div>
-          )}
-
-          <div className="flex flex-col items-start gap-0.5 text-left">
-            <span className="text-[10px] md:text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
-              {question.type ? question.type.replace('_', ' ') : 'Live Question'}
-            </span>
-            <span className="text-[10px] md:text-xs font-label-md text-secondary font-bold uppercase tracking-wider">
-              {isMultiQuestion ? 'Select ALL correct options' : `${qMarks} marks for the correct answer`}
-            </span>
-          </div>
-        </div>
-
-        {/* Question Text & Image */}
-        <div key={`q-${question.id}`} className="flex flex-col items-center gap-2 md:gap-3 text-center w-full shrink-0 animate-slideUp">
-          <h1 className="font-headline-lg text-base sm:text-lg md:text-3xl text-primary font-bold max-w-2xl leading-snug line-clamp-3 select-none">
-            {question.text}
-          </h1>
-          {question.imageUrl && (
-            <img src={question.imageUrl} alt="Question" className="max-h-24 md:max-h-44 object-contain rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
-          )}
-        </div>
-
-        {/* Interactive Answer Option Grid — staggered entrance per question */}
-        <div key={question.id} className="w-full grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3.5 shrink-0">
-          {(question.options || []).map((opt, idx) => {
-            const choiceId = opt.id || opt.text;
-            const norm = (v) => String(v).trim().toLowerCase();
-            const isMulti = question.type === 'multiple_choice';
-
-            // Selection state (single pick OR multi picks)
-            const isSelected = isMulti
-              ? selectedOptions.some((s) => norm(s) === norm(choiceId))
-              : (selectedOption === choiceId || selectedOption === opt.id || selectedOption === opt.text);
-
-            // Correctness matching strictly when host revealed (supports multiple correct options)
-            const correctIds = revealedInfo
-              ? (Array.isArray(revealedInfo.correctOptionIds) && revealedInfo.correctOptionIds.length > 0
-                  ? revealedInfo.correctOptionIds
-                  : (revealedInfo.optionsWithCorrectness || [])
-                      .filter((o) => o.isCorrect === true || o.isCorrect === 'true')
-                      .map((o) => o.id || o.text))
-              : [];
-            const isThisOptionCorrect = revealedInfo && correctIds.some((c) => norm(c) === norm(choiceId));
-
-            let cardStyle = 'border-outline-variant/40 bg-surface-container-lowest hover:border-primary hover:-translate-y-px cursor-pointer';
-
-            if (revealedInfo) {
-              if (isThisOptionCorrect && isSelected) {
-                // Clean correct pick: crisp lime border on white, no heavy fills
-                cardStyle = 'border-secondary bg-white ring-1 ring-secondary/50 shadow-md';
-              } else if (isThisOptionCorrect) {
-                // Correct option the player missed — show it clearly but softer
-                cardStyle = 'border-secondary/40 bg-secondary-container/10';
-              } else if (isSelected && !isThisOptionCorrect) {
-                cardStyle = 'border-error bg-white ring-1 ring-error/60 shadow-md';
-              } else {
-                cardStyle = 'border-outline-variant/20 bg-surface-container-lowest opacity-40';
-              }
-            } else if (isSelected && isMulti) {
-              // Multi-select: picked but NOT locked yet — player can still toggle
-              cardStyle = 'border-primary bg-primary/5 shadow-md ring-2 ring-primary/30';
-            } else if (isSelected) {
-              // Single: Selected / Locked before reveal (neutral lock style - NOT green!)
-              cardStyle = 'border-primary bg-surface-container-high shadow-md scale-[0.98] ring-2 ring-primary/40';
-            } else if (isLocked) {
-              cardStyle = 'border-outline-variant/30 bg-surface-container-lowest opacity-60 cursor-not-allowed';
-            }
-
-            return (
-              <button
-                key={idx}
-                onClick={() => handleSelectOption(choiceId)}
-                // Prevent pointer-focus so tapping never scroll-jumps the arena on mobile
-                onMouseDown={(e) => e.preventDefault()}
-                disabled={isLocked || !!revealedInfo}
-                style={{ animationDelay: `${idx * 70}ms` }}
-                className={`relative px-3 py-2.5 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all duration-200 flex items-center gap-2.5 md:gap-4 group overflow-hidden text-left shrink-0 touch-manipulation animate-riseUp ${cardStyle}`}
-              >
-                {/* Visual badge icon */}
-                {revealedInfo ? (
-                  isThisOptionCorrect ? (
-                    <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center animate-fadeIn shadow-md">
-                      <span className="material-symbols-outlined text-base md:text-[18px]">check_circle</span>
-                    </div>
-                  ) : isSelected ? (
-                    <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-error text-on-error flex items-center justify-center animate-fadeIn shadow-md">
-                      <span className="material-symbols-outlined text-base md:text-[18px]">cancel</span>
-                    </div>
-                  ) : null
-                ) : isSelected && isMulti ? (
-                  <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-primary text-on-primary flex items-center justify-center animate-fadeIn shadow-md">
-                    <span className="material-symbols-outlined text-base md:text-[18px]">check</span>
-                  </div>
-                ) : isSelected ? (
-                  <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-primary text-on-primary flex items-center gap-1 text-[10px] md:text-[11px] font-bold animate-fadeIn">
-                    <span className="material-symbols-outlined text-xs">lock</span>
-                    <span>Locked</span>
-                  </div>
-                ) : null}
-
-                <div className={`w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors ${
-                  revealedInfo && isThisOptionCorrect
-                    ? 'bg-secondary text-on-secondary'
-                    : revealedInfo && isSelected && !isThisOptionCorrect
-                      ? 'bg-error text-on-error'
-                      : isSelected
-                        ? 'bg-primary text-on-primary'
-                        : 'bg-surface-container-highest text-primary'
-                }`}>
-                  {String.fromCharCode(97 + idx)}
-                </div>
-
-                <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-1 pr-10 md:pr-14 min-w-0">
-                  <span className="font-bold text-sm md:text-lg leading-tight text-primary line-clamp-2">
-                    {opt.text}
-                  </span>
-                  <div className="flex flex-col">
-                    {revealedInfo && isThisOptionCorrect && (
-                      <div className="text-[10px] md:text-[11px] font-bold text-secondary mt-0.5 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">check_circle</span>
-                        {isSelected
-                          ? `Your Correct Pick (+${Math.round((qMarks / Math.max(revealedCorrectIds.length, 1)) * 100) / 100})`
-                          : 'Correct Answer'}
-                      </div>
-                    )}
-                    {revealedInfo && isSelected && !isThisOptionCorrect && (
-                      <div className="text-[10px] md:text-[11px] font-bold text-error mt-0.5 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-xs">cancel</span>
-                        Your Pick (+0)
-                      </div>
-                    )}
-                    {!revealedInfo && isSelected && isMulti && (
-                      <div className="hidden md:flex text-[11px] font-bold text-primary/70 mt-0.5">
-                        Selected — tap again to deselect
-                      </div>
-                    )}
-                    {!revealedInfo && isSelected && !isMulti && (
-                      <div className="hidden md:flex text-[11px] font-bold text-primary/70 mt-0.5">
-                        Your Submitted Choice (Locked)
-                      </div>
-                    )}
-                  </div>
-                  {opt.imageUrl && (
-                    <img src={opt.imageUrl} alt="Option" className="hidden sm:block h-10 w-10 object-cover rounded-lg shrink-0 border border-outline-variant/40" />
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Lock / Result Feedback Bar */}
-        <div key={`fb-${question.id}-${revealedInfo ? 'r' : 'w'}`} className="w-full max-w-xl text-center shrink-0 animate-slideUp">
-          {revealedInfo ? (
-            <div className={`p-3 md:p-4 rounded-2xl border text-xs md:text-sm font-bold flex flex-col items-center gap-1 animate-fadeIn shadow-sm ${
-              isCorrectChoice
-                ? 'bg-secondary-container/40 border-secondary text-secondary'
-                : earnedPoints > 0
-                  ? 'bg-secondary-container/20 border-secondary/40 text-on-secondary-container'
-                  : hasPicked
-                    ? 'bg-error/10 border-error/40 text-error'
-                    : 'bg-surface-container-high border-outline-variant/40 text-primary'
-            }`}>
-              <div className="flex items-center gap-2 text-sm md:text-base">
-                <span className="material-symbols-outlined">
-                  {isCorrectChoice ? 'celebration' : earnedPoints > 0 ? 'trending_up' : hasPicked ? 'sentiment_dissatisfied' : 'info'}
-                </span>
-                <span>
-                  {isCorrectChoice
-                    ? `Perfect! All picks correct — +${earnedPoints} pts!`
-                    : earnedPoints > 0
-                      ? `Partial credit: ${selectedOptions.length}/${revealedCorrectIds.length} correct — +${earnedPoints} pts`
-                      : hasPicked
-                        ? (wrongPick ? 'A wrong pick voids the question (+0). Keep going!' : 'Incorrect Answer (+0). Keep going!')
-                        : 'Time is up! You did not answer.'}
+          {/* Compact Timer + Type Meta Row */}
+          <div className="flex items-center gap-3 md:gap-4 shrink-0">
+            {!revealedInfo ? (
+              <div className="relative w-14 h-14 md:w-20 md:h-20 flex items-center justify-center">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" className="stroke-surface-container-highest" strokeWidth="7" fill="transparent" />
+                  <circle
+                    cx="50" cy="50" r="40"
+                    className={`transition-all duration-1000 ${timeLeft <= 5 ? 'stroke-error' : 'stroke-secondary'}`}
+                    strokeWidth="7"
+                    strokeDasharray="251"
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    fill="transparent"
+                  />
+                </svg>
+                <span className={`absolute font-mono text-base md:text-xl font-bold ${timeLeft <= 5 ? 'text-error animate-ping' : 'text-primary'}`}>
+                  {timeLeft}
                 </span>
               </div>
-              <span className="text-[11px] md:text-xs text-on-surface-variant font-normal">
-                Total Score: <strong className="text-primary font-mono font-bold">{score} pts</strong> • Waiting for next question...
-              </span>
-            </div>
-          ) : isLocked ? (
-            <div className="p-2.5 md:p-3.5 bg-surface-container-low rounded-2xl border border-outline-variant/40 text-[11px] md:text-xs font-bold text-primary flex items-center justify-center gap-2 animate-fadeIn">
-              <span className="material-symbols-outlined text-secondary text-sm">lock</span>
-              <span>
-                {isMultiQuestion
-                  ? `${selectedOptions.length} option${selectedOptions.length > 1 ? 's' : ''} locked in! Waiting for host to reveal.`
-                  : 'Answer Locked! Waiting for host to reveal the correct answer.'}
-              </span>
-            </div>
-          ) : isMultiQuestion ? (
-            <button
-              onClick={handleSubmitMulti}
-              disabled={selectedOptions.length === 0}
-              className="w-full px-6 py-3 md:py-4 rounded-full font-label-md text-sm font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer select-none hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none animate-glowPulse bg-secondary-container text-on-secondary-container border-2 border-secondary-container hover:bg-secondary hover:text-on-secondary"
-            >
-              <span className="material-symbols-outlined text-base">lock</span>
-              {selectedOptions.length > 0
-                ? `Lock In Answer (${selectedOptions.length} selected)`
-                : 'Select all options that apply'}
-            </button>
-          ) : (
-            <div className="text-[11px] md:text-xs text-on-surface-variant font-label-md">
-              Tap an option above to submit your answer
-            </div>
-          )}
-        </div>
-
-        {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION */}
-        {(responders.top3.length > 0 || responders.others.length > 0) && (
-          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-4 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0">
-            
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary text-lg">bolt</span>
-                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
-                  Question Responders ({responders.totalAnswered})
-                </span>
-              </div>
-              <span className="text-[11px] text-on-surface-variant font-medium">Top 3 Fastest Highlighted</span>
-            </div>
-
-            {/* TOP 3 HIGHLIGHTED CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-              {responders.top3.map((player) => (
-                <div
-                  key={player.id || player.username}
-                  className={`p-3 rounded-2xl border-2 flex items-center justify-between shadow-md transition-all ${
-                    player.rank === 1
-                      ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
-                      : player.rank === 2
-                        ? 'bg-surface-container-high border-outline-variant ring-2 ring-outline-variant/20'
-                        : 'bg-surface-container-lowest border-outline-variant/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                      {player.rank === 1 ? 'emoji_events' : player.rank === 2 ? 'workspace_premium' : 'military_tech'}
-                    </span>
-                    <div className="truncate text-left">
-                      <div className="text-xs font-bold text-primary truncate max-w-[90px]">
-                        {player.username}
-                      </div>
-                      <div className="text-[10px] font-bold text-secondary">
-                        {player.rank === 1 ? 'Fastest' : `#${player.rank} Quick`}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="material-symbols-outlined text-xs text-secondary">check</span>
-                </div>
-              ))}
-            </div>
-
-            {/* OTHER NON-HIGHLIGHTED PLAYERS */}
-            {responders.others.length > 0 && (
-              <div className="pt-3 border-t border-outline-variant/20">
-                <div className="text-[10px] uppercase font-bold text-on-surface-variant mb-2">Other Responders</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {responders.others.map((otherP) => (
-                    <span
-                      key={otherP.id || otherP.username}
-                      className="px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant/30 text-xs text-on-surface-variant font-medium"
-                    >
-                      {otherP.username}
-                    </span>
-                  ))}
-                </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-secondary text-on-secondary rounded-full font-label-md text-xs font-bold shadow-md animate-fadeIn">
+                <span className="material-symbols-outlined text-sm">visibility</span>
+                <span>Answer Revealed</span>
               </div>
             )}
 
-          </div>
-        )}
-
-        {/* FASTEST FINGERS SECTION (Top 10) */}
-        {fastestFingers.length > 0 && (
-          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0 mt-4 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary text-lg">timer</span>
-                <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
-                  Top 10 Fastest Fingers
-                </span>
-              </div>
+            <div className="flex flex-col items-start gap-0.5 text-left">
+              <span className="text-[10px] md:text-xs font-label-md text-on-surface-variant uppercase tracking-wider">
+                {question.type ? question.type.replace('_', ' ') : 'Live Question'}
+              </span>
+              <span className="text-[10px] md:text-xs font-label-md text-secondary font-bold uppercase tracking-wider">
+                {isMultiQuestion ? 'Select ALL correct options' : `${qMarks} marks for the correct answer`}
+              </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              {fastestFingers.slice(0, 10).map((player) => (
-                <div
-                  key={player.username}
-                  className={`p-3 rounded-2xl border-2 flex items-center justify-between shadow-md transition-all ${
-                    player.rank === 1
-                      ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
-                      : 'bg-surface-container-lowest border-outline-variant/60'
-                  }`}
+          </div>
+
+          {/* Question Text & Image */}
+          <div key={`q-${question.id}`} className="flex flex-col items-center gap-2 md:gap-3 text-center w-full shrink-0 animate-slideUp">
+            <h1 className="font-headline-lg text-base sm:text-lg md:text-3xl text-primary font-bold max-w-2xl leading-snug select-none">
+              {question.text}
+            </h1>
+            {question.imageUrl && (
+              <img src={question.imageUrl} alt="Question" className="max-h-28 md:max-h-44 object-contain rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
+            )}
+          </div>
+
+          {/* Interactive Answer Option Grid */}
+          <div key={question.id} className="w-full grid grid-cols-1 md:grid-cols-2 gap-2.5 md:gap-3.5">
+            {(question.options || []).map((opt, idx) => {
+              const choiceId = opt.id || opt.text;
+              const norm = (v) => String(v).trim().toLowerCase();
+              const isMulti = question.type === 'multiple_choice';
+
+              // Selection state (single pick OR multi picks)
+              const isSelected = isMulti
+                ? selectedOptions.some((s) => norm(s) === norm(choiceId))
+                : (selectedOption === choiceId || selectedOption === opt.id || selectedOption === opt.text);
+
+              // Correctness matching strictly when host revealed (supports multiple correct options)
+              const correctIds = revealedInfo
+                ? (Array.isArray(revealedInfo.correctOptionIds) && revealedInfo.correctOptionIds.length > 0
+                    ? revealedInfo.correctOptionIds
+                    : (revealedInfo.optionsWithCorrectness || [])
+                        .filter((o) => o.isCorrect === true || o.isCorrect === 'true')
+                        .map((o) => o.id || o.text))
+                : [];
+              const isThisOptionCorrect = revealedInfo && correctIds.some((c) => norm(c) === norm(choiceId));
+
+              let cardStyle = 'border-outline-variant/40 bg-surface-container-lowest hover:border-primary hover:-translate-y-px cursor-pointer';
+
+              if (revealedInfo) {
+                if (isThisOptionCorrect && isSelected) {
+                  // Clean correct pick: crisp lime border on white, no heavy fills
+                  cardStyle = 'border-secondary bg-white ring-1 ring-secondary/50 shadow-md';
+                } else if (isThisOptionCorrect) {
+                  // Correct option the player missed — show it clearly but softer
+                  cardStyle = 'border-secondary/40 bg-secondary-container/10';
+                } else if (isSelected && !isThisOptionCorrect) {
+                  cardStyle = 'border-error bg-white ring-1 ring-error/60 shadow-md';
+                } else {
+                  cardStyle = 'border-outline-variant/20 bg-surface-container-lowest opacity-40';
+                }
+              } else if (isSelected && isMulti) {
+                // Multi-select: picked but NOT locked yet — player can still toggle
+                cardStyle = 'border-primary bg-primary/5 shadow-md ring-2 ring-primary/30';
+              } else if (isSelected) {
+                // Single: Selected / Locked before reveal (neutral lock style - NOT green!)
+                cardStyle = 'border-primary bg-surface-container-high shadow-md scale-[0.98] ring-2 ring-primary/40';
+              } else if (isLocked) {
+                cardStyle = 'border-outline-variant/30 bg-surface-container-lowest opacity-60 cursor-not-allowed';
+              }
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectOption(choiceId)}
+                  // Prevent pointer-focus so tapping never scroll-jumps the arena on mobile
+                  onMouseDown={(e) => e.preventDefault()}
+                  disabled={isLocked || !!revealedInfo}
+                  style={{ animationDelay: `${idx * 70}ms` }}
+                  className={`relative px-3.5 py-3 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all duration-200 flex items-center gap-2.5 md:gap-4 group overflow-hidden text-left shrink-0 touch-manipulation animate-riseUp ${cardStyle}`}
                 >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
-                      {player.rank === 1 ? 'emoji_events' : 'workspace_premium'}
-                    </span>
-                    <div className="truncate text-left">
-                      <div className="text-xs font-bold text-primary truncate max-w-[120px]">
-                        {player.username}
+                  {/* Visual badge icon */}
+                  {revealedInfo ? (
+                    isThisOptionCorrect ? (
+                      <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center animate-fadeIn shadow-md">
+                        <span className="material-symbols-outlined text-base md:text-[18px]">check_circle</span>
                       </div>
+                    ) : isSelected ? (
+                      <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-error text-on-error flex items-center justify-center animate-fadeIn shadow-md">
+                        <span className="material-symbols-outlined text-base md:text-[18px]">cancel</span>
+                      </div>
+                    ) : null
+                  ) : isSelected && isMulti ? (
+                    <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-6 h-6 md:w-7 md:h-7 rounded-full bg-primary text-on-primary flex items-center justify-center animate-fadeIn shadow-md">
+                      <span className="material-symbols-outlined text-base md:text-[18px]">check</span>
                     </div>
+                  ) : isSelected ? (
+                    <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-primary text-on-primary flex items-center gap-1 text-[10px] md:text-[11px] font-bold animate-fadeIn">
+                      <span className="material-symbols-outlined text-xs">lock</span>
+                      <span>Locked</span>
+                    </div>
+                  ) : null}
+
+                  <div className={`w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 transition-colors ${
+                    revealedInfo && isThisOptionCorrect
+                      ? 'bg-secondary text-on-secondary'
+                      : revealedInfo && isSelected && !isThisOptionCorrect
+                        ? 'bg-error text-on-error'
+                        : isSelected
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-surface-container-highest text-primary'
+                  }`}>
+                    {String.fromCharCode(97 + idx)}
                   </div>
-                  <span className="text-xs font-bold text-secondary">
-                    {player.bonus > 0 ? `+${player.bonus} Bonus` : ''}
+
+                  <div className="flex flex-1 flex-col sm:flex-row sm:items-center justify-between text-left gap-1 pr-10 md:pr-14 min-w-0">
+                    <span className="font-bold text-sm md:text-lg leading-tight text-primary">
+                      {opt.text}
+                    </span>
+                    <div className="flex flex-col">
+                      {revealedInfo && isThisOptionCorrect && (
+                        <div className="text-[10px] md:text-[11px] font-bold text-secondary mt-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">check_circle</span>
+                          {isSelected
+                            ? `Your Correct Pick (+${Math.round((qMarks / Math.max(revealedCorrectIds.length, 1)) * 100) / 100})`
+                            : 'Correct Answer'}
+                        </div>
+                      )}
+                      {revealedInfo && isSelected && !isThisOptionCorrect && (
+                        <div className="text-[10px] md:text-[11px] font-bold text-error mt-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">cancel</span>
+                          Your Pick (+0)
+                        </div>
+                      )}
+                      {!revealedInfo && isSelected && isMulti && (
+                        <div className="hidden md:flex text-[11px] font-bold text-primary/70 mt-0.5">
+                          Selected — tap again to deselect
+                        </div>
+                      )}
+                      {!revealedInfo && isSelected && !isMulti && (
+                        <div className="hidden md:flex text-[11px] font-bold text-primary/70 mt-0.5">
+                          Your Submitted Choice (Locked)
+                        </div>
+                      )}
+                    </div>
+                    {opt.imageUrl && (
+                      <img src={opt.imageUrl} alt="Option" className="hidden sm:block h-10 w-10 object-cover rounded-lg shrink-0 border border-outline-variant/40" />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lock / Result Feedback Bar */}
+          <div key={`fb-${question.id}-${revealedInfo ? 'r' : 'w'}`} className="w-full max-w-xl text-center shrink-0 animate-slideUp">
+            {revealedInfo ? (
+              <div className={`p-3 md:p-4 rounded-2xl border text-xs md:text-sm font-bold flex flex-col items-center gap-1 animate-fadeIn shadow-sm ${
+                isCorrectChoice
+                  ? 'bg-secondary-container/40 border-secondary text-secondary'
+                  : earnedPoints > 0
+                    ? 'bg-secondary-container/20 border-secondary/40 text-on-secondary-container'
+                    : hasPicked
+                      ? 'bg-error/10 border-error/40 text-error'
+                      : 'bg-surface-container-high border-outline-variant/40 text-primary'
+              }`}>
+                <div className="flex items-center gap-2 text-sm md:text-base">
+                  <span className="material-symbols-outlined">
+                    {isCorrectChoice ? 'celebration' : earnedPoints > 0 ? 'trending_up' : hasPicked ? 'sentiment_dissatisfied' : 'info'}
+                  </span>
+                  <span>
+                    {isCorrectChoice
+                      ? `Perfect! All picks correct — +${earnedPoints} pts!`
+                      : earnedPoints > 0
+                        ? `Partial credit: ${selectedOptions.length}/${revealedCorrectIds.length} correct — +${earnedPoints} pts`
+                        : hasPicked
+                          ? (wrongPick ? 'A wrong pick voids the question (+0). Keep going!' : 'Incorrect Answer (+0). Keep going!')
+                          : 'Time is up! You did not answer.'}
                   </span>
                 </div>
-              ))}
-            </div>
+                <span className="text-[11px] md:text-xs text-on-surface-variant font-normal">
+                  Total Score: <strong className="text-primary font-mono font-bold">{score} pts</strong> • Waiting for next question...
+                </span>
+              </div>
+            ) : isLocked ? (
+              <div className="p-2.5 md:p-3.5 bg-surface-container-low rounded-2xl border border-outline-variant/40 text-[11px] md:text-xs font-bold text-primary flex items-center justify-center gap-2 animate-fadeIn">
+                <span className="material-symbols-outlined text-secondary text-sm">lock</span>
+                <span>
+                  {isMultiQuestion
+                    ? `${selectedOptions.length} option${selectedOptions.length > 1 ? 's' : ''} locked in! Waiting for host to reveal.`
+                    : 'Answer Locked! Waiting for host to reveal the correct answer.'}
+                </span>
+              </div>
+            ) : isMultiQuestion ? (
+              <button
+                onClick={handleSubmitMulti}
+                disabled={selectedOptions.length === 0}
+                className="w-full px-6 py-3 md:py-4 rounded-full font-label-md text-sm font-bold transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer select-none hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none animate-glowPulse bg-secondary-container text-on-secondary-container border-2 border-secondary-container hover:bg-secondary hover:text-on-secondary"
+              >
+                <span className="material-symbols-outlined text-base">lock</span>
+                {selectedOptions.length > 0
+                  ? `Lock In Answer (${selectedOptions.length} selected)`
+                  : 'Select all options that apply'}
+              </button>
+            ) : (
+              <div className="text-[11px] md:text-xs text-on-surface-variant font-label-md">
+                Tap an option above to submit your answer
+              </div>
+            )}
           </div>
-        )}
 
+          {/* TOP 3 HIGHLIGHTED PLAYERS & OTHERS SECTION */}
+          {(responders.top3.length > 0 || responders.others.length > 0) && (
+            <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-4 sm:p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0">
+              
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary text-lg">bolt</span>
+                  <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
+                    Question Responders ({responders.totalAnswered})
+                  </span>
+                </div>
+                <span className="text-[11px] text-on-surface-variant font-medium">Top 3 Fastest Highlighted</span>
+              </div>
+
+              {/* TOP 3 HIGHLIGHTED CARDS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-3">
+                {responders.top3.map((player) => (
+                  <div
+                    key={player.id || player.username}
+                    className={`p-2.5 sm:p-3 rounded-2xl border-2 flex items-center justify-between shadow-sm transition-all ${
+                      player.rank === 1
+                        ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
+                        : player.rank === 2
+                          ? 'bg-surface-container-high border-outline-variant ring-2 ring-outline-variant/20'
+                          : 'bg-surface-container-lowest border-outline-variant/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span className={`material-symbols-outlined icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
+                        {player.rank === 1 ? 'emoji_events' : player.rank === 2 ? 'workspace_premium' : 'military_tech'}
+                      </span>
+                      <div className="truncate text-left">
+                        <div className="text-xs font-bold text-primary truncate max-w-[90px]">
+                          {player.username}
+                        </div>
+                        <div className="text-[10px] font-bold text-secondary">
+                          {player.rank === 1 ? 'Fastest' : `#${player.rank} Quick`}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="material-symbols-outlined text-xs text-secondary">check</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* OTHER NON-HIGHLIGHTED PLAYERS */}
+              {responders.others.length > 0 && (
+                <div className="pt-3 border-t border-outline-variant/20">
+                  <div className="text-[10px] uppercase font-bold text-on-surface-variant mb-2">Other Responders</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {responders.others.map((otherP) => (
+                      <span
+                        key={otherP.id || otherP.username}
+                        className="px-2.5 py-1 rounded-full bg-surface-container-low border border-outline-variant/30 text-xs text-on-surface-variant font-medium"
+                      >
+                        {otherP.username}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* FASTEST FINGERS SECTION (Top 10) */}
+          {fastestFingers.length > 0 && (
+            <div className="w-full max-w-2xl bg-surface-container-lowest rounded-3xl p-4 sm:p-5 md:p-6 border border-outline-variant/30 shadow-sm animate-fadeIn shrink-0 mt-1 mb-6">
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary text-lg">timer</span>
+                  <span className="font-label-md text-xs uppercase tracking-wider font-bold text-primary">
+                    Top 10 Fastest Fingers
+                  </span>
+                </div>
+                <span className="text-[11px] text-on-surface-variant font-medium font-mono">
+                  {Math.min(fastestFingers.length, 10)} {Math.min(fastestFingers.length, 10) === 1 ? 'player' : 'players'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                {fastestFingers.slice(0, 10).map((player, idx) => (
+                  <div
+                    key={player.username || idx}
+                    className={`p-2.5 sm:p-3 rounded-2xl border-2 flex items-center justify-between shadow-sm transition-all ${
+                      player.rank === 1
+                        ? 'bg-secondary-container/40 border-secondary ring-2 ring-secondary/20'
+                        : 'bg-surface-container-lowest border-outline-variant/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span className={`material-symbols-outlined text-base sm:text-lg icon-fill ${player.rank === 1 ? 'text-secondary' : 'text-on-surface-variant'}`}>
+                        {player.rank === 1 ? 'emoji_events' : 'workspace_premium'}
+                      </span>
+                      <div className="truncate text-left">
+                        <div className="text-xs font-bold text-primary truncate max-w-[120px]">
+                          {player.username}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-secondary">
+                      {player.bonus > 0 ? `+${player.bonus} Bonus` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
       </main>
     </div>
   );
