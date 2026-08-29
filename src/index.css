@@ -351,3 +351,53 @@
 @keyframes shimmer {
   100% { transform: translateX(100%); }
 }
+
+/* ---------- Quill Rich Text ---------- */
+.quill-content {
+  font-family: inherit;
+}
+.quill-content p, .quill-content ul, .quill-content ol {
+  margin: 0;
+  padding: 0;
+}
+.quill-content ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+}
+.quill-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+}
+.ql-font-arial { font-family: 'Arial', sans-serif; }
+.ql-font-calibri { font-family: 'Calibri', sans-serif; }
+.ql-font-verdana { font-family: 'Verdana', sans-serif; }
+.ql-font-tahoma { font-family: 'Tahoma', sans-serif; }
+.ql-font-georgia { font-family: 'Georgia', serif; }
+.ql-font-times-new-roman { font-family: 'Times New Roman', serif; }
+.ql-font-trebuchet-ms { font-family: 'Trebuchet MS', sans-serif; }
+.ql-font-helvetica { font-family: 'Helvetica', sans-serif; }
+.ql-font-inter { font-family: 'Inter', sans-serif; }
+.ql-font-roboto { font-family: 'Roboto', sans-serif; }
+.ql-font-open-sans { font-family: 'Open Sans', sans-serif; }
+.ql-font-poppins { font-family: 'Poppins', sans-serif; }
+
+.ql-toolbar.ql-snow {
+  border: none !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 1rem 1rem 0 0;
+  padding: 8px 16px !important;
+  background: var(--color-surface-container, #f3f3f3);
+}
+.ql-container.ql-snow {
+  border: none !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+}
+.ql-editor {
+  min-height: 120px;
+  padding: 16px !important;
+}
+.ql-editor p {
+  margin-bottom: 0;
+}
+

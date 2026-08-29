@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactQuill, { Quill } from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import { questionAPI, sessionAPI } from '../api/client';
 import Sidebar from '../components/ui/Sidebar';
@@ -14,6 +16,35 @@ const TYPE_OPTIONS = [
   { value: 'multiple_choice', label: 'Multiple Choice' },
   { value: 'true_false', label: 'True / False' },
 ];
+
+const Font = Quill.import('formats/font');
+Font.whitelist = ['arial', 'calibri', 'verdana', 'tahoma', 'georgia', 'times-new-roman', 'trebuchet-ms', 'helvetica', 'inter', 'roboto', 'open-sans', 'poppins'];
+Quill.register(Font, true);
+
+const customColors = [
+  '#000000', // Black
+  '#1565C0', // Dark Blue
+  '#4A90E2', // Blue
+  '#2E7D32', // Dark Green
+  '#4CAF50', // Green
+  '#7B1FA2', // Purple
+  '#00897B', // Teal
+  '#F57C00', // Orange
+  '#C62828', // Dark Red
+  '#5D4037', // Brown
+];
+
+const quillModules = {
+  toolbar: [
+    [{ 'font': Font.whitelist }],
+    [{ 'size': ['small', false, 'large', 'huge'] }],
+    ['bold', 'italic', 'underline'],
+    [{ 'color': customColors }],
+    [{ 'list': 'bullet' }, { 'list': 'ordered' }],
+    [{ 'align': [] }],
+    ['clean']
+  ]
+};
 
 const MARKS_OPTIONS = [
   { value: 1, label: '1 Mark' },
@@ -161,7 +192,7 @@ const SessionBuilder = () => {
       if (id) {
         setAutosaveState('saving');
         try {
-          await sessionAPI.updateSessionQuestions(id, questions.filter(q => q.text && q.text.trim() !== ''));
+          await sessionAPI.updateSessionQuestions(id, questions.filter(q => q.text && q.text.replace(/<[^>]*>?/gm, '').trim() !== ''));
           lastSnapshotRef.current = snapshot;
           setAutosaveState('saved');
         } catch (e) {
@@ -186,7 +217,7 @@ const SessionBuilder = () => {
   const handleAddQuestion = () => {
     const newQ = {
       id: Date.now(),
-      text: 'New Question Title',
+      text: '', // Start with blank instead of 'New Question Title'
       type: 'single_choice',
       marks: 2,
       imageUrl: '',
@@ -371,7 +402,7 @@ const SessionBuilder = () => {
   };
 
   const handleSaveSession = async () => {
-    const validQuestions = questions.filter(q => q.text && q.text.trim() !== '');
+    const validQuestions = questions.filter(q => q.text && q.text.replace(/<[^>]*>?/gm, '').trim() !== '');
     if (validQuestions.length === 0) {
       toast('Please write at least one question before saving.', 'error');
       return;
@@ -400,7 +431,7 @@ const SessionBuilder = () => {
   };
 
   const handleSaveSingleToBank = async (q) => {
-    if (!q.text || q.text.trim() === '') {
+    if (!q.text || q.text.replace(/<[^>]*>?/gm, '').trim() === '') {
       toast('Write the question prompt before saving it to the bank.', 'error');
       return;
     }
@@ -421,7 +452,7 @@ const SessionBuilder = () => {
 
     try {
       if (bankModalAction === 'bulk') {
-        const validQuestions = questions.filter(q => q.text && q.text.trim() !== '');
+        const validQuestions = questions.filter(q => q.text && q.text.replace(/<[^>]*>?/gm, '').trim() !== '');
         // Apply bankName to all questions
         const questionsWithBank = validQuestions.map(q => ({ ...q, bankName: finalBankName }));
 
@@ -736,7 +767,10 @@ const SessionBuilder = () => {
                               {q.marks || 2}m
                             </span>
                           </div>
-                          <p className="text-xs text-primary font-medium truncate">{q.text || 'Untitled Question'}</p>
+                          <div className="flex gap-1 items-start text-xs text-primary font-medium truncate">
+                            <span className="font-bold">Q{idx + 1}: </span>
+                            <div dangerouslySetInnerHTML={{ __html: q.text || 'Untitled Question' }} />
+                          </div>
                         </div>
 
                         {/* Refined delete button: always visible when active, slides in on group hover */}
@@ -800,7 +834,7 @@ const SessionBuilder = () => {
                               {bq.marks || 1} {((bq.marks || 1) === 1) ? 'Mark' : 'Marks'}
                             </span>
                           </div>
-                          <span className="text-xs font-medium line-clamp-2 pr-1">{bq.text || 'Untitled'}</span>
+                          <div className="text-xs font-medium line-clamp-2 pr-1" dangerouslySetInnerHTML={{ __html: bq.text || 'Untitled' }} />
 
                           {/* Action cluster: edit / add / delete */}
                           <div className="absolute top-1/2 -translate-y-1/2 right-2 flex opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 bg-surface-container-lowest shadow-sm rounded-full overflow-hidden border border-outline-variant/30">
@@ -898,15 +932,18 @@ const SessionBuilder = () => {
               {/* Question Textarea */}
               <div className="mb-4">
                 <label className="block text-xs uppercase font-label-md text-on-surface-variant mb-2 font-bold">
-                  Question Prompt
+                  <span className="text-primary text-lg">Question {activeQuestionIndex + 1}</span> Prompt
                 </label>
-                <textarea
-                  rows={3}
-                  value={currentQ.text}
-                  onChange={(e) => handleUpdateQuestion('text', e.target.value)}
-                  placeholder="Type your question here..."
-                  className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 font-headline-lg text-xl text-primary focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none resize-none mb-3 transition-shadow"
-                />
+                <div className="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-2xl mb-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-shadow overflow-hidden">
+                  <ReactQuill
+                    theme="snow"
+                    value={currentQ.text}
+                    onChange={(content) => handleUpdateQuestion('text', content)}
+                    modules={quillModules}
+                    placeholder="Type your question here..."
+                    className="font-headline-lg text-xl text-primary"
+                  />
+                </div>
 
                 {/* Question Image Input */}
                 <div className="flex items-center gap-2">
@@ -1112,7 +1149,7 @@ const SessionBuilder = () => {
             <div>
               <h3 className="text-lg font-bold text-on-surface">Choose a Question Bank</h3>
               <p className="text-sm text-on-surface-variant">
-                {bankModalAction === 'single' ? 'This question will be saved into the bank you pick.' : `Your ${questions.filter(q => q.text?.trim()).length} question(s) will be saved into the bank you pick.`}
+                {bankModalAction === 'single' ? 'This question will be saved into the bank you pick.' : `Your ${questions.filter(q => q.text && q.text.replace(/<[^>]*>?/gm, '').trim()).length} question(s) will be saved into the bank you pick.`}
               </p>
             </div>
           </div>

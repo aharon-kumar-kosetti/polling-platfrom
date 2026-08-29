@@ -279,6 +279,7 @@ const LiveMonitoring = () => {
     // Add count:0 to options for tracking
     const newLiveQ = {
       ...bankQ,
+      questionNumber: questions.length + 1,
       options: bankQ.options.map(o => ({ ...o, count: 0 }))
     };
     
@@ -293,7 +294,7 @@ const LiveMonitoring = () => {
     socketManager.emit('organizer:next_question', {
       sessionId,
       pin,
-      question: newLiveQ
+      question: { ...newLiveQ, questionNumber: newIndex + 1 }
     });
   };
 
@@ -606,9 +607,10 @@ const LiveMonitoring = () => {
                 </div>
               </div>
 
-              <h2 className="font-headline-lg text-2xl sm:text-3xl lg:text-4xl text-primary font-bold mb-5 leading-tight">
-                {currentQ.text}
-              </h2>
+              <div 
+                className="quill-content font-headline-lg text-2xl sm:text-3xl lg:text-4xl text-primary font-bold mb-5 leading-tight"
+                dangerouslySetInnerHTML={{ __html: currentQ.text }}
+              />
 
               {currentQ.imageUrl && (
                 <div className="mb-6 rounded-2xl overflow-hidden border border-outline-variant/30 max-h-56 flex justify-center bg-surface-container-low">
@@ -944,7 +946,7 @@ const LiveMonitoring = () => {
                       </span>
                       <span className="text-xs font-mono text-on-surface-variant">{bankQ.timeLimitSeconds || 30}s</span>
                     </div>
-                    <p className="text-sm font-bold text-primary line-clamp-2">{bankQ.text}</p>
+                    <div className="quill-content text-sm font-bold text-primary line-clamp-2" dangerouslySetInnerHTML={{ __html: bankQ.text }} />
 
                     <Button
                       variant="primary"

@@ -619,9 +619,13 @@ const ParticipantLiveQuiz = () => {
 
           {/* Question Text & Image */}
           <div key={`q-${question.id}`} className="flex flex-col items-center gap-2 md:gap-3 text-center w-full shrink-0 animate-slideUp">
-            <h1 className="font-headline-lg text-base sm:text-lg md:text-3xl text-primary font-bold max-w-2xl leading-snug select-none">
-              {question.text}
-            </h1>
+            <h2 className="text-xl md:text-2xl font-bold text-primary mb-1">
+              Question {question.questionNumber || 1}
+            </h2>
+            <div 
+              className="quill-content font-headline-lg text-base sm:text-lg md:text-3xl text-primary font-bold max-w-2xl leading-snug select-none"
+              dangerouslySetInnerHTML={{ __html: question.text }}
+            />
             {question.imageUrl && (
               <img src={question.imageUrl} alt="Question" className="max-h-28 md:max-h-44 object-contain rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
             )}
