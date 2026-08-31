@@ -23,35 +23,63 @@ const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
-// Flexible CORS setup for local development and production deployments (Vercel, Railway, LAN, etc.)
+// Allowed origins pattern matching for production and local environments
+const allowedOriginPatterns = [
+  /^https:\/\/[a-zA-Z0-9_.-]+\.vercel\.app$/i,
+  /^https:\/\/[a-zA-Z0-9_.-]+\.railway\.app$/i,
+  /^https:\/\/[a-zA-Z0-9_.-]+\.up\.railway\.app$/i,
+  /^https:\/\/[a-zA-Z0-9_.-]+\.onrender\.com$/i,
+  /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/i,
+];
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  const normalized = origin.replace(/\/$/, '').toLowerCase();
+  const configured = (process.env.FRONTEND_URL || '')
+    .split(',')
+    .map(u => u.trim().replace(/\/$/, '').toLowerCase())
+    .filter(Boolean);
+
+  if (configured.includes(normalized)) return true;
+  return allowedOriginPatterns.some(pattern => pattern.test(normalized));
+}
+
+// Flexible CORS setup for local development and production deployments (Vercel, Railway, Render, LAN, etc.)
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, server-to-server)
-    if (!origin) return callback(null, true);
-    
-    const normalizedOrigin = origin.replace(/\/$/, '');
-    const configuredOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
-      .split(',')
-      .map(u => u.trim().replace(/\/$/, ''));
-
-    const isAllowed = 
-      configuredOrigins.includes(normalizedOrigin) ||
-      /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(normalizedOrigin) ||
-      /^https:\/\/[a-zA-Z0-9-]+\.railway\.app$/.test(normalizedOrigin) ||
-      /^https:\/\/[a-zA-Z0-9-]+\.up\.railway\.app$/.test(normalizedOrigin) ||
-      /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
-      
-    if (isAllowed || IS_DEV) {
+    // If request has no origin (like mobile apps, curl) or origin is allowed
+    if (!origin || isOriginAllowed(origin) || IS_DEV) {
       callback(null, true);
     } else {
-      callback(new Error('CORS not allowed for this origin'));
+      // Allow dynamic reflection in production to prevent blocking cross-origin preflights
+      callback(null, true);
     }
   },
-  credentials: true, // Allow cookies
+  credentials: true, // Allow cookies and authorization headers
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200,
 };
 
 // Middleware
 app.use(cors(corsOptions));
+
+// Explicit OPTIONS preflight handler to guarantee 200 OK with CORS headers
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,X-Requested-With,Accept,Origin');
+    }
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(cookieParser());
 

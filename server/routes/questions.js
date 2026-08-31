@@ -9,7 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_for_now';
 
 // Middleware to extract and verify organizer JWT
 const authenticateOrganizer = async (req, res, next) => {
-  const token = req.cookies?.access_token;
+  const authHeader = req.headers.authorization;
+  const token = req.cookies?.access_token || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null);
   if (token) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);

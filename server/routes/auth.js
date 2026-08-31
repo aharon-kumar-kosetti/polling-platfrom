@@ -48,7 +48,7 @@ router.post('/login', async (req, res) => {
     // Generate JWT
     const token = jwt.sign({ userId: user.id, role: 'organizer' }, JWT_SECRET, { expiresIn: '1d' });
 
-    // Set HttpOnly cookie (sameSite: 'none' required for cross-domain Vercel <-> Render in production)
+    // Set HttpOnly cookie (sameSite: 'none' required for cross-domain Vercel <-> Railway/Render in production)
     res.cookie('access_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -58,6 +58,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       success: true,
+      token,
       user: { id: user.id, email: user.email, name: user.name }
     });
   } catch (error) {
@@ -79,7 +80,8 @@ router.post('/logout', (req, res) => {
 // GET /api/auth/me
 router.get('/me', async (req, res) => {
   try {
-    const token = req.cookies.access_token;
+    const authHeader = req.headers.authorization;
+    const token = req.cookies?.access_token || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null);
     if (!token) return res.status(401).json({ message: 'Not authenticated' });
 
     const decoded = jwt.verify(token, JWT_SECRET);

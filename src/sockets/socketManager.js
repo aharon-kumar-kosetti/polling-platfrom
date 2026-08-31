@@ -12,16 +12,18 @@ class SocketManager {
   }
 
   connect(token = null) {
+    const activeToken = token || (typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null);
+
     if (this.socket) {
-      if (token && (!this.socket.auth || this.socket.auth.token !== token)) {
-        this.socket.auth = { token };
+      if (activeToken && (!this.socket.auth || this.socket.auth.token !== activeToken)) {
+        this.socket.auth = { token: activeToken };
         this.socket.disconnect().connect();
       }
       return;
     }
 
     this.socket = io(SOCKET_URL, {
-      auth: { token },
+      auth: { token: activeToken },
       withCredentials: true,
       autoConnect: true,
       transports: ['websocket', 'polling'],

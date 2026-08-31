@@ -1,19 +1,25 @@
 // client.js
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-// Helper to make fetch requests with standard options (like credentials for HttpOnly cookies)
+// Helper to make fetch requests with standard options (like credentials for HttpOnly cookies and Bearer tokens)
 async function fetchClient(endpoint, options = {}) {
   const timeoutMs = options.timeout || 5000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const config = {
     ...options,
     signal: options.signal || controller.signal,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     credentials: 'include', // Important for sending/receiving HttpOnly cookies
   };
   // Remove non-fetch keys
@@ -76,16 +82,23 @@ export const authAPI = {
       }
       throw new Error("Invalid credentials");
     }
-    return fetchClient('/auth/login', {
+    const data = await fetchClient('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    if (data?.token && typeof localStorage !== 'undefined') {
+      localStorage.setItem('auth_token', data.token);
+    }
+    return data;
   },
   
   logout: async () => {
     if (USE_MOCKS) {
       await delay(400);
       return { success: true };
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('auth_token');
     }
     return fetchClient('/auth/logout', { method: 'POST' });
   },
