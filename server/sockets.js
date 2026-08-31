@@ -1,6 +1,5 @@
 // sockets.js
 const jwt = require('jsonwebtoken');
-const cookie = require('cookie');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_for_now';
 
 const activeSessions = {};
