@@ -109,7 +109,7 @@ setupSockets(io);
 
 // Database client & Admin User Initialization
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 let prisma;
 try {
   prisma = new PrismaClient();
