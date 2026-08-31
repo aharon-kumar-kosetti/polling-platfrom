@@ -1,4 +1,6 @@
 // index.js
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -10,7 +12,6 @@ const sessionRoutes = require('./routes/sessions');
 const formRoutes = require('./routes/forms');
 const questionRoutes = require('./routes/questions');
 const setupSockets = require('./sockets');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -109,9 +110,20 @@ setupSockets(io);
 // Database client & Admin User Initialization
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
-const prisma = new PrismaClient();
+let prisma;
+try {
+  prisma = new PrismaClient();
+} catch (err) {
+  console.error('[Backend] PrismaClient instantiation error:', err.message);
+}
 
 async function initAdminUser() {
+  if (!prisma) return;
+  if (!process.env.DATABASE_URL) {
+    console.warn('[Backend] Notice: DATABASE_URL is not set in environment variables.');
+    return;
+  }
+
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@quizcore.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
   const adminName = process.env.ADMIN_NAME || 'Admin Organizer';
@@ -138,7 +150,7 @@ async function initAdminUser() {
       console.log(`[Backend] Synced admin account credentials for: ${adminEmail}`);
     }
   } catch (err) {
-    console.error('[Backend] Warning: Failed to initialize admin user:', err.message);
+    console.warn('[Backend] Notice: Could not sync default admin user (Database may be connecting):', err.message);
   }
 }
 

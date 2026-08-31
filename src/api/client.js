@@ -17,7 +17,7 @@ const BASE_URL = getNormalizedApiUrl();
 
 // Helper to make fetch requests with standard options (like credentials for HttpOnly cookies and Bearer tokens)
 async function fetchClient(endpoint, options = {}) {
-  const timeoutMs = options.timeout || 5000;
+  const timeoutMs = options.timeout || 25000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
