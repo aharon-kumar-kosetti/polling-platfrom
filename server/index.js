@@ -15,12 +15,15 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 
+// Enable trust proxy for Railway / reverse proxy HTTPS forwarding and cookies
+app.set('trust proxy', 1);
+
 // Environment vars
 const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
-// Flexible CORS setup for local development and production deployments (Vercel, LAN, etc.)
+// Flexible CORS setup for local development and production deployments (Vercel, Railway, LAN, etc.)
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, curl, server-to-server)
@@ -34,6 +37,8 @@ const corsOptions = {
     const isAllowed = 
       configuredOrigins.includes(normalizedOrigin) ||
       /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(normalizedOrigin) ||
+      /^https:\/\/[a-zA-Z0-9-]+\.railway\.app$/.test(normalizedOrigin) ||
+      /^https:\/\/[a-zA-Z0-9-]+\.up\.railway\.app$/.test(normalizedOrigin) ||
       /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin);
       
     if (isAllowed || IS_DEV) {
@@ -49,6 +54,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
+// Health check endpoints for Railway / uptime monitoring
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'quizcore-backend', timestamp: new Date().toISOString() });
+});
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'quizcore-backend', timestamp: new Date().toISOString() });
+});
 
 // REST Routes
 app.use('/api/auth', authRoutes);
