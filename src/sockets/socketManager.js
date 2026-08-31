@@ -1,10 +1,22 @@
 // socketManager.js
 import { io } from 'socket.io-client';
 
-const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
-const SOCKET_URL = (envSocketUrl && envSocketUrl.trim() !== '')
-  ? envSocketUrl
-  : (typeof window !== 'undefined' ? window.location.origin : undefined);
+function getNormalizedSocketUrl() {
+  let envUrl = import.meta.env.VITE_SOCKET_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    envUrl = envUrl.trim().replace(/\/+$/, '');
+    if (!envUrl.startsWith('http://') && !envUrl.startsWith('https://') && !envUrl.startsWith('ws://') && !envUrl.startsWith('wss://')) {
+      envUrl = `https://${envUrl}`;
+    }
+    if (envUrl.endsWith('/api')) {
+      envUrl = envUrl.slice(0, -4);
+    }
+    return envUrl;
+  }
+  return typeof window !== 'undefined' ? window.location.origin : undefined;
+}
+
+const SOCKET_URL = getNormalizedSocketUrl();
 
 class SocketManager {
   constructor() {

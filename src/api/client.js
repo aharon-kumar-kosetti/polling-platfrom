@@ -1,5 +1,19 @@
 // client.js
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+function getNormalizedApiUrl() {
+  let envBaseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').trim();
+  if (envBaseUrl && envBaseUrl !== '/api') {
+    if (!envBaseUrl.startsWith('http://') && !envBaseUrl.startsWith('https://')) {
+      envBaseUrl = `https://${envBaseUrl}`;
+    }
+    envBaseUrl = envBaseUrl.replace(/\/+$/, '');
+    if (!envBaseUrl.endsWith('/api')) {
+      envBaseUrl += '/api';
+    }
+  }
+  return envBaseUrl;
+}
+
+const BASE_URL = getNormalizedApiUrl();
 
 // Helper to make fetch requests with standard options (like credentials for HttpOnly cookies and Bearer tokens)
 async function fetchClient(endpoint, options = {}) {
